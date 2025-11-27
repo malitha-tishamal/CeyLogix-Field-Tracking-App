@@ -11,6 +11,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  google_fonts: ^6.1.0
 
 
   cupertino_icons: ^1.0.8
@@ -29,4 +30,4 @@ flutter:
 
 
   assets:
-    - assets/logo.png
+    - assets/logo/logo.png

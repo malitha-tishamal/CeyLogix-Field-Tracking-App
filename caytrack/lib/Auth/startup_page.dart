@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'user_agreement_page.dart'; // <-- New import for the destination page
 // Note: In a real Flutter project, AppColors would be imported from a shared file like 'package:app_name/app_colors.dart'.
 // For this self-contained example, we'll redefine the necessary colors for readability and context.
 
@@ -13,8 +14,6 @@ class AppColors {
 
 // Custom color for the CeyLogix logo text
 const Color _logoGreen = Color(0xFF6AD96A);
-
-// The custom painter (TeaCupPainter) and graphic widget (TeaCupGraphic) have been removed.
 
 class StartPage extends StatelessWidget {
   const StartPage({super.key});
@@ -32,26 +31,25 @@ class StartPage extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // --- MAIN CONTENT AREA (Space, Logo, Title, Text) ---
+            // --- MAIN CONTENT AREA (Logo, Title, Text) ---
             Padding(
               padding: EdgeInsets.only(top: screenHeight * 0.1),
               child: Column(
                 children: [
-                  // 1. Placeholder for the removed graphic (maintaining vertical space)
-                  const SizedBox(height: 100), 
+                  
                   
                   const SizedBox(height: 30),
 
-                  // 2. Branding (Logo + Text) - USING LOCAL ASSET IMAGE
+                  // 2. Branding (Logo + Text) - Smaller version
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(8.0),
                         child: Image.asset(
-                          'assets/logo.png', // <-- Using local asset path
-                          width: 40,
-                          height: 40,
+                          '../assets/logo/logo.png', // <-- Using local asset path
+                          width: 250,
+                          height: 250,
                           fit: BoxFit.cover,
                           // Fallback in case the image cannot be loaded
                           errorBuilder: (context, error, stackTrace) => Icon(
@@ -62,15 +60,8 @@ class StartPage extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      const Text(
-                        'CeyLogix',
-                        style: TextStyle(
-                          color: _logoGreen,
-                          fontSize: 32,
-                          fontWeight: FontWeight.w800,
-                          fontFamily: 'Inter',
-                        ),
-                      ),
+                      // The CeyLogix Text was removed in the previous turn based on the user's provided code snippet.
+                      // Leaving it as-is, following the provided code history.
                     ],
                   ),
 
@@ -79,15 +70,31 @@ class StartPage extends StatelessWidget {
                   // 3. Main Headline: "Smart Tracking for Ceylon Exports."
                   SizedBox(
                     width: MediaQuery.of(context).size.width * 0.8, // Control max width
-                    child: const Text(
-                      'Smart Tracking\nfor Ceylon\nExports.',
+                    child: RichText( // Changed to RichText to support multiple text styles
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: AppColors.darkText,
-                        fontSize: 36,
-                        fontWeight: FontWeight.bold,
-                        height: 1.2, // Tighter line spacing
-                        fontFamily: 'Inter',
+                      text: TextSpan(
+                        // Base style for all text spans
+                        style: const TextStyle(
+                          fontSize: 36,
+                          fontWeight: FontWeight.bold,
+                          height: 1.2,
+                          fontFamily: 'Inter',
+                        ),
+                        children: <TextSpan>[
+                          // Part 1: Default dark text
+                          const TextSpan(
+                            text: 'Smart Tracking\nfor Ceylon\n',
+                            style: TextStyle(color: AppColors.darkText),
+                          ),
+                          // Part 2: Highlighted blue, bold text
+                          const TextSpan(
+                            text: 'Exports.',
+                            style: TextStyle(
+                              color: AppColors.primaryBlue, // Changed color to blue
+                              fontWeight: FontWeight.bold, // Ensure it is bold
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -102,7 +109,13 @@ class StartPage extends StatelessWidget {
                 _GradientButton(
                   text: "Let's Start...",
                   onPressed: () {
-                    // Action for starting the app (e.g., navigate to login/home)
+                    // Navigate to the UserAgreementPage when the button is pressed
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const UserAgreementPage(),
+                      ),
+                    );
                   },
                 ),
                 
