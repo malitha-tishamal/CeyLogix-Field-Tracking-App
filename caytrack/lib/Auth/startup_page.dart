@@ -1,18 +1,17 @@
 import 'package:flutter/material.dart';
-import 'user_agreement_page.dart'; // <-- New import for the destination page
-// Note: In a real Flutter project, AppColors would be imported from a shared file like 'package:app_name/app_colors.dart'.
-// For this self-contained example, we'll redefine the necessary colors for readability and context.
+import 'user_agreement_page.dart'; // <-- Import the destination agreement page
 
-// Define the colors used from the main.dart context
+// Define the colors used from the main.dart context for local file access
 class AppColors {
   static const Color background = Color(0xFFEEEBFF);
   static const Color darkText = Color(0xFF2C2A3A);
   static const Color primaryBlue = Color(0xFF2764E7);
   static const Color buttonGradientStart = Color(0xFF2764E7);
   static const Color buttonGradientEnd = Color(0xFF457AED); 
+  static const Color cardBackground = Colors.white; 
 }
 
-// Custom color for the CeyLogix logo text
+// Custom color for the logo/icon based on the app's theme
 const Color _logoGreen = Color(0xFF6AD96A);
 
 class StartPage extends StatelessWidget {
@@ -36,23 +35,21 @@ class StartPage extends StatelessWidget {
               padding: EdgeInsets.only(top: screenHeight * 0.1),
               child: Column(
                 children: [
-                  
-                  
                   const SizedBox(height: 30),
 
-                  // 2. Branding (Logo + Text) - Smaller version
+                  // 2. Branding (Logo + Text)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(8.0),
                         child: Image.asset(
-                          '../assets/logo/logo.png', // <-- Using local asset path
+                          'assets/logo/logo.png', 
                           width: 250,
                           height: 250,
                           fit: BoxFit.cover,
                           // Fallback in case the image cannot be loaded
-                          errorBuilder: (context, error, stackTrace) => Icon(
+                          errorBuilder: (context, error, stackTrace) => const Icon(
                             Icons.eco, 
                             color: _logoGreen,
                             size: 32,
@@ -60,8 +57,6 @@ class StartPage extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      // The CeyLogix Text was removed in the previous turn based on the user's provided code snippet.
-                      // Leaving it as-is, following the provided code history.
                     ],
                   ),
 
@@ -70,11 +65,11 @@ class StartPage extends StatelessWidget {
                   // 3. Main Headline: "Smart Tracking for Ceylon Exports."
                   SizedBox(
                     width: MediaQuery.of(context).size.width * 0.8, // Control max width
-                    child: RichText( // Changed to RichText to support multiple text styles
+                    child: RichText( 
                       textAlign: TextAlign.center,
-                      text: TextSpan(
+                      text: const TextSpan(
                         // Base style for all text spans
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 36,
                           fontWeight: FontWeight.bold,
                           height: 1.2,
@@ -82,16 +77,16 @@ class StartPage extends StatelessWidget {
                         ),
                         children: <TextSpan>[
                           // Part 1: Default dark text
-                          const TextSpan(
+                          TextSpan(
                             text: 'Smart Tracking\nfor Ceylon\n',
                             style: TextStyle(color: AppColors.darkText),
                           ),
                           // Part 2: Highlighted blue, bold text
-                          const TextSpan(
+                          TextSpan(
                             text: 'Exports.',
                             style: TextStyle(
-                              color: AppColors.primaryBlue, // Changed color to blue
-                              fontWeight: FontWeight.bold, // Ensure it is bold
+                              color: AppColors.primaryBlue, 
+                              fontWeight: FontWeight.bold, 
                             ),
                           ),
                         ],
@@ -122,8 +117,8 @@ class StartPage extends StatelessWidget {
                 const SizedBox(height: 40), // Spacing before the footer
 
                 // 5. Footer Text: "Developed By Malitha Tishamal"
-                Center( 
-                  child: const Padding(
+                const Center( 
+                  child: Padding(
                     padding: EdgeInsets.only(bottom: 16.0),
                     child: Text(
                       'Developed By Malitha Tishamal',
@@ -148,41 +143,53 @@ class StartPage extends StatelessWidget {
 // Custom widget to create the gradient button effect
 class _GradientButton extends StatelessWidget {
   final String text;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
+  final bool isEnabled;
 
-  const _GradientButton({required this.text, required this.onPressed});
+  const _GradientButton({required this.text, required this.onPressed, this.isEnabled = true});
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onPressed,
       borderRadius: BorderRadius.circular(12),
-      child: Container(
-        width: MediaQuery.of(context).size.width * 0.8, // 80% screen width
-        padding: const EdgeInsets.symmetric(vertical: 16.0),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          gradient: const LinearGradient(
-            colors: [AppColors.buttonGradientStart, AppColors.buttonGradientEnd],
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
+      child: Opacity(
+        opacity: isEnabled ? 1.0 : 0.6,
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.8, // 80% screen width
+          padding: const EdgeInsets.symmetric(vertical: 16.0),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            gradient: isEnabled
+                ? const LinearGradient(
+                    colors: [AppColors.buttonGradientStart, AppColors.buttonGradientEnd],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  )
+                : LinearGradient(
+                    colors: [Colors.grey.shade500, Colors.grey.shade400],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+            boxShadow: isEnabled
+                ? [
+                    BoxShadow(
+                      color: AppColors.primaryBlue.withOpacity(0.5),
+                      blurRadius: 10,
+                      offset: const Offset(0, 5),
+                    ),
+                  ]
+                : null,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primaryBlue.withOpacity(0.5),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
+          child: Text(
+            text,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              fontFamily: 'Inter',
             ),
-          ],
-        ),
-        child: Text(
-          text,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            fontFamily: 'Inter',
           ),
         ),
       ),

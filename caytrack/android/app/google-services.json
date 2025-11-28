@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "324646185920",
+    "project_id": "ceylogix-df065",
+    "storage_bucket": "ceylogix-df065.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:324646185920:android:f37297d4a7124bb308b625",
+        "android_client_info": {
+          "package_name": "com.example.caytrack"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAxAOhKav-NmOQeMfZh89xy4NmKXQCfM0g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

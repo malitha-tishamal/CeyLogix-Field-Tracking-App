@@ -12,19 +12,21 @@ dependencies:
   flutter:
     sdk: flutter
   google_fonts: ^6.1.0
-
-
   cupertino_icons: ^1.0.8
+
+  # --- Firebase Dependencies Updated to fix compilation errors ---
+  firebase_core: ^2.27.0 
+  cloud_firestore: ^4.16.0
+  firebase_auth: ^4.17.0
+  # -----------------------------------------------------------------
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
-
   flutter_lints: ^5.0.0
 
 flutter:
-
 
   uses-material-design: true
 
