@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../land_owner/farmer_registration.dart'; // Land Owner now navigates here
+import '../factory_owner/factory_owner_registration.dart'; // Factory Owner navigates here
 
 // Define the colors used, consistent with login_page.dart
 class AppColors {
@@ -16,20 +18,31 @@ class SignUpPage extends StatelessWidget {
 
   // Handler for when a role card is tapped
   void _onRoleSelected(BuildContext context, String role) {
-    // In a real application, this would navigate to a registration form 
-    // specific to the chosen role (e.g., LandOwnerRegistrationPage).
-    // For now, we'll show a message and go back to login.
+    Widget nextPage;
+
+    // Determine the target page based on the selected role
+    if (role == 'Land Owner') {
+      nextPage = const FarmerRegistrationPage(); // Navigate to Farmer Registration
+    } else if (role == 'Factory Owner') {
+      nextPage = const FactoryOwnerRegistrationPage(); // Navigate to Factory Owner Registration
+    } else {
+      // Fallback
+      return; 
+    }
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Selected $role registration. Proceeding to form...', style: const TextStyle(color: AppColors.darkText)),
+        content: Text('Navigating to $role registration.', style: const TextStyle(color: AppColors.darkText)),
         backgroundColor: AppColors.secondaryColor,
-        duration: const Duration(seconds: 2),
+        duration: const Duration(milliseconds: 1500),
       ),
     );
-    // Simulate navigation to the next screen (or just pop for now)
-    Future.delayed(const Duration(seconds: 1), () {
-      Navigator.pop(context); // Go back to login page
-    });
+    
+    // Navigate to the specific registration page
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => nextPage),
+    );
   }
 
   @override
@@ -43,23 +56,20 @@ class SignUpPage extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // 1. Logo Section (Tea cup/Icon) - Using a placeholder URL for the tea cup image
-              _ImagePlaceholder(
-                imageUrl: 'https://placehold.co/100x100/96D3A0/fff?text=Tea+Cup',
-                size: 100,
-              ),
+       // 1. Logo - Updated to match the visual style (large image)
+       Image.asset(
+        'assets/logo/logo.png', // Assuming this path holds the cup/leaf image
+        width: 250, // Made wider to match the visual width
+        height: 200, // Made taller
+        fit: BoxFit.contain, // Use contain to ensure the whole image is visible
+        errorBuilder: (context, error, stackTrace) => const Icon(
+         Icons.local_cafe, // Changed icon to suggest tea/coffee instead of shipping
+         color: AppColors.secondaryColor,
+         size: 100,
+        ),
+       ),
               
               const SizedBox(height: 10),
-
-              Text(
-                'CeyLogix',
-                style: TextStyle(
-                  color: AppColors.secondaryColor,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 20),
 
               // 2. Title and Subtitle (Create Account)
               const Text(
@@ -81,21 +91,21 @@ class SignUpPage extends StatelessWidget {
 
               const SizedBox(height: 40),
 
-              // 3. Land Owner Card
+              // 3. Land Owner Card (Navigates to farmer_registration.dart)
               _RoleSelectionCard(
                 title: 'Land Owner',
                 // Placeholder for tea plantation image
-                imageUrl: 'https://placehold.co/50x50/A6D990/fff?text=Plantation', 
+                imageUrl: 'assets/logo/land.jpg', 
                 onTap: () => _onRoleSelected(context, 'Land Owner'),
               ),
 
               const SizedBox(height: 20),
 
-              // 4. Factory Owner Card
+              // 4. Factory Owner Card (Navigates to factory_owner_registration.dart)
               _RoleSelectionCard(
                 title: 'Factory Owner',
                 // Placeholder for factory image
-                imageUrl: 'https://placehold.co/50x50/457AED/fff?text=Factory', 
+                imageUrl: 'assets/logo/fac.png', 
                 onTap: () => _onRoleSelected(context, 'Factory Owner'),
               ),
 
@@ -152,6 +162,7 @@ class _ImagePlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Using Image.network for placeholder URLs
     return ClipRRect(
       borderRadius: BorderRadius.circular(10),
       child: Image.network(
@@ -159,10 +170,18 @@ class _ImagePlaceholder extends StatelessWidget {
         width: size,
         height: size,
         fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => Icon(
-          Icons.image_not_supported,
-          size: size,
-          color: AppColors.darkText.withOpacity(0.5),
+        errorBuilder: (context, error, stackTrace) => Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            color: AppColors.secondaryColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(
+            Icons.image_not_supported,
+            size: size * 0.6,
+            color: AppColors.darkText.withOpacity(0.5),
+          ),
         ),
       ),
     );

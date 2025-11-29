@@ -1,5 +1,5 @@
 name: caytrack
-description: "A new Flutter project."
+description: "Smart Tracking for Ceylon."
 
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
@@ -32,4 +32,4 @@ flutter:
 
 
   assets:
-    - assets/logo/logo.png
+    - assets/logo/
