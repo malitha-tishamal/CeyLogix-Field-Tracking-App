@@ -244,10 +244,10 @@ class _FactoryOwnerDrawerState extends State<FactoryOwnerDrawer> {
               ),
               
               // 4. Production
-              _buildModernDrawerItem(icon: Icons.analytics_rounded, label: "Production", description: "Monitor manufacturing", onTap: () => widget.onNavigate("production")),
+             // _buildModernDrawerItem(icon: Icons.analytics_rounded, label: "Production", description: "Monitor manufacturing", onTap: () => widget.onNavigate("production")),
               
               // 5. Inventory
-              _buildModernDrawerItem(icon: Icons.inventory_rounded, label: "Inventory", description: "Stock management", onTap: () => widget.onNavigate("inventory")),
+             // _buildModernDrawerItem(icon: Icons.inventory_rounded, label: "Inventory", description: "Stock management", onTap: () => widget.onNavigate("inventory")),
               
               // 6. Developer Info 💡 NEW NAVIGATION
               _buildModernDrawerItem(

@@ -12,7 +12,7 @@ class AppColors {
   static const Color secondaryColor = Color(0xFF6AD96A);
   
   // Custom colors based on the image's gradient header
-  static const Color headerGradientStart = Color.fromARGB(255, 134, 164, 236); // Light blue top
+  static const Color headerGradientStart = Color.from(alpha: 1, red: 0.525, green: 0.643, blue: 0.925); // Light blue top
   static const Color headerGradientEnd = Color(0xFFF7FAFF);   // Very light blue bottom
   static const Color headerTextDark = Color(0xFF333333);
 }
