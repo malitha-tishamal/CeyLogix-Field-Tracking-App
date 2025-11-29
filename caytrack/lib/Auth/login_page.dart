@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; 
 import 'signup_page.dart';
 import '../land_owner/landowner_dashbord.dart';
-import '../factory_owner/factory_owner_dashbord.dart';
+import '../factory_owner/factory_owner_dashboard.dart';
 
 class AppColors {
   static const Color background = Color(0xFFEEEBFF);

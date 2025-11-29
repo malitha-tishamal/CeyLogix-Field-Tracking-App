@@ -13,6 +13,7 @@ dependencies:
     sdk: flutter
   google_fonts: ^6.1.0
   cupertino_icons: ^1.0.8
+  image_picker: ^1.1.0
 
   # --- Firebase Dependencies Updated to fix compilation errors ---
   firebase_core: ^2.27.0 
@@ -32,4 +33,5 @@ flutter:
 
 
   assets:
-    - assets/logo/
+    - assets/logo/logo.png
+    - assets/logo/logo2.png
