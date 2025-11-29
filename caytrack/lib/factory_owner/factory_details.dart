@@ -30,7 +30,7 @@ class _FactoryDetailsState extends State<FactoryDetails> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   // Placeholder for user data (to match the image's text)
-  String _userName = 'Malitha Tishamal';
+  String _userName = 'Loading';
   String _userRole = 'Factory Owner';
 
   @override
@@ -166,10 +166,7 @@ class _FactoryDetailsState extends State<FactoryDetails> {
                 },
               ),
               // Notification Icon
-              IconButton(
-                icon: const Icon(Icons.notifications_none, color: AppColors.headerTextDark, size: 28),
-                onPressed: () {},
-              ),
+              
             ],
           ),
           
@@ -232,7 +229,7 @@ class _FactoryDetailsState extends State<FactoryDetails> {
           
           // "Manage Profile Details" Text
           const Text(
-            'Manage Profile Details',
+            'Manage Factory Details',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,

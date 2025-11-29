@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'factory_details.dart'; // Import Factory Details page
-import 'factory_owner_dashboard.dart'; // 💡 NEW: Import the Dashboard page
+import 'factory_owner_dashboard.dart'; // Import the Dashboard page
+import 'user_profile.dart'; // Import the User Profile page (Contains UserDetails)
+import 'developer_info.dart'; // 💡 NEW: Import the Developer Info page
 
-// ⚠️ Note: Assuming AppColors is available globally or defined in main.dart and imported.
-// For simplicity in this file, I'll use hardcoded colors based on your previous code.
-// If you defined AppColors elsewhere, ensure you import that file (e.g., 'main.dart').
+// --- Hardcoded Colors for Simplicity (Replace with AppColors if available) ---
 const Color _primaryBlue = Color(0xFF2764E7);
 const Color _darkText = Color(0xFF2C2A3A);
 
@@ -42,7 +42,6 @@ class _FactoryOwnerDrawerState extends State<FactoryOwnerDrawer> {
     }
 
     try {
-      // ⚠️ Important: Check if currentUser is null before accessing .uid
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
         _error = "User not logged in";
@@ -108,25 +107,23 @@ class _FactoryOwnerDrawerState extends State<FactoryOwnerDrawer> {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Row(
             children: [
-              // Placeholder/Asset handling for logo2.png
               Container(
                  width: 60, height: 60,
-                 // Added a simple placeholder if asset fails, using primary blue as background
                  decoration: BoxDecoration(
-                    color: _primaryBlue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: _primaryBlue.withOpacity(0.3),
-                        blurRadius: 15, offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                child: Image.asset(
-                  'assets/logo/logo2.png',
-                  width: 60, height: 60, fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.business_rounded, color: _primaryBlue, size: 30),
-                ),
+                   color: _primaryBlue.withOpacity(0.1),
+                   borderRadius: BorderRadius.circular(16),
+                   boxShadow: [
+                     BoxShadow(
+                       color: _primaryBlue.withOpacity(0.3),
+                       blurRadius: 15, offset: const Offset(0, 5),
+                     ),
+                   ],
+                 ),
+                 child: Image.asset(
+                   'assets/logo/logo2.png',
+                   width: 60, height: 60, fit: BoxFit.contain,
+                   errorBuilder: (context, error, stackTrace) => const Icon(Icons.business_rounded, color: _primaryBlue, size: 30),
+                 ),
               ),
               const SizedBox(width: 12),
               const Column(
@@ -206,23 +203,21 @@ class _FactoryOwnerDrawerState extends State<FactoryOwnerDrawer> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             physics: const BouncingScrollPhysics(),
             children: [
-              // 1. Dashboard (The requested change is here)
+              // 1. Dashboard 
               _buildModernDrawerItem(
                 icon: Icons.dashboard_rounded,
                 label: "Dashboard",
                 description: "Overview & Analytics",
                 isActive: true,
                 onTap: () {
-                  // 1. Close the drawer
                   Navigator.of(context).pop(); 
-                  // 2. Navigate to the specific FactoryOwnerDashboard page
-                  Navigator.of(context).pushReplacement( // Using pushReplacement to prevent stacking dashboards
+                  Navigator.of(context).pushReplacement( 
                     MaterialPageRoute(builder: (context) => const FactoryOwnerDashboard()), 
                   );
                 },
               ),
               
-              // 2. Factory Details (Keep direct navigation as before)
+              // 2. Factory Details
               _buildModernDrawerItem(
                 icon: Icons.business_center_rounded,
                 label: "Factory Details",
@@ -235,16 +230,42 @@ class _FactoryOwnerDrawerState extends State<FactoryOwnerDrawer> {
                 },
               ),
               
-              // 3. Other items (Use the onNavigate callback for other sections)
+              // 3. My Profile
+              _buildModernDrawerItem(
+                icon: Icons.person_rounded,
+                label: "My Profile",
+                description: "Personal settings",
+                onTap: () {
+                   Navigator.of(context).pop(); 
+                   Navigator.of(context).push(
+                     MaterialPageRoute(builder: (context) => const UserDetails()),
+                   );
+                },
+              ),
+              
+              // 4. Production
               _buildModernDrawerItem(icon: Icons.analytics_rounded, label: "Production", description: "Monitor manufacturing", onTap: () => widget.onNavigate("production")),
+              
+              // 5. Inventory
               _buildModernDrawerItem(icon: Icons.inventory_rounded, label: "Inventory", description: "Stock management", onTap: () => widget.onNavigate("inventory")),
-              _buildModernDrawerItem(icon: Icons.person_rounded, label: "My Profile", description: "Personal settings", onTap: () => widget.onNavigate("profile")),
-              _buildModernDrawerItem(icon: Icons.code_rounded, label: "Developer Info", description: "About the application", onTap: () => widget.onNavigate("developer")),
+              
+              // 6. Developer Info 💡 NEW NAVIGATION
+              _buildModernDrawerItem(
+  icon: Icons.code_rounded, 
+  label: "Developer Info", 
+  description: "About the application", 
+  onTap: () {
+    Navigator.of(context).pop(); // Close drawer
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => const DeveloperInfoPage()), // Navigate to DeveloperInfoPage
+    );
+  },
+),
             ],
           ),
         ),
 
-        // Logout Button
+        // Logout Button (Unchanged)
         Container(
           margin: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -280,7 +301,7 @@ class _FactoryOwnerDrawerState extends State<FactoryOwnerDrawer> {
           ),
         ),
 
-        // Footer
+        // Footer (Unchanged)
         Container(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -295,102 +316,102 @@ class _FactoryOwnerDrawerState extends State<FactoryOwnerDrawer> {
     );
   }
 
-  // Helper Widgets (Kept for completeness)
+  // --- Helper Widgets (Skipped for brevity, assume they are correct) ---
   Widget _buildModernDrawerItem({
-    required IconData icon,
-    required String label,
-    required String description,
-    bool isActive = false,
-    required VoidCallback onTap,
-  }) {
-    // ... (This method remains the same as your provided code)
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              gradient: isActive
-                  ? const LinearGradient(
-                      colors: [_primaryBlue, Color(0xFF457AED)],
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                    )
-                  : LinearGradient(
-                      colors: [
-                        Colors.white.withOpacity(0.7),
-                        Colors.white.withOpacity(0.4),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: isActive
-                  ? [
-                      BoxShadow(
-                        color: _primaryBlue.withOpacity(0.3),
-                        blurRadius: 10,
-                        offset: const Offset(0, 3),
-                      ),
-                    ]
-                  : [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.03),
-                        blurRadius: 10,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-              border: Border.all(
-                color: isActive
-                    ? _primaryBlue.withOpacity(0.3)
-                    : Colors.white.withOpacity(0.8),
-                width: 1.2,
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: isActive
-                        ? Colors.white.withOpacity(0.2)
-                        : _primaryBlue.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    icon,
-                    color: isActive ? Colors.white : _primaryBlue,
-                    size: 18,
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isActive ? Colors.white : _darkText)),
-                      const SizedBox(height: 2),
-                      Text(description, style: TextStyle(fontSize: 11, color: isActive ? Colors.white.withOpacity(0.8) : _darkText.withOpacity(0.5))),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Icon(
-                  Icons.arrow_forward_ios_rounded,
-                  color: isActive ? Colors.white.withOpacity(0.7) : _primaryBlue.withOpacity(0.4),
-                  size: 14,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+     required IconData icon,
+     required String label,
+     required String description,
+     bool isActive = false,
+     required VoidCallback onTap,
+   }) {
+     // implementation here (unchanged)
+     return Container(
+       margin: const EdgeInsets.only(bottom: 6),
+       child: Material(
+         color: Colors.transparent,
+         child: InkWell(
+           onTap: onTap,
+           borderRadius: BorderRadius.circular(16),
+           child: Container(
+             padding: const EdgeInsets.all(14),
+             decoration: BoxDecoration(
+               gradient: isActive
+                   ? const LinearGradient(
+                       colors: [_primaryBlue, Color(0xFF457AED)],
+                       begin: Alignment.centerLeft,
+                       end: Alignment.centerRight,
+                     )
+                   : LinearGradient(
+                       colors: [
+                         Colors.white.withOpacity(0.7),
+                         Colors.white.withOpacity(0.4),
+                       ],
+                       begin: Alignment.topLeft,
+                       end: Alignment.bottomRight,
+                     ),
+               borderRadius: BorderRadius.circular(16),
+               boxShadow: isActive
+                   ? [
+                       BoxShadow(
+                         color: _primaryBlue.withOpacity(0.3),
+                         blurRadius: 10,
+                         offset: const Offset(0, 3),
+                       ),
+                     ]
+                   : [
+                       BoxShadow(
+                         color: Colors.black.withOpacity(0.03),
+                         blurRadius: 10,
+                         offset: const Offset(0, 2),
+                       ),
+                     ],
+               border: Border.all(
+                 color: isActive
+                     ? _primaryBlue.withOpacity(0.3)
+                     : Colors.white.withOpacity(0.8),
+                 width: 1.2,
+               ),
+             ),
+             child: Row(
+               children: [
+                 Container(
+                   padding: const EdgeInsets.all(8),
+                   decoration: BoxDecoration(
+                     color: isActive
+                         ? Colors.white.withOpacity(0.2)
+                         : _primaryBlue.withOpacity(0.1),
+                     shape: BoxShape.circle,
+                   ),
+                   child: Icon(
+                     icon,
+                     color: isActive ? Colors.white : _primaryBlue,
+                     size: 18,
+                   ),
+                 ),
+                 const SizedBox(width: 14),
+                 Expanded(
+                   child: Column(
+                     crossAxisAlignment: CrossAxisAlignment.start,
+                     children: [
+                       Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isActive ? Colors.white : _darkText)),
+                       const SizedBox(height: 2),
+                       Text(description, style: TextStyle(fontSize: 11, color: isActive ? Colors.white.withOpacity(0.8) : _darkText.withOpacity(0.5))),
+                     ],
+                   ),
+                 ),
+                 const SizedBox(width: 10),
+                 Icon(
+                   Icons.arrow_forward_ios_rounded,
+                   color: isActive ? Colors.white.withOpacity(0.7) : _primaryBlue.withOpacity(0.4),
+                   size: 14,
+                 ),
+               ],
+             ),
+           ),
+         ),
+       ),
+     );
+   }
 
   Widget _buildSectionDivider() {
     return Padding(
