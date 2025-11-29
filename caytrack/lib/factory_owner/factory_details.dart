@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'factory_owner_drawer.dart'; // <-- IMPORTANT IMPORT
 
 // --- Placeholder/Utility Imports ---
 class AppColors {
@@ -8,19 +9,56 @@ class AppColors {
   static const Color darkText = Color(0xFF2C2A3A);
   static const Color primaryBlue = Color(0xFF2764E7);
   static const Color cardBackground = Colors.white;
-  static const Color secondaryColor = Color(0xFF6AD96A); 
+  static const Color secondaryColor = Color(0xFF6AD96A);
+  
+  // Custom colors based on the image's gradient header
+  static const Color headerGradientStart = Color.fromARGB(255, 134, 164, 236); // Light blue top
+  static const Color headerGradientEnd = Color(0xFFF7FAFF);   // Very light blue bottom
+  static const Color headerTextDark = Color(0xFF333333);
 }
 
 // --- Factory Owner Profile Screen (Single Tab Version) ---
-class FactoryOwnerProfileScreen extends StatefulWidget {
-  const FactoryOwnerProfileScreen({super.key});
+class FactoryDetails extends StatefulWidget {
+  const FactoryDetails({super.key});
 
   @override
-  State<FactoryOwnerProfileScreen> createState() => _FactoryOwnerProfileScreenState();
+  State<FactoryDetails> createState() => _FactoryDetailsState();
 }
 
-class _FactoryOwnerProfileScreenState extends State<FactoryOwnerProfileScreen> {
+class _FactoryDetailsState extends State<FactoryDetails> {
   final User? currentUser = FirebaseAuth.instance.currentUser;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  // Placeholder for user data (to match the image's text)
+  String _userName = 'Malitha Tishamal';
+  String _userRole = 'Factory Owner';
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserInfo();
+  }
+
+  // Fetch name and role from Firestore/Auth if needed
+  void _fetchUserInfo() async {
+    final user = currentUser;
+    if (user != null) {
+      try {
+        final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        if (doc.exists) {
+          final data = doc.data();
+          setState(() {
+            _userName = data?['name'] ?? 'Factory Owner';
+            _userRole = data?['role'] ?? 'Factory Owner';
+          });
+        }
+      } catch (e) {
+        // Handle error
+        print("Error fetching user info: $e");
+      }
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -28,23 +66,51 @@ class _FactoryOwnerProfileScreenState extends State<FactoryOwnerProfileScreen> {
       return const Scaffold(body: Center(child: Text("Error: User not logged in.")));
     }
 
+    // You may need to create a dummy function if your FactoryOwnerDrawer expects the FactoryOwnerDashboard
+    void handleDrawerNavigate(String routeName) {
+      Navigator.pop(context); // Close drawer first
+      // Placeholder for actual navigation logic if not Dashboard
+      if (routeName == 'dashboard') {
+         // Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (context) => const FactoryOwnerDashboard()));
+      }
+    }
+
     return Scaffold(
+      key: _scaffoldKey,
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Header Profile Card
-            _buildProfileHeader(context),
-            
-            // Main Content - Profile Details Only
-            Expanded(
-              child: SingleChildScrollView(
-                child: FactoryOwnerProfileContent(factoryOwnerUID: currentUser!.uid),
-              ),
+      drawer: FactoryOwnerDrawer(
+        onLogout: () {
+          // Add your proper logout implementation here
+          FirebaseAuth.instance.signOut();
+          Navigator.pop(context);
+        },
+        onNavigate: handleDrawerNavigate, // Use the dummy handler
+      ),
+      body: Stack( // Use Stack to ensure the Update button stays above the footer text
+        children: [
+          SafeArea(
+            child: Column(
+              children: [
+                // 1. Header Profile Card (UPDATED)
+                _buildProfileHeader(context),
+                
+                // 2. Main Content - Scrollable Form
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: FactoryOwnerProfileContent(factoryOwnerUID: currentUser!.uid),
+                  ),
+                ),
+                
+                // 3. Footer Text (Moved to Stack for better positioning)
+                // We'll handle the footer text placement outside the column for the fixed bottom text
+              ],
             ),
-            
-            // Footer Text
-            Padding(
+          ),
+          
+          // 4. Fixed Footer Text
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Text(
                 'Developed By Malitha Tishamal',
@@ -55,87 +121,123 @@ class _FactoryOwnerProfileScreenState extends State<FactoryOwnerProfileScreen> {
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
   
-  // Custom Profile Header Widget
+  // Custom Profile Header Widget - MATCHING IMAGE STYLE 🌟
   Widget _buildProfileHeader(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20),
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(20),
-          bottomRight: Radius.circular(20),
+      padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
+      // 1. Gradient Background
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+        // 2. Rounded Bottom Corners
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(30), // Slightly larger radius looks better
+          bottomRight: Radius.circular(30),
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primaryBlue.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
+            color: Color(0x10000000), // Subtle black shadow
+            blurRadius: 15,
+            offset: Offset(0, 5),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Row: Menu Icon & Notification Icon
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Back Button instead of Menu
+              // Menu Button (Hamburger)
               IconButton(
-                icon: const Icon(Icons.arrow_back, color: AppColors.darkText),
+                icon: const Icon(Icons.menu, color: AppColors.headerTextDark, size: 28),
                 onPressed: () {
-                  Navigator.of(context).pop();
+                  _scaffoldKey.currentState?.openDrawer();
                 },
               ),
               // Notification Icon
               IconButton(
-                icon: const Icon(Icons.notifications_none, color: AppColors.darkText),
+                icon: const Icon(Icons.notifications_none, color: AppColors.headerTextDark, size: 28),
                 onPressed: () {},
               ),
             ],
           ),
+          
           const SizedBox(height: 10),
+          
+          // Row: Profile Picture & User Info
           Row(
             children: [
-              // Profile Picture Placeholder
+              // Profile Picture (MATCHING BLUE STYLE)
               Container(
-                width: 60,
-                height: 60,
+                width: 70,
+                height: 70,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.primaryBlue.withOpacity(0.2),
+                  // Use a distinct blue gradient for the avatar background
+                  gradient: const LinearGradient(
+                    colors: [AppColors.primaryBlue, Color(0xFF457AED)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  border: Border.all(color: Colors.white, width: 3),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primaryBlue.withOpacity(0.4),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
                 ),
-                child: const Icon(Icons.person, size: 40, color: AppColors.primaryBlue),
+                child: const Icon(Icons.person, size: 50, color: Colors.white),
               ),
+              
               const SizedBox(width: 15),
-              // User Info
+              
+              // User Info (Name and Role)
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    currentUser?.email ?? 'Factory Owner',
+                    _userName, // Using fetched/placeholder name
                     style: const TextStyle(
-                      fontSize: 18,
+                      fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.darkText,
+                      color: AppColors.headerTextDark,
                     ),
                   ),
                   Text(
-                    'Factory Owner Profile',
+                    _userRole, // Using fetched/placeholder role
                     style: TextStyle(
                       fontSize: 14,
-                      color: AppColors.darkText.withOpacity(0.7),
+                      color: AppColors.headerTextDark.withOpacity(0.7),
                     ),
                   ),
                 ],
               ),
             ],
+          ),
+          
+          const SizedBox(height: 25), // Space before the "Manage" text
+          
+          // "Manage Profile Details" Text
+          const Text(
+            'Manage Profile Details',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.headerTextDark,
+            ),
           ),
         ],
       ),
@@ -143,11 +245,12 @@ class _FactoryOwnerProfileScreenState extends State<FactoryOwnerProfileScreen> {
   }
 }
 
-// --- Factory Owner Profile Content Widget ---
+// --- Factory Owner Profile Content Widget (Remains the same, just included for completeness) ---
 class FactoryOwnerProfileContent extends StatefulWidget {
   final String factoryOwnerUID;
-  const FactoryOwnerProfileContent({required this.factoryOwnerUID});
-
+  const FactoryOwnerProfileContent({required this.factoryOwnerUID, super.key});
+  // ... (rest of FactoryOwnerProfileContentState code)
+// ... (rest of FactoryOwnerProfileContentState code)
   @override
   State<FactoryOwnerProfileContent> createState() => _FactoryOwnerProfileContentState();
 }
@@ -378,12 +481,14 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
                 
                 const SizedBox(height: 30),
 
-                // Update Button
+                // Update Button (Now positioned correctly above the fixed footer text in the Stack)
                 GradientButton(
                   text: _isSaving ? 'Updating...' : 'Update Factory Details',
                   onPressed: _isSaving ? null : _updateFactoryData,
                   isEnabled: !_isSaving,
                 ),
+                
+                const SizedBox(height: 50), // Add padding for the fixed footer text
               ],
             ),
           ),
@@ -392,7 +497,7 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
     );
   }
 
-  // --- Helper Widgets ---
+  // --- Helper Widgets (No changes, included for full context) ---
 
   Widget _buildInputLabel(String text) {
     return Padding(
@@ -467,7 +572,7 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
   }
 }
 
-// --- Geo Data Structure Definition ---
+// --- Geo Data Structure Definition (Remains the same) ---
 Map<String, Map<String, List<String>>> _getGeoData() {
   return {
     'Western Province': {
@@ -516,13 +621,13 @@ Map<String, Map<String, List<String>>> _getGeoData() {
   };
 }
 
-// --- Reusable Widgets ---
+// --- Reusable Widgets (Remains the same) ---
 class GradientButton extends StatelessWidget {
   final String text;
   final VoidCallback? onPressed;
   final bool isEnabled;
 
-  const GradientButton({required this.text, required this.onPressed, this.isEnabled = true});
+  const GradientButton({required this.text, required this.onPressed, this.isEnabled = true, super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -575,7 +680,7 @@ class GradientButton extends StatelessWidget {
 
 class FixedInfoBox extends StatelessWidget {
   final String value;
-  const FixedInfoBox({required this.value});
+  const FixedInfoBox({required this.value, super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -601,7 +706,7 @@ class FixedInfoBox extends StatelessWidget {
 class InfoCard extends StatelessWidget {
   final String message;
   final Color color;
-  const InfoCard({required this.message, required this.color});
+  const InfoCard({required this.message, required this.color, super.key});
 
   @override
   Widget build(BuildContext context) {
