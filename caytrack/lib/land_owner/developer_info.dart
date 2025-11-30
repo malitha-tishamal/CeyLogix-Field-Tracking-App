@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'factory_owner_drawer.dart';
+import 'land_owner_drawer.dart';
 
 // --- 1. COLOR PALETTE (Reusable for consistency) ---
 class AppColors {
@@ -123,7 +123,7 @@ class _DeveloperInfoPageState extends State<DeveloperInfoPage> {
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: AppColors.background,
-      drawer: FactoryOwnerDrawer(
+      drawer: LandOwnerDrawer(
         onLogout: () {
           Navigator.of(context).pop();
         },
