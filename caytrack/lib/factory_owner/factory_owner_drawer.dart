@@ -5,6 +5,7 @@ import 'factory_details.dart'; // Import Factory Details page
 import 'factory_owner_dashboard.dart'; // Import the Dashboard page
 import 'user_profile.dart'; // Import the User Profile page (Contains UserDetails)
 import 'developer_info.dart'; // 💡 NEW: Import the Developer Info page
+import '../Auth/login_page.dart'; // Import the Login page
 
 // --- Hardcoded Colors for Simplicity (Replace with AppColors if available) ---
 const Color _primaryBlue = Color(0xFF2764E7);
@@ -69,6 +70,55 @@ class _FactoryOwnerDrawerState extends State<FactoryOwnerDrawer> {
     }
   }
 
+  // New method to handle logout
+  Future<void> _handleLogout() async {
+    try {
+      // Close the drawer first
+      Navigator.of(context).pop();
+      
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return const AlertDialog(
+            content: Row(
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(width: 16),
+                Text("Logging out..."),
+              ],
+            ),
+          );
+        },
+      );
+
+      // Sign out from Firebase
+      await FirebaseAuth.instance.signOut();
+      
+      // Clear the static cache
+      FactoryOwnerDrawer.staticCache = null;
+      
+      // Navigate to login page and remove all previous routes
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const LoginPage()),
+        (Route<dynamic> route) => false,
+      );
+    } catch (e) {
+      // Close loading dialog
+      Navigator.of(context).pop();
+      
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Logout failed: $e"),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Drawer(
@@ -92,10 +142,11 @@ class _FactoryOwnerDrawerState extends State<FactoryOwnerDrawer> {
   }
 
   Widget _buildDrawerContent(Map<String, dynamic> user) {
-    String name = user['name'] ?? "User";
+    String fullName = user['name'] ?? "User";
+    String firstName = fullName.split(" ").first;
     String role = user['role'] ?? "Factory Owner";
     String profileUrl = user['profileImageUrl'] ??
-        "https://ui-avatars.com/api/?name=$name&background=2764E7&color=fff&bold=true&size=150";
+        "https://ui-avatars.com/api/?name=$firstName&background=2764E7&color=fff&bold=true&size=150";
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -166,7 +217,6 @@ class _FactoryOwnerDrawerState extends State<FactoryOwnerDrawer> {
                   shape: BoxShape.circle,
                   border: Border.all(color: _primaryBlue, width: 2.5),
                   boxShadow: [BoxShadow(color: _primaryBlue.withOpacity(0.2), blurRadius: 15, offset: const Offset(0, 4))],
-                  gradient: const LinearGradient(colors: [_primaryBlue, Color(0xFF457AED)], begin: Alignment.topLeft, end: Alignment.bottomRight),
                 ),
                 child: ClipOval(
                   child: Image.network(
@@ -184,7 +234,7 @@ class _FactoryOwnerDrawerState extends State<FactoryOwnerDrawer> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(name, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: _darkText), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Text(firstName, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: _darkText), maxLines: 1, overflow: TextOverflow.ellipsis),
                     const SizedBox(height: 4),
                     Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(color: _primaryBlue.withOpacity(0.1), borderRadius: BorderRadius.circular(8), border: Border.all(color: _primaryBlue.withOpacity(0.3))), child: Text(role.toUpperCase(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _primaryBlue, letterSpacing: 0.8))),
                   ],
@@ -244,28 +294,28 @@ class _FactoryOwnerDrawerState extends State<FactoryOwnerDrawer> {
               ),
               
               // 4. Production
-             // _buildModernDrawerItem(icon: Icons.analytics_rounded, label: "Production", description: "Monitor manufacturing", onTap: () => widget.onNavigate("production")),
+              _buildModernDrawerItem(icon: Icons.analytics_rounded, label: "Land Owners", description: "Monitor manufacturing", onTap: () => widget.onNavigate("production")),
               
               // 5. Inventory
              // _buildModernDrawerItem(icon: Icons.inventory_rounded, label: "Inventory", description: "Stock management", onTap: () => widget.onNavigate("inventory")),
               
               // 6. Developer Info 💡 NEW NAVIGATION
               _buildModernDrawerItem(
-  icon: Icons.code_rounded, 
-  label: "Developer Info", 
-  description: "About the application", 
-  onTap: () {
-    Navigator.of(context).pop(); // Close drawer
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => const DeveloperInfoPage()), // Navigate to DeveloperInfoPage
-    );
-  },
-),
+                icon: Icons.code_rounded, 
+                label: "Developer Info", 
+                description: "About the application", 
+                onTap: () {
+                  Navigator.of(context).pop(); // Close drawer
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => const DeveloperInfoPage()), // Navigate to DeveloperInfoPage
+                  );
+                },
+              ),
             ],
           ),
         ),
 
-        // Logout Button (Unchanged)
+        // Updated Logout Button
         Container(
           margin: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -277,7 +327,7 @@ class _FactoryOwnerDrawerState extends State<FactoryOwnerDrawer> {
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: widget.onLogout,
+              onTap: _handleLogout, // Use the new logout method
               borderRadius: BorderRadius.circular(18),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -316,7 +366,7 @@ class _FactoryOwnerDrawerState extends State<FactoryOwnerDrawer> {
     );
   }
 
-  // --- Helper Widgets (Skipped for brevity, assume they are correct) ---
+  // --- Helper Widgets ---
   Widget _buildModernDrawerItem({
      required IconData icon,
      required String label,
@@ -324,7 +374,6 @@ class _FactoryOwnerDrawerState extends State<FactoryOwnerDrawer> {
      bool isActive = false,
      required VoidCallback onTap,
    }) {
-     // implementation here (unchanged)
      return Container(
        margin: const EdgeInsets.only(bottom: 6),
        child: Material(

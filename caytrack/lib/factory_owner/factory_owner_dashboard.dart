@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'factory_owner_drawer.dart'; 
-// Assuming the utility classes (AppColors, GradientButton, etc.) are available or defined here.
 
 // Reusing AppColors locally
 class AppColors {
@@ -40,6 +39,7 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
  String _factoryName = 'Loading Factory...'; // factoryName from factories collection
  String _userRole = 'Factory Owner'; // role from users collection (for secondary line)
  String _factoryID = 'F-ID';
+ String? _profileImageUrl; // ADDED: For profile picture
 
  @override
  void initState() {
@@ -65,9 +65,11 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
    // 1. Fetch User Name and Role from 'users' collection
    final userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
    if (userDoc.exists) {
+    final userData = userDoc.data();
     setState(() {
-     _loggedInUserName = userDoc.data()?['name'] ?? 'Owner Name Missing';
-     _userRole = userDoc.data()?['role'] ?? 'Factory Owner';
+     _loggedInUserName = userData?['name'] ?? 'Owner Name Missing';
+     _userRole = userData?['role'] ?? 'Factory Owner';
+     _profileImageUrl = userData?['profileImageUrl']; // ADDED: Load profile image
     });
    }
    
@@ -209,11 +211,6 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
          _scaffoldKey.currentState?.openDrawer();
         },
        ),
-       // Notification Icon (Re-added, removed the redundant settings icon for simplicity)
-       IconButton(
-        icon: const Icon(Icons.notifications_none, color: AppColors.headerTextDark, size: 28),
-        onPressed: () {},
-       ),
       ],
      ),
      
@@ -221,17 +218,19 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
      
      Row(
       children: [
-       // Factory Icon (Remains the same)
+       // 🆕 UPDATED: Profile Picture with actual image support
        Container(
         width: 70,
         height: 70,
         decoration: BoxDecoration(
          shape: BoxShape.circle,
-         gradient: const LinearGradient(
-          colors: [AppColors.primaryBlue, Color(0xFF457AED)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-         ),
+         gradient: _profileImageUrl == null 
+           ? const LinearGradient(
+               colors: [AppColors.primaryBlue, Color(0xFF457AED)],
+               begin: Alignment.topLeft,
+               end: Alignment.bottomRight,
+             )
+           : null,
          border: Border.all(color: Colors.white, width: 3),
          boxShadow: [
           BoxShadow(
@@ -240,8 +239,16 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
            offset: const Offset(0, 3),
           ),
          ],
+         image: _profileImageUrl != null 
+           ? DecorationImage(
+               image: NetworkImage(_profileImageUrl!),
+               fit: BoxFit.cover,
+             )
+           : null,
         ),
-        child: const Icon(Icons.factory, size: 40, color: Colors.white),
+        child: _profileImageUrl == null
+            ? const Icon(Icons.person, size: 40, color: Colors.white)
+            : null,
        ),
        
        const SizedBox(width: 15),
@@ -261,7 +268,7 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
          ),
          // 2. Logged-in User Name (name) and Role
          Text(
-          'Logged in as: $_loggedInUserName ($_userRole)', 
+          'Logged in as: $_loggedInUserName \n($_userRole)', 
           style: TextStyle(
            fontSize: 14,
            color: AppColors.headerTextDark.withOpacity(0.7),
