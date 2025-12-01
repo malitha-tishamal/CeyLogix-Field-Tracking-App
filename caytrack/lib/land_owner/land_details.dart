@@ -291,24 +291,20 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
     _loadInitialData();
   }
 
-  // 🔑 FIXED DATA LOADING METHOD
   Future<void> _loadInitialData() async {
     setState(() {
       _isLoading = true;
     });
 
     try {
-      // Load data separately with proper typing
       final userDoc = await _firestore.collection('users').doc(widget.landOwnerUID).get();
       final factoriesSnapshot = await _firestore.collection('factories').get();
       final landDoc = await _firestore.collection('lands').doc(widget.landOwnerUID).get();
 
       if (mounted) {
-        // Set profile image
         final userData = userDoc.data();
         _profileImageUrl = userData?['profileImageUrl'];
 
-        // Set available factories with proper typing
         _availableFactories = factoriesSnapshot.docs.map((doc) {
           final factoryData = doc.data();
           return {
@@ -317,7 +313,6 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
           };
         }).toList();
 
-        // Set land data if exists
         final landData = landDoc.data();
         if (landData != null) {
           _loadedData = landData;
@@ -338,7 +333,6 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
     }
   }
 
-  // 🔑 POPULATE FORM DATA FROM LOADED DATA
   void _populateFormData(Map<String, dynamic> data) {
     _landNameController.text = data['landName'] ?? '';
     _addressController.text = data['address'] ?? '';
@@ -352,7 +346,6 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
     _selectedCropType = data['cropType'];
     _selectedFactoryIds = List<String>.from(data['factoryIds'] ?? []);
 
-    // Validate province and district selection
     if (_selectedProvince != null && !_geoData.containsKey(_selectedProvince)) {
       _selectedProvince = null;
     }
@@ -372,7 +365,6 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
     super.dispose();
   }
 
-  // 🔑 REFRESH DATA METHOD
   Future<void> _refreshData() async {
     setState(() {
       _isLoading = true;
@@ -388,30 +380,59 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
     }
   }
 
-  // Image picking methods
+  // 🔑 FIXED & IMPROVED IMAGE PICKING METHOD
   Future<void> _pickImage(ImageSource source) async {
     try {
-      final pickedFile = await _imagePicker.pickImage(
+      final XFile? pickedFile = await _imagePicker.pickImage(
         source: source,
-        maxWidth: 512,
-        maxHeight: 512,
-        imageQuality: 75,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 80,
       );
-      
+
       if (pickedFile != null) {
         final file = File(pickedFile.path);
-        final stat = await file.stat();
-        
-        setState(() {
-          _pickedImageFile = pickedFile;
-          _pickedImageFileSize = stat.size;
-        });
-        
-        _showStatusMessage('Image selected: ${pickedFile.name} (${(stat.size / 1024).toStringAsFixed(1)} KB)');
+        if (await file.exists()) {
+          final stat = await file.stat();
+          final fileSizeKB = stat.size / 1024;
+          
+          // Check file size (max 5MB)
+          if (fileSizeKB > 5000) {
+            _showStatusMessage('Image is too large (${fileSizeKB.toStringAsFixed(1)} KB). Please choose an image under 5MB.');
+            return;
+          }
+          
+          setState(() {
+            _pickedImageFile = pickedFile;
+            _pickedImageFileSize = stat.size;
+          });
+          
+          _showStatusMessage('Image selected: ${pickedFile.name} (${fileSizeKB.toStringAsFixed(1)} KB)');
+        } else {
+          _showStatusMessage('Selected file does not exist');
+        }
       }
     } catch (e) {
-      _showStatusMessage('Failed to pick image: ${e.toString()}');
+      _handleImagePickerError(e, source);
     }
+  }
+
+  // 🔑 IMPROVED ERROR HANDLING
+  void _handleImagePickerError(dynamic error, ImageSource source) {
+    String errorMessage = 'Failed to pick image: ${error.toString()}';
+    
+    if (error.toString().contains('unsupported') || error.toString().contains('operation')) {
+      errorMessage = 'Image picking is not supported on this platform or device. '
+          'Please check your device permissions and try again.';
+    } else if (error.toString().contains('permission')) {
+      errorMessage = 'Permission denied. Please enable camera and storage permissions in your device settings.';
+    } else if (source == ImageSource.camera && error.toString().contains('camera')) {
+      errorMessage = 'Camera not available. Please check if your device has a working camera.';
+    } else if (error.toString().contains('photo_access_denied')) {
+      errorMessage = 'Photo access denied. Please enable photo library access in your device settings.';
+    }
+    
+    _showStatusMessage(errorMessage);
   }
 
   void _openImageOptions() {
@@ -460,6 +481,7 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
                   ),
                 ),
               
+              // Camera option
               ListTile(
                 leading: const Icon(Icons.photo_camera, color: AppColors.primaryBlue),
                 title: const Text('Take Photo'),
@@ -469,6 +491,8 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
                   _pickImage(ImageSource.camera);
                 },
               ),
+              
+              // Gallery option
               ListTile(
                 leading: const Icon(Icons.photo_library, color: AppColors.primaryBlue),
                 title: const Text('Choose from Gallery'),
@@ -478,6 +502,7 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
                   _pickImage(ImageSource.gallery);
                 },
               ),
+              
               if (_profileImageUrl != null || _pickedImageFile != null)
                 ListTile(
                   leading: const Icon(Icons.delete_outline, color: Colors.red),
@@ -511,25 +536,26 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
       await _firestore.collection('users').doc(widget.landOwnerUID).update({
         'profileImageUrl': FieldValue.delete(),
       });
-      _showStatusMessage('Profile photo removed');
+      _showStatusMessage('Profile photo removed successfully');
       widget.onProfileUpdated?.call();
     } catch (e) {
       _showStatusMessage('Failed to remove photo: ${e.toString()}');
     }
   }
 
-  // Cloudinary upload
+  // 🔑 IMPROVED CLOUDINARY UPLOAD
   Future<String?> _uploadImageToCloudinary(XFile imageFile) async {
     try {
-      debugPrint('Starting Cloudinary upload...');
+      debugPrint('Starting Cloudinary upload for: ${imageFile.name}');
       
       final bytes = await imageFile.readAsBytes();
       final fileSizeKB = (bytes.length / 1024).toStringAsFixed(1);
       
-      _showStatusMessage('Uploading image (${imageFile.name}) - $fileSizeKB KB...');
+      _showStatusMessage('Uploading image... ($fileSizeKB KB)');
       
-      if (bytes.length > 1000000) {
-        _showStatusMessage('Image is too large. Please choose a smaller image (max 1MB).');
+      // Validate file size (max 10MB for safety)
+      if (bytes.length > 10000000) {
+        _showStatusMessage('Image is too large. Please choose an image under 10MB.');
         return null;
       }
 
@@ -540,45 +566,88 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
         ..files.add(http.MultipartFile.fromBytes(
           'file',
           bytes,
-          filename: imageFile.name,
+          filename: 'profile_${widget.landOwnerUID}_${DateTime.now().millisecondsSinceEpoch}.jpg',
         ));
 
       final streamedResponse = await request.send().timeout(
-        const Duration(seconds: 30),
+        const Duration(seconds: 60),
         onTimeout: () {
-          throw TimeoutException('Cloudinary upload timed out');
+          throw TimeoutException('Cloudinary upload timed out after 60 seconds');
         },
       );
 
       final response = await http.Response.fromStream(streamedResponse);
-      final responseData = json.decode(response.body);
       
       if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
         final imageUrl = responseData['secure_url'];
-        debugPrint('Cloudinary upload successful! URL: $imageUrl');
-        _showStatusMessage('Image uploaded successfully: ${imageFile.name}');
+        debugPrint('✅ Cloudinary upload successful! URL: $imageUrl');
+        _showStatusMessage('Image uploaded successfully!');
         return imageUrl;
       } else {
-        String errorMessage = 'Unknown error';
-        if (responseData['error'] != null) {
-          errorMessage = responseData['error']['message'] ?? 'Unknown Cloudinary error';
-        }
-        _showStatusMessage('Upload failed for ${imageFile.name}: $errorMessage');
+        debugPrint('❌ Cloudinary upload failed: ${response.statusCode} - ${response.body}');
+        String errorMessage = 'Upload failed with status ${response.statusCode}';
+        try {
+          final errorData = json.decode(response.body);
+          errorMessage = errorData['error']['message'] ?? errorMessage;
+        } catch (_) {}
+        
+        _showStatusMessage('Upload failed: $errorMessage');
         return null;
       }
       
     } on TimeoutException catch (e) {
-      debugPrint('Upload timeout: $e');
-      _showStatusMessage('Upload timed out for ${imageFile.name}. Please try again.');
+      debugPrint('⏰ Upload timeout: $e');
+      _showStatusMessage('Upload timed out. Please check your internet connection and try again.');
       return null;
     } catch (e) {
-      debugPrint('Upload error: $e');
-      _showStatusMessage('Failed to upload ${imageFile.name}. Please try again.');
+      debugPrint('❌ Upload error: $e');
+      _showStatusMessage('Failed to upload image. Please try again.');
       return null;
     }
   }
 
-  // 🔑 UPDATED SAVE METHOD WITH REFRESH
+  // 🔑 SEPARATE PROFILE PICTURE UPDATE METHOD
+  Future<void> _updateProfilePictureOnly() async {
+    if (_pickedImageFile == null) {
+      _showStatusMessage('Please select an image first');
+      return;
+    }
+
+    setState(() {
+      _uploadingImage = true;
+      _statusMessage = 'Uploading profile picture...';
+    });
+
+    try {
+      final cloudinaryUrl = await _uploadImageToCloudinary(_pickedImageFile!);
+      
+      if (cloudinaryUrl != null) {
+        // Update user profile in Firestore
+        await _firestore.collection('users').doc(widget.landOwnerUID).update({
+          'profileImageUrl': cloudinaryUrl,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+
+        setState(() {
+          _profileImageUrl = cloudinaryUrl;
+          _pickedImageFile = null;
+          _pickedImageFileSize = null;
+        });
+
+        _showStatusMessage('Profile picture updated successfully!');
+        widget.onProfileUpdated?.call();
+      }
+    } catch (e) {
+      _showStatusMessage('Error updating profile picture: $e');
+      debugPrint('Profile Picture Update Error: $e');
+    } finally {
+      setState(() {
+        _uploadingImage = false;
+      });
+    }
+  }
+
   Future<void> _updateLandData() async {
     if (!_formKey.currentState!.validate()) {
       setState(() => _statusMessage = "Please correct the errors in the form.");
@@ -596,8 +665,7 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
     });
 
     try {
-      String? finalProfileImageUrl = _profileImageUrl;
-
+      // If there's a new image, upload it first
       if (_pickedImageFile != null) {
         setState(() {
           _uploadingImage = true;
@@ -605,12 +673,16 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
         
         final cloudinaryUrl = await _uploadImageToCloudinary(_pickedImageFile!);
         if (cloudinaryUrl != null) {
-          finalProfileImageUrl = cloudinaryUrl;
-          
+          // Update user profile with new image
           await _firestore.collection('users').doc(widget.landOwnerUID).update({
             'profileImageUrl': cloudinaryUrl,
           });
+          
+          setState(() {
+            _profileImageUrl = cloudinaryUrl;
+          });
         } else {
+          // If image upload fails, stop the process
           setState(() {
             _isSaving = false;
             _uploadingImage = false;
@@ -623,6 +695,7 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
         });
       }
 
+      // Update land data
       final landDataToUpdate = {
         'landName': _landNameController.text.trim(),
         'address': _addressController.text.trim(),
@@ -640,16 +713,17 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
 
       await _firestore.collection('lands').doc(widget.landOwnerUID).set(landDataToUpdate, SetOptions(merge: true));
       
-      setState(() {
-        _profileImageUrl = finalProfileImageUrl;
-        _pickedImageFile = null;
-        _pickedImageFileSize = null;
-      });
+      // Clear the picked image after successful upload
+      if (_pickedImageFile != null) {
+        setState(() {
+          _pickedImageFile = null;
+          _pickedImageFileSize = null;
+        });
+      }
 
       _showStatusMessage("Land details updated successfully!");
       widget.onProfileUpdated?.call();
 
-      // 🔑 AUTO-REFRESH AFTER SAVE
       await _refreshData();
 
     } catch (e) {
@@ -663,6 +737,16 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
   }
 
   void _showStatusMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 3),
+        backgroundColor: message.toLowerCase().contains('success') 
+            ? AppColors.secondaryColor 
+            : Colors.red,
+      ),
+    );
+    
     setState(() {
       _statusMessage = message;
     });
@@ -687,7 +771,6 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
     
     return Column(
       children: [
-        // 🔑 REFRESH BUTTON
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Row(
@@ -728,6 +811,24 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
                   const SizedBox(height: 16),
                   
                   _buildProfileImageSection(),
+                  
+                  // Quick Profile Picture Update Button
+                  if (_pickedImageFile != null && !_uploadingImage)
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      child: ElevatedButton.icon(
+                        onPressed: _updateProfilePictureOnly,
+                        icon: const Icon(Icons.camera_alt),
+                        label: const Text('Update Profile Picture Only'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.secondaryColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+
                   _buildInputLabel('Land Name'),
                   _buildTextField(_landNameController, 'Green Valley Plantation'),
                                  

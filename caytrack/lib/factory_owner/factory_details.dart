@@ -6,23 +6,19 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
 import 'dart:async';
-import 'factory_owner_drawer.dart'; // <-- IMPORTANT IMPORT
+import 'factory_owner_drawer.dart';
 
-// --- Placeholder/Utility Imports ---
 class AppColors {
   static const Color background = Color(0xFFEEEBFF);
   static const Color darkText = Color(0xFF2C2A3A);
   static const Color primaryBlue = Color(0xFF2764E7);
   static const Color cardBackground = Colors.white;
   static const Color secondaryColor = Color(0xFF6AD96A);
-  
-  // Custom colors based on the image's gradient header
-  static const Color headerGradientStart = Color.fromARGB(255, 134, 164, 236); // Light blue top
-  static const Color headerGradientEnd = Color(0xFFF7FAFF);   // Very light blue bottom
+  static const Color headerGradientStart = Color.fromARGB(255, 134, 164, 236);
+  static const Color headerGradientEnd = Color(0xFFF7FAFF);
   static const Color headerTextDark = Color(0xFF333333);
 }
 
-// --- Factory Owner Profile Screen (Single Tab Version) ---
 class FactoryDetails extends StatefulWidget {
   const FactoryDetails({super.key});
 
@@ -34,10 +30,9 @@ class _FactoryDetailsState extends State<FactoryDetails> {
   final User? currentUser = FirebaseAuth.instance.currentUser;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  // Placeholder for user data (to match the image's text)
   String _userName = 'Loading';
   String _userRole = 'Factory Owner';
-  String? _profileImageUrl; // ADDED: For profile picture
+  String? _profileImageUrl;
 
   @override
   void initState() {
@@ -45,7 +40,6 @@ class _FactoryDetailsState extends State<FactoryDetails> {
     _fetchUserInfo();
   }
 
-  // Fetch name and role from Firestore/Auth if needed
   void _fetchUserInfo() async {
     final user = currentUser;
     if (user != null) {
@@ -53,14 +47,15 @@ class _FactoryDetailsState extends State<FactoryDetails> {
         final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
         if (doc.exists) {
           final data = doc.data();
-          setState(() {
-            _userName = data?['name'] ?? 'Factory Owner';
-            _userRole = data?['role'] ?? 'Factory Owner';
-            _profileImageUrl = data?['profileImageUrl']; // ADDED: Load profile image
-          });
+          if (mounted) {
+            setState(() {
+              _userName = data?['name'] ?? 'Factory Owner';
+              _userRole = data?['role'] ?? 'Factory Owner';
+              _profileImageUrl = data?['profileImageUrl'];
+            });
+          }
         }
       } catch (e) {
-        // Handle error
         print("Error fetching user info: $e");
       }
     }
@@ -72,13 +67,8 @@ class _FactoryDetailsState extends State<FactoryDetails> {
       return const Scaffold(body: Center(child: Text("Error: User not logged in.")));
     }
 
-    // You may need to create a dummy function if your FactoryOwnerDrawer expects the FactoryOwnerDashboard
     void handleDrawerNavigate(String routeName) {
-      Navigator.pop(context); // Close drawer first
-      // Placeholder for actual navigation logic if not Dashboard
-      if (routeName == 'dashboard') {
-         // Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (context) => const FactoryOwnerDashboard()));
-      }
+      Navigator.pop(context);
     }
 
     return Scaffold(
@@ -86,37 +76,27 @@ class _FactoryDetailsState extends State<FactoryDetails> {
       backgroundColor: AppColors.background,
       drawer: FactoryOwnerDrawer(
         onLogout: () {
-          // Add your proper logout implementation here
           FirebaseAuth.instance.signOut();
           Navigator.pop(context);
         },
-        onNavigate: handleDrawerNavigate, // Use the dummy handler
+        onNavigate: handleDrawerNavigate,
       ),
-      body: Stack( // Use Stack to ensure the Update button stays above the footer text
+      body: Stack(
         children: [
           SafeArea(
             child: Column(
               children: [
-                // 1. Header Profile Card (UPDATED)
                 _buildProfileHeader(context),
-                
-                // 2. Main Content - Scrollable Form
                 Expanded(
-                  child: SingleChildScrollView(
-                    child: FactoryOwnerProfileContent(
-                      factoryOwnerUID: currentUser!.uid,
-                      onProfileUpdated: _fetchUserInfo, // ADDED: Refresh header when profile updates
-                    ),
+                  child: FactoryOwnerProfileContent(
+                    key: ValueKey(currentUser!.uid), // 🔑 ADD KEY FOR REFRESH
+                    factoryOwnerUID: currentUser!.uid,
+                    onProfileUpdated: _fetchUserInfo,
                   ),
                 ),
-                
-                // 3. Footer Text (Moved to Stack for better positioning)
-                // We'll handle the footer text placement outside the column for the fixed bottom text
               ],
             ),
           ),
-          
-          // 4. Fixed Footer Text
           Align(
             alignment: Alignment.bottomCenter,
             child: Padding(
@@ -136,25 +116,22 @@ class _FactoryDetailsState extends State<FactoryDetails> {
     );
   }
   
-  // Custom Profile Header Widget - MATCHING IMAGE STYLE 🌟
   Widget _buildProfileHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
-      // 1. Gradient Background
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         ),
-        // 2. Rounded Bottom Corners
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(30), // Slightly larger radius looks better
+          bottomLeft: Radius.circular(30),
           bottomRight: Radius.circular(30),
         ),
         boxShadow: [
           BoxShadow(
-            color: Color(0x10000000), // Subtle black shadow
+            color: Color(0x10000000),
             blurRadius: 15,
             offset: Offset(0, 5),
           ),
@@ -163,28 +140,22 @@ class _FactoryDetailsState extends State<FactoryDetails> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Row: Menu Icon & Notification Icon
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Menu Button (Hamburger)
               IconButton(
                 icon: const Icon(Icons.menu, color: AppColors.headerTextDark, size: 28),
                 onPressed: () {
                   _scaffoldKey.currentState?.openDrawer();
                 },
               ),
-              // Notification Icon
-              
             ],
           ),
           
           const SizedBox(height: 10),
           
-          // Row: Profile Picture & User Info
           Row(
             children: [
-              // Profile Picture (UPDATED with actual image support)
               Container(
                 width: 70,
                 height: 70,
@@ -219,12 +190,11 @@ class _FactoryDetailsState extends State<FactoryDetails> {
               
               const SizedBox(width: 15),
               
-              // User Info (Name and Role)
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _userName, // Using fetched/placeholder name
+                    _userName,
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -232,7 +202,7 @@ class _FactoryDetailsState extends State<FactoryDetails> {
                     ),
                   ),
                   Text(
-                    _userRole, // Using fetched/placeholder role
+                    _userRole,
                     style: TextStyle(
                       fontSize: 14,
                       color: AppColors.headerTextDark.withOpacity(0.7),
@@ -243,9 +213,8 @@ class _FactoryDetailsState extends State<FactoryDetails> {
             ],
           ),
           
-          const SizedBox(height: 25), // Space before the "Manage" text
+          const SizedBox(height: 25),
           
-          // "Manage Profile Details" Text
           const Text(
             'Manage Factory Details',
             style: TextStyle(
@@ -260,15 +229,14 @@ class _FactoryDetailsState extends State<FactoryDetails> {
   }
 }
 
-// --- Factory Owner Profile Content Widget ---
 class FactoryOwnerProfileContent extends StatefulWidget {
   final String factoryOwnerUID;
-  final VoidCallback? onProfileUpdated; // ADDED: Callback to refresh header
+  final VoidCallback? onProfileUpdated;
   
   const FactoryOwnerProfileContent({
     required this.factoryOwnerUID, 
     this.onProfileUpdated,
-    super.key
+    super.key,
   });
 
   @override
@@ -278,12 +246,10 @@ class FactoryOwnerProfileContent extends StatefulWidget {
 class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  final User? currentUser = FirebaseAuth.instance.currentUser;
   final ImagePicker _imagePicker = ImagePicker();
 
-  // Cloudinary Configuration
-  final String _cloudName = "dqeptzlsb"; // Your cloud name
-  final String _uploadPreset = "flutter_ceytrack_upload"; // Your upload preset
+  final String _cloudName = "dqeptzlsb";
+  final String _uploadPreset = "flutter_ceytrack_upload";
 
   // Text Controllers
   late TextEditingController _factoryNameController;
@@ -293,22 +259,21 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
   late TextEditingController _agDivisionController;
   late TextEditingController _gnDivisionController;
 
-  // Profile Image State
+  // State variables
   String? _profileImageUrl;
   XFile? _pickedImageFile;
   bool _uploadingImage = false;
   int? _pickedImageFileSize;
   
-  // Dropdown State
   String? _selectedProvince;
   String? _selectedDistrict;
   String? _selectedCropType;
   
-  // Utility State
   bool _isSaving = false;
   String? _statusMessage;
+  bool _isLoading = true; // 🔑 ADD LOADING STATE
+  Map<String, dynamic>? _loadedData; // 🔑 STORE LOADED DATA
 
-  // Geo Data structure - Only for Province and District now
   static final Map<String, List<String>> _geoData = _getGeoData();
 
   @override
@@ -321,8 +286,66 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
     _agDivisionController = TextEditingController();
     _gnDivisionController = TextEditingController();
     
-    // Fetch initial user data
-    _fetchUserData(); 
+    _loadInitialData(); // 🔑 USE NEW DATA LOADING METHOD
+  }
+
+  // 🔑 NEW DATA LOADING METHOD
+  Future<void> _loadInitialData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Load user data and factory data separately
+      final userDoc = await _firestore.collection('users').doc(widget.factoryOwnerUID).get();
+      final factoryDoc = await _firestore.collection('factories').doc(widget.factoryOwnerUID).get();
+
+      if (mounted) {
+        // Set profile image
+        final userData = userDoc.data();
+        _profileImageUrl = userData?['profileImageUrl'];
+
+        // Set factory data if exists
+        final factoryData = factoryDoc.data();
+        if (factoryData != null) {
+          _loadedData = factoryData;
+          _populateFormData(factoryData);
+        }
+
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _statusMessage = "Error loading data: $e";
+        });
+      }
+    }
+  }
+
+  // 🔑 POPULATE FORM DATA FROM LOADED DATA
+  void _populateFormData(Map<String, dynamic> data) {
+    _factoryNameController.text = data['factoryName'] ?? '';
+    _addressController.text = data['address'] ?? '';
+    _ownerNameController.text = data['ownerName'] ?? '';
+    _contactNumberController.text = data['contactNumber'] ?? '';
+    _agDivisionController.text = data['agDivision'] ?? '';
+    _gnDivisionController.text = data['gnDivision'] ?? '';
+    
+    _selectedProvince = data['province'];
+    _selectedDistrict = data['district'];
+    _selectedCropType = data['cropType'];
+
+    // Validate province and district selection
+    if (_selectedProvince != null && !_geoData.containsKey(_selectedProvince)) {
+      _selectedProvince = null;
+    }
+    if (_selectedDistrict != null && !(_geoData[_selectedProvince] ?? []).contains(_selectedDistrict)) {
+      _selectedDistrict = null;
+    }
   }
 
   @override
@@ -336,26 +359,23 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
     super.dispose();
   }
 
-  // --- Data Fetching Logic ---
-  Future<void> _fetchUserData() async {
-    final userDoc = await _firestore.collection('users').doc(widget.factoryOwnerUID).get();
+  // 🔑 REFRESH DATA METHOD
+  Future<void> _refreshData() async {
+    setState(() {
+      _isLoading = true;
+      _statusMessage = null;
+    });
     
-    if (userDoc.exists) {
-      final userData = userDoc.data();
-      if (mounted) {
-        // Populate profile image
-        _profileImageUrl = userData?['profileImageUrl'];
-        
-        setState(() {}); // Rebuild to display initial data
-      }
+    await _loadInitialData();
+    
+    if (mounted) {
+      setState(() {
+        _statusMessage = "Data refreshed successfully!";
+      });
     }
   }
 
-  Future<DocumentSnapshot<Map<String, dynamic>>> _fetchFactoryData() {
-    return _firestore.collection('factories').doc(widget.factoryOwnerUID).get();
-  }
-
-  // --- Image Picking Methods ---
+  // Image picking methods
   Future<void> _pickImage(ImageSource source) async {
     try {
       final pickedFile = await _imagePicker.pickImage(
@@ -366,7 +386,6 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
       );
       
       if (pickedFile != null) {
-        // Get file size and other details
         final file = File(pickedFile.path);
         final stat = await file.stat();
         
@@ -375,7 +394,6 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
           _pickedImageFileSize = stat.size;
         });
         
-        // Show file info
         _showStatusMessage('Image selected: ${pickedFile.name} (${(stat.size / 1024).toStringAsFixed(1)} KB)');
       }
     } catch (e) {
@@ -390,7 +408,6 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
         return SafeArea(
           child: Wrap(
             children: [
-              // Show current selection info if any
               if (_pickedImageFile != null)
                 Container(
                   width: double.infinity,
@@ -477,30 +494,27 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
       _pickedImageFileSize = null;
     });
     
-    // Update Firestore to remove profile image
     try {
       await _firestore.collection('users').doc(widget.factoryOwnerUID).update({
         'profileImageUrl': FieldValue.delete(),
       });
       _showStatusMessage('Profile photo removed');
-      widget.onProfileUpdated?.call(); // Refresh header
+      widget.onProfileUpdated?.call();
     } catch (e) {
       _showStatusMessage('Failed to remove photo: ${e.toString()}');
     }
   }
 
-  // --- Cloudinary Upload Method ---
+  // Cloudinary upload
   Future<String?> _uploadImageToCloudinary(XFile imageFile) async {
     try {
       debugPrint('Starting Cloudinary upload...');
       
-      // Convert XFile to bytes
       final bytes = await imageFile.readAsBytes();
       final fileSizeKB = (bytes.length / 1024).toStringAsFixed(1);
       
       _showStatusMessage('Uploading image (${imageFile.name}) - $fileSizeKB KB...');
       
-      // Check file size (max 1MB)
       if (bytes.length > 1000000) {
         _showStatusMessage('Image is too large. Please choose a smaller image (max 1MB).');
         return null;
@@ -508,7 +522,6 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
 
       final url = Uri.parse("https://api.cloudinary.com/v1_1/$_cloudName/image/upload");
       
-      // Create multipart request
       final request = http.MultipartRequest('POST', url)
         ..fields['upload_preset'] = _uploadPreset
         ..files.add(http.MultipartFile.fromBytes(
@@ -517,7 +530,6 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
           filename: imageFile.name,
         ));
 
-      // Send request with timeout
       final streamedResponse = await request.send().timeout(
         const Duration(seconds: 30),
         onTimeout: () {
@@ -525,7 +537,6 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
         },
       );
 
-      // Get response
       final response = await http.Response.fromStream(streamedResponse);
       final responseData = json.decode(response.body);
       
@@ -554,7 +565,7 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
     }
   }
 
-  // --- Data Update Logic ---
+  // 🔑 UPDATED SAVE METHOD WITH REFRESH
   Future<void> _updateFactoryData() async {
     if (!_formKey.currentState!.validate()) {
       setState(() => _statusMessage = "Please correct the errors in the form.");
@@ -574,7 +585,6 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
     try {
       String? finalProfileImageUrl = _profileImageUrl;
 
-      // Upload new image to Cloudinary if one was picked
       if (_pickedImageFile != null) {
         setState(() {
           _uploadingImage = true;
@@ -584,7 +594,6 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
         if (cloudinaryUrl != null) {
           finalProfileImageUrl = cloudinaryUrl;
           
-          // Update user profile with new image
           await _firestore.collection('users').doc(widget.factoryOwnerUID).update({
             'profileImageUrl': cloudinaryUrl,
           });
@@ -593,7 +602,7 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
             _isSaving = false;
             _uploadingImage = false;
           });
-          return; // Stop the save process if image upload fails
+          return;
         }
         
         setState(() {
@@ -601,10 +610,10 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
         });
       }
 
-      // Prepare factory data update
       final factoryDataToUpdate = {
         'factoryName': _factoryNameController.text.trim(),
         'address': _addressController.text.trim(),
+        'ownerName': _ownerNameController.text.trim(),
         'contactNumber': _contactNumberController.text.trim(),
         'cropType': _selectedCropType,
         'country': 'Sri Lanka',
@@ -615,10 +624,8 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
         'updatedAt': FieldValue.serverTimestamp(),
       };
 
-      // Save to the 'factories' collection
       await _firestore.collection('factories').doc(widget.factoryOwnerUID).set(factoryDataToUpdate, SetOptions(merge: true));
       
-      // Update local state
       setState(() {
         _profileImageUrl = finalProfileImageUrl;
         _pickedImageFile = null;
@@ -626,9 +633,10 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
       });
 
       _showStatusMessage("Factory details updated successfully!");
-
-      // Notify parent to refresh header
       widget.onProfileUpdated?.call();
+
+      // 🔑 AUTO-REFRESH AFTER SAVE
+      await _refreshData();
 
     } catch (e) {
       _showStatusMessage("Error updating profile: $e");
@@ -646,7 +654,126 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
     });
   }
 
-  // --- Profile Image Widget ---
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(color: AppColors.primaryBlue),
+            SizedBox(height: 16),
+            Text('Loading factory details...'),
+          ],
+        ),
+      );
+    }
+
+    final bool isNewDocument = _loadedData == null;
+    
+    return Column(
+      children: [
+        // 🔑 REFRESH BUTTON
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              ElevatedButton.icon(
+                onPressed: _refreshData,
+                icon: const Icon(Icons.refresh, size: 16),
+                label: const Text('Refresh'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryBlue,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20.0),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (isNewDocument)
+                    const InfoCard(
+                      message: "Welcome! Please enter your factory details below to complete your profile.",
+                      color: Colors.orange,
+                    ),
+                  
+                  if (_statusMessage != null)
+                    InfoCard(
+                      message: _statusMessage!,
+                      color: _statusMessage!.toLowerCase().contains('success') ? AppColors.secondaryColor : Colors.red,
+                    ),
+
+                  const SizedBox(height: 16),
+                  
+                  _buildProfileImageSection(),
+                  _buildInputLabel('Factory Name'),
+                  _buildTextField(_factoryNameController, 'Sunshine Tea Factory'),
+                                 
+                  _buildInputLabel('Owner Name'),
+                  _buildTextField(_ownerNameController, 'John Doe'),
+
+                  _buildInputLabel('Contact Number'),
+                  _buildTextField(_contactNumberController, '0771234567', TextInputType.phone),
+
+                  _buildInputLabel('Address Line'),
+                  _buildTextField(_addressController, 'e.g., Kandy Road'),
+
+                  _buildInputLabel('Crop Type Handled'),
+                  _buildCropTypeDropdown(),
+                  
+                  _buildInputLabel('Country (Fixed)'),
+                  const FixedInfoBox(value: 'Sri Lanka'),
+                  
+                  _buildInputLabel('Province'),
+                  _buildProvinceDropdown(),
+                  
+                  if (_selectedProvince != null) ...[
+                    _buildInputLabel('District'),
+                    _buildDistrictDropdown(),
+                  ],
+                  
+                  _buildInputLabel('A/G Division'),
+                  _buildTextField(
+                    _agDivisionController, 
+                    'Enter A/G Division (e.g., Kandy Divisional Secretariat)',
+                    TextInputType.text,
+                    false
+                  ),
+                  
+                  _buildInputLabel('G/N Division'),
+                  _buildTextField(
+                    _gnDivisionController, 
+                    'Enter G/N Division (e.g., Kandy Town)',
+                    TextInputType.text,
+                    false
+                  ),
+                  
+                  const SizedBox(height: 30),
+
+                  GradientButton(
+                    text: _isSaving ? 'Updating...' : 'Update Factory Details',
+                    onPressed: (_isSaving || _uploadingImage) ? null : _updateFactoryData,
+                    isEnabled: !_isSaving && !_uploadingImage,
+                  ),
+                  
+                  const SizedBox(height: 50),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildProfileImageSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -706,7 +833,6 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
           ),
         ),
         
-        // Show selected file name
         if (_pickedImageFile != null)
           Container(
             width: double.infinity,
@@ -788,7 +914,6 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
   }
 
   ImageProvider? _getProfileImage() {
-    // Priority: New picked image > Cloudinary URL
     if (_pickedImageFile != null) {
       return FileImage(File(_pickedImageFile!.path));
     } else if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) {
@@ -796,155 +921,6 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
     }
     return null;
   }
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-      future: _fetchFactoryData(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator(color: AppColors.primaryBlue));
-        }
-        if (snapshot.hasError) {
-          return Center(child: Text('Error loading data: ${snapshot.error}'));
-        }
-        
-        final data = snapshot.data?.data();
-        if (data != null && mounted) {
-          _factoryNameController.text = data['factoryName'] ?? '';
-          _addressController.text = data['address'] ?? '';
-          _ownerNameController.text = data['ownerName'] ?? '';
-          _contactNumberController.text = data['contactNumber'] ?? '';
-          _agDivisionController.text = data['agDivision'] ?? '';
-          _gnDivisionController.text = data['gnDivision'] ?? '';
-          
-          _selectedProvince = data['province'];
-          _selectedDistrict = data['district'];
-          _selectedCropType = data['cropType'];
-
-          if (_selectedProvince != null && !_geoData.containsKey(_selectedProvince)) {
-            _selectedProvince = null;
-          }
-          if (_selectedDistrict != null && !(_geoData[_selectedProvince] ?? []).contains(_selectedDistrict)) {
-            _selectedDistrict = null;
-          }
-        }
-        
-        final bool isNewDocument = snapshot.data?.exists == false;
-        
-        return Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (isNewDocument)
-                  const InfoCard(
-                    message: "Welcome! Please enter your factory details below to complete your profile.",
-                    color: Colors.orange,
-                  ),
-                
-                if (_statusMessage != null)
-                  InfoCard(
-                    message: _statusMessage!,
-                    color: _statusMessage!.toLowerCase().contains('success') ? AppColors.secondaryColor : Colors.red,
-                  ),
-
-                const SizedBox(height: 16),
-                
-                // Profile Picture Section - ADDED
-                _buildProfileImageSection(),
-
-                // Form Fields
-                _buildInputLabel('Factory Name'),
-                _buildTextField(_factoryNameController, 'Sunshine Tea Factory'),
-                               
-                _buildInputLabel('Contact Number'),
-                _buildTextField(_contactNumberController, '0771234567', TextInputType.phone),
-
-                _buildInputLabel('Address Line'),
-                _buildTextField(_addressController, 'e.g., Kandy Road'),
-
-                _buildInputLabel('Crop Type Handled'),
-                _buildDropdown<String>(
-                  value: _selectedCropType,
-                  hint: 'Select Crop Type (Tea, Cinnamon, or Both)',
-                  items: ['Tea', 'Cinnamon', 'Both'],
-                  onChanged: (newValue) {
-                    setState(() {
-                      _selectedCropType = newValue;
-                    });
-                  },
-                ),
-                
-                _buildInputLabel('Country (Fixed)'),
-                const FixedInfoBox(value: 'Sri Lanka'),
-                
-                _buildInputLabel('Province'),
-                _buildDropdown<String>(
-                  value: _selectedProvince,
-                  hint: 'Select Province',
-                  items: _geoData.keys.toList(),
-                  onChanged: (newValue) {
-                    setState(() {
-                      _selectedProvince = newValue;
-                      _selectedDistrict = null;
-                    });
-                  },
-                ),
-                
-                if (_selectedProvince != null) ...[
-                  _buildInputLabel('District'),
-                  _buildDropdown<String>(
-                    value: _selectedDistrict,
-                    hint: 'Select District',
-                    items: _geoData[_selectedProvince] ?? [],
-                    onChanged: (newValue) {
-                      setState(() {
-                        _selectedDistrict = newValue;
-                      });
-                    },
-                  ),
-                ],
-                
-                // A/G Division as text input
-                _buildInputLabel('A/G Division'),
-                _buildTextField(
-                  _agDivisionController, 
-                  'Enter A/G Division (e.g., Kandy Divisional Secretariat)',
-                  TextInputType.text,
-                  false // Not required
-                ),
-                
-                // G/N Division as text input
-                _buildInputLabel('G/N Division'),
-                _buildTextField(
-                  _gnDivisionController, 
-                  'Enter G/N Division (e.g., Kandy Town)',
-                  TextInputType.text,
-                  false // Not required
-                ),
-                
-                const SizedBox(height: 30),
-
-                // Update Button
-                GradientButton(
-                  text: _isSaving ? 'Updating...' : 'Update Factory Details',
-                  onPressed: (_isSaving || _uploadingImage) ? null : _updateFactoryData,
-                  isEnabled: !_isSaving && !_uploadingImage,
-                ),
-                
-                const SizedBox(height: 50),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  // --- Helper Widgets ---
 
   Widget _buildInputLabel(String text) {
     return Padding(
@@ -991,6 +967,46 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
     );
   }
 
+  Widget _buildCropTypeDropdown() {
+    return _buildDropdown<String>(
+      value: _selectedCropType,
+      hint: 'Select Crop Type (Tea, Cinnamon, or Both)',
+      items: ['Tea', 'Cinnamon', 'Both'],
+      onChanged: (newValue) {
+        setState(() {
+          _selectedCropType = newValue;
+        });
+      },
+    );
+  }
+
+  Widget _buildProvinceDropdown() {
+    return _buildDropdown<String>(
+      value: _selectedProvince,
+      hint: 'Select Province',
+      items: _geoData.keys.toList(),
+      onChanged: (newValue) {
+        setState(() {
+          _selectedProvince = newValue;
+          _selectedDistrict = null;
+        });
+      },
+    );
+  }
+
+  Widget _buildDistrictDropdown() {
+    return _buildDropdown<String>(
+      value: _selectedDistrict,
+      hint: 'Select District',
+      items: _geoData[_selectedProvince] ?? [],
+      onChanged: (newValue) {
+        setState(() {
+          _selectedDistrict = newValue;
+        });
+      },
+    );
+  }
+
   Widget _buildDropdown<T>({
     required T? value,
     required String hint,
@@ -1024,40 +1040,21 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
   }
 }
 
-// --- Simplified Geo Data Structure - Only Province and District ---
+// Geo Data and reusable widgets
 Map<String, List<String>> _getGeoData() {
   return {
-    'Western Province': [
-      'Colombo District', 'Gampaha District', 'Kalutara District'
-    ],
-    'Central Province': [
-      'Kandy District', 'Matale District', 'Nuwara Eliya District'
-    ],
-    'Southern Province': [
-      'Galle District', 'Matara District', 'Hambantota District'
-    ],
-    'Eastern Province': [
-      'Trincomalee District', 'Batticaloa District', 'Ampara District'
-    ],
-    'Northern Province': [
-      'Jaffna District', 'Vavuniya District', 'Kilinochchi District', 'Mannar District', 'Mullaitivu District'
-    ],
-    'North Western Province': [
-      'Kurunegala District', 'Puttalam District'
-    ],
-    'North Central Province': [
-      'Anuradhapura District', 'Polonnaruwa District'
-    ],
-    'Uva Province': [
-      'Badulla District', 'Monaragala District'
-    ],
-    'Sabaragamuwa Province': [
-      'Ratnapura District', 'Kegalle District'
-    ],
+    'Western Province': ['Colombo District', 'Gampaha District', 'Kalutara District'],
+    'Central Province': ['Kandy District', 'Matale District', 'Nuwara Eliya District'],
+    'Southern Province': ['Galle District', 'Matara District', 'Hambantota District'],
+    'Eastern Province': ['Trincomalee District', 'Batticaloa District', 'Ampara District'],
+    'Northern Province': ['Jaffna District', 'Vavuniya District', 'Kilinochchi District', 'Mannar District', 'Mullaitivu District'],
+    'North Western Province': ['Kurunegala District', 'Puttalam District'],
+    'North Central Province': ['Anuradhapura District', 'Polonnaruwa District'],
+    'Uva Province': ['Badulla District', 'Monaragala District'],
+    'Sabaragamuwa Province': ['Ratnapura District', 'Kegalle District'],
   };
 }
 
-// --- Reusable Widgets (Remains the same) ---
 class GradientButton extends StatelessWidget {
   final String text;
   final VoidCallback? onPressed;
@@ -1105,7 +1102,6 @@ class GradientButton extends StatelessWidget {
               color: Colors.white,
               fontSize: 20,
               fontWeight: FontWeight.w600,
-              fontFamily: 'Inter',
             ),
           ),
         ),

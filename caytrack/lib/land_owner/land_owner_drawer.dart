@@ -5,6 +5,7 @@ import 'land_details.dart'; // Import Land Details page
 import 'landowner_dashbord.dart'; // Import the Dashboard page
 import 'user_profile.dart'; // Import the User Profile page (Contains UserDetails)
 import 'developer_info.dart'; // Import the Developer Info page
+import 'land_location.dart';
 import '../Auth/login_page.dart'; // Import the Login page
 
 // --- Hardcoded Colors for Simplicity (Replace with AppColors if available) ---
@@ -116,6 +117,44 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
           duration: const Duration(seconds: 3),
         ),
       );
+    }
+  }
+
+  // Method to handle location selection
+  void _handleLocationSelected(Map<String, dynamic> locationData) {
+    // You can save this location data to Firestore or use it as needed
+    print('Selected Location: $locationData');
+    
+    // Show success message
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Location selected: ${locationData['address']}'),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+    
+    // You can save to Firestore here if needed
+    _saveLocationToFirestore(locationData);
+  }
+
+  // Method to save location to Firestore
+  Future<void> _saveLocationToFirestore(Map<String, dynamic> locationData) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await FirebaseFirestore.instance
+            .collection('lands')
+            .doc(user.uid)
+            .set({
+          'location': locationData,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+        
+        print('Location saved to Firestore');
+      }
+    } catch (e) {
+      print('Error saving location: $e');
     }
   }
 
@@ -280,7 +319,7 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
                 },
               ),
               
-               //3. My Profile
+              // 3. My Profile
               _buildModernDrawerItem(
                 icon: Icons.person_rounded,
                 label: "My Profile",
@@ -293,23 +332,24 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
                 },
               ),
               
-              /* 4. Crop Management
+              // 4. Land Location
               _buildModernDrawerItem(
-                icon: Icons.agriculture_rounded, 
-                label: "Crop Management", 
-                description: "Manage crops & harvests", 
-                onTap: () => widget.onNavigate("crops")
-              ),*/
+                icon: Icons.location_on_rounded,
+                label: "Land Location",
+                description: "Set land location on map",
+                onTap: () {
+                   Navigator.of(context).pop(); 
+                   Navigator.of(context).push(
+                     MaterialPageRoute(
+                       builder: (context) => LocationSelectionPage(
+                         onLocationSelected: _handleLocationSelected,
+                       ),
+                     ),
+                   );
+                },
+              ),
               
-              /* 5. Delivery Requests
-              _buildModernDrawerItem(
-                icon: Icons.local_shipping_rounded, 
-                label: "Delivery Requests", 
-                description: "Track deliveries to factories", 
-                onTap: () => widget.onNavigate("deliveries")
-              ),*/
-              
-              // 6. Developer Info
+              // 5. Developer Info
               _buildModernDrawerItem(
                icon: Icons.code_rounded, 
                 label: "Developer Info", 
