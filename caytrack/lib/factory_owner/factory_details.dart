@@ -1,3 +1,4 @@
+// factory_details.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -33,11 +34,14 @@ class _FactoryDetailsState extends State<FactoryDetails> {
   String _userName = 'Loading';
   String _userRole = 'Factory Owner';
   String? _profileImageUrl;
+  String _factoryName = 'Loading';
+  String _factoryLocation = '';
 
   @override
   void initState() {
     super.initState();
     _fetchUserInfo();
+    _fetchFactoryInfo();
   }
 
   void _fetchUserInfo() async {
@@ -57,6 +61,42 @@ class _FactoryDetailsState extends State<FactoryDetails> {
         }
       } catch (e) {
         print("Error fetching user info: $e");
+      }
+    }
+  }
+
+  void _fetchFactoryInfo() async {
+    final user = currentUser;
+    if (user != null) {
+      try {
+        final factoryDoc = await FirebaseFirestore.instance
+            .collection('factories')
+            .doc(user.uid)
+            .get();
+        
+        if (factoryDoc.exists) {
+          final factoryData = factoryDoc.data();
+          if (mounted) {
+            setState(() {
+              _factoryName = factoryData?['factoryName'] ?? 'No Factory Name';
+             // _factoryLocation = factoryData?['address'] ?? '';
+            });
+          }
+        } else {
+          if (mounted) {
+            setState(() {
+              _factoryName = 'Factory Not Registered';
+              _factoryLocation = '';
+            });
+          }
+        }
+      } catch (e) {
+        print("Error fetching factory info: $e");
+        if (mounted) {
+          setState(() {
+            _factoryName = 'Error Loading';
+          });
+        }
       }
     }
   }
@@ -89,9 +129,10 @@ class _FactoryDetailsState extends State<FactoryDetails> {
                 _buildProfileHeader(context),
                 Expanded(
                   child: FactoryOwnerProfileContent(
-                    key: ValueKey(currentUser!.uid), // 🔑 ADD KEY FOR REFRESH
+                    key: ValueKey(currentUser!.uid),
                     factoryOwnerUID: currentUser!.uid,
                     onProfileUpdated: _fetchUserInfo,
+                    onDataUpdated: _showSuccessAndRefresh,
                   ),
                 ),
               ],
@@ -114,6 +155,19 @@ class _FactoryDetailsState extends State<FactoryDetails> {
         ],
       ),
     );
+  }
+
+  void _showSuccessAndRefresh() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Factory details updated successfully!'),
+        duration: const Duration(seconds: 3),
+        backgroundColor: AppColors.secondaryColor,
+      ),
+    );
+    
+    _fetchUserInfo();
+    _fetchFactoryInfo();
   }
   
   Widget _buildProfileHeader(BuildContext context) {
@@ -184,31 +238,51 @@ class _FactoryDetailsState extends State<FactoryDetails> {
                     : null,
                 ),
                 child: _profileImageUrl == null
-                    ? const Icon(Icons.person, size: 40, color: Colors.white)
+                    ? const Icon(Icons.factory, size: 40, color: Colors.white)
                     : null,
               ),
               
               const SizedBox(width: 15),
               
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _userName,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.headerTextDark,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _factoryName,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.headerTextDark,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  Text(
-                    _userRole,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.headerTextDark.withOpacity(0.7),
+                    Text(
+                      _factoryLocation.isNotEmpty 
+                        ? _factoryLocation 
+                        : 'Factory Location',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppColors.headerTextDark.withOpacity(0.7),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Text(
+                          'Owner: $_userName',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.headerTextDark.withOpacity(0.6),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -232,10 +306,12 @@ class _FactoryDetailsState extends State<FactoryDetails> {
 class FactoryOwnerProfileContent extends StatefulWidget {
   final String factoryOwnerUID;
   final VoidCallback? onProfileUpdated;
+  final VoidCallback? onDataUpdated;
   
   const FactoryOwnerProfileContent({
     required this.factoryOwnerUID, 
     this.onProfileUpdated,
+    this.onDataUpdated,
     super.key,
   });
 
@@ -251,28 +327,28 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
   final String _cloudName = "dqeptzlsb";
   final String _uploadPreset = "flutter_ceytrack_upload";
 
-  // Text Controllers
+  // Text Controllers - REMOVE _ownerNameController
   late TextEditingController _factoryNameController;
   late TextEditingController _addressController;
-  late TextEditingController _ownerNameController;
   late TextEditingController _contactNumberController;
   late TextEditingController _agDivisionController;
   late TextEditingController _gnDivisionController;
 
-  // State variables
-  String? _profileImageUrl;
-  XFile? _pickedImageFile;
-  bool _uploadingImage = false;
-  int? _pickedImageFileSize;
-  
+  // State variables for FACTORY PHOTOS
+  List<XFile> _selectedFactoryPhotos = [];
+  List<String> _uploadedFactoryPhotoUrls = [];
+  bool _uploadingPhotos = false;
+  int _maxPhotos = 5;
+
+  // Other state variables
   String? _selectedProvince;
   String? _selectedDistrict;
   String? _selectedCropType;
   
   bool _isSaving = false;
   String? _statusMessage;
-  bool _isLoading = true; // 🔑 ADD LOADING STATE
-  Map<String, dynamic>? _loadedData; // 🔑 STORE LOADED DATA
+  bool _isLoading = true;
+  Map<String, dynamic>? _loadedData;
 
   static final Map<String, List<String>> _geoData = _getGeoData();
 
@@ -281,35 +357,30 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
     super.initState();
     _factoryNameController = TextEditingController();
     _addressController = TextEditingController();
-    _ownerNameController = TextEditingController();
-    _contactNumberController = TextEditingController();
+    _contactNumberController = TextEditingController();  // Only contact number controller
     _agDivisionController = TextEditingController();
     _gnDivisionController = TextEditingController();
     
-    _loadInitialData(); // 🔑 USE NEW DATA LOADING METHOD
+    _loadInitialData();
   }
 
-  // 🔑 NEW DATA LOADING METHOD
   Future<void> _loadInitialData() async {
     setState(() {
       _isLoading = true;
     });
 
     try {
-      // Load user data and factory data separately
-      final userDoc = await _firestore.collection('users').doc(widget.factoryOwnerUID).get();
       final factoryDoc = await _firestore.collection('factories').doc(widget.factoryOwnerUID).get();
 
       if (mounted) {
-        // Set profile image
-        final userData = userDoc.data();
-        _profileImageUrl = userData?['profileImageUrl'];
-
-        // Set factory data if exists
         final factoryData = factoryDoc.data();
         if (factoryData != null) {
           _loadedData = factoryData;
           _populateFormData(factoryData);
+          
+          if (factoryData['factoryPhotos'] != null && factoryData['factoryPhotos'] is List) {
+            _uploadedFactoryPhotoUrls = List<String>.from(factoryData['factoryPhotos']);
+          }
         }
 
         setState(() {
@@ -326,11 +397,10 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
     }
   }
 
-  // 🔑 POPULATE FORM DATA FROM LOADED DATA
   void _populateFormData(Map<String, dynamic> data) {
     _factoryNameController.text = data['factoryName'] ?? '';
     _addressController.text = data['address'] ?? '';
-    _ownerNameController.text = data['ownerName'] ?? '';
+    // REMOVED: _ownerNameController.text = data['ownerName'] ?? '';
     _contactNumberController.text = data['contactNumber'] ?? '';
     _agDivisionController.text = data['agDivision'] ?? '';
     _gnDivisionController.text = data['gnDivision'] ?? '';
@@ -339,7 +409,6 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
     _selectedDistrict = data['district'];
     _selectedCropType = data['cropType'];
 
-    // Validate province and district selection
     if (_selectedProvince != null && !_geoData.containsKey(_selectedProvince)) {
       _selectedProvince = null;
     }
@@ -352,18 +421,18 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
   void dispose() {
     _factoryNameController.dispose();
     _addressController.dispose();
-    _ownerNameController.dispose();
+    // REMOVED: _ownerNameController.dispose();
     _contactNumberController.dispose();
     _agDivisionController.dispose();
     _gnDivisionController.dispose();
     super.dispose();
   }
 
-  // 🔑 REFRESH DATA METHOD
   Future<void> _refreshData() async {
     setState(() {
       _isLoading = true;
       _statusMessage = null;
+      _selectedFactoryPhotos.clear();
     });
     
     await _loadInitialData();
@@ -375,205 +444,389 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
     }
   }
 
-  // Image picking methods
-  Future<void> _pickImage(ImageSource source) async {
+  // Pick Factory Photos Method
+  Future<void> _pickFactoryPhotos() async {
     try {
-      final pickedFile = await _imagePicker.pickImage(
-        source: source,
-        maxWidth: 512,
-        maxHeight: 512,
-        imageQuality: 75,
+      if (_selectedFactoryPhotos.length >= _maxPhotos) {
+        _showStatusMessage('Maximum $_maxPhotos photos allowed');
+        return;
+      }
+
+      final List<XFile>? pickedFiles = await _imagePicker.pickMultiImage(
+        maxWidth: 1200,
+        maxHeight: 1200,
+        imageQuality: 85,
       );
-      
-      if (pickedFile != null) {
-        final file = File(pickedFile.path);
-        final stat = await file.stat();
+
+      if (pickedFiles != null) {
+        int availableSlots = _maxPhotos - _selectedFactoryPhotos.length;
+        int filesToAdd = pickedFiles.length > availableSlots ? availableSlots : pickedFiles.length;
         
-        setState(() {
-          _pickedImageFile = pickedFile;
-          _pickedImageFileSize = stat.size;
-        });
+        for (int i = 0; i < filesToAdd; i++) {
+          final file = File(pickedFiles[i].path);
+          if (await file.exists()) {
+            final stat = await file.stat();
+            final fileSizeMB = stat.size / (1024 * 1024);
+            
+            if (fileSizeMB > 10) {
+              _showStatusMessage('${pickedFiles[i].name} is too large (${fileSizeMB.toStringAsFixed(1)} MB). Max 10MB per photo.');
+              continue;
+            }
+            
+            _selectedFactoryPhotos.add(pickedFiles[i]);
+          }
+        }
         
-        _showStatusMessage('Image selected: ${pickedFile.name} (${(stat.size / 1024).toStringAsFixed(1)} KB)');
+        setState(() {});
+        _showStatusMessage('Added ${filesToAdd} photo(s). Total: ${_selectedFactoryPhotos.length}/$_maxPhotos');
       }
     } catch (e) {
-      _showStatusMessage('Failed to pick image: ${e.toString()}');
+      _showStatusMessage('Error selecting photos: ${e.toString()}');
     }
   }
 
-  void _openImageOptions() {
-    showModalBottomSheet(
-      context: context,
-      builder: (ctx) {
-        return SafeArea(
-          child: Wrap(
+  // Remove selected photo
+  void _removeSelectedPhoto(int index) {
+    setState(() {
+      _selectedFactoryPhotos.removeAt(index);
+    });
+    _showStatusMessage('Photo removed');
+  }
+
+  // Remove uploaded photo
+  void _removeUploadedPhoto(int index) async {
+    try {
+      setState(() {
+        _uploadingPhotos = true;
+      });
+      
+      final urlToRemove = _uploadedFactoryPhotoUrls[index];
+      
+      await _firestore.collection('factories').doc(widget.factoryOwnerUID).update({
+        'factoryPhotos': FieldValue.arrayRemove([urlToRemove]),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      
+      setState(() {
+        _uploadedFactoryPhotoUrls.removeAt(index);
+      });
+      
+      _showStatusMessage('Photo removed successfully');
+    } catch (e) {
+      _showStatusMessage('Error removing photo: ${e.toString()}');
+    } finally {
+      setState(() {
+        _uploadingPhotos = false;
+      });
+    }
+  }
+
+  // Upload Factory Photos to Cloudinary
+  Future<List<String>> _uploadFactoryPhotosToCloudinary() async {
+    List<String> uploadedUrls = [];
+    
+    for (int i = 0; i < _selectedFactoryPhotos.length; i++) {
+      final photo = _selectedFactoryPhotos[i];
+      try {
+        debugPrint('Uploading factory photo ${i + 1}/${_selectedFactoryPhotos.length}: ${photo.name}');
+        
+        final bytes = await photo.readAsBytes();
+        final fileSizeMB = (bytes.length / (1024 * 1024)).toStringAsFixed(2);
+        
+        _showStatusMessage('Uploading photo ${i + 1} (${photo.name}) - $fileSizeMB MB...');
+
+        final url = Uri.parse("https://api.cloudinary.com/v1_1/$_cloudName/image/upload");
+        
+        final request = http.MultipartRequest('POST', url)
+          ..fields['upload_preset'] = _uploadPreset
+          ..files.add(http.MultipartFile.fromBytes(
+            'file',
+            bytes,
+            filename: 'factory_${widget.factoryOwnerUID}_${DateTime.now().millisecondsSinceEpoch}_$i.jpg',
+          ));
+
+        final streamedResponse = await request.send().timeout(
+          const Duration(seconds: 45),
+        );
+
+        final response = await http.Response.fromStream(streamedResponse);
+        
+        if (response.statusCode == 200) {
+          final responseData = json.decode(response.body);
+          final imageUrl = responseData['secure_url'];
+          uploadedUrls.add(imageUrl);
+          debugPrint('✅ Photo ${i + 1} uploaded successfully!');
+        } else {
+          debugPrint('❌ Photo upload failed: ${response.statusCode}');
+          _showStatusMessage('Failed to upload photo ${i + 1}. Please try again.');
+        }
+      } catch (e) {
+        debugPrint('❌ Error uploading photo ${i + 1}: $e');
+        _showStatusMessage('Error uploading photo ${i + 1}. Please try again.');
+      }
+    }
+    
+    return uploadedUrls;
+  }
+
+  // Factory Photos Gallery Widget
+  Widget _buildFactoryPhotosGallery() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildInputLabel('Factory Photos (Max 5)'),
+        const SizedBox(height: 8),
+        
+        if (_uploadedFactoryPhotoUrls.isNotEmpty) ...[
+          const Text(
+            'Currently Uploaded Photos:',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.darkText,
+            ),
+          ),
+          const SizedBox(height: 8),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+              childAspectRatio: 1,
+            ),
+            itemCount: _uploadedFactoryPhotoUrls.length,
+            itemBuilder: (context, index) {
+              return Stack(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.primaryBlue.withOpacity(0.3)),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        _uploadedFactoryPhotoUrls[index],
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Center(
+                            child: CircularProgressIndicator(
+                              value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                  : null,
+                              color: AppColors.primaryBlue,
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: Colors.grey[200],
+                            child: const Icon(Icons.broken_image, color: Colors.grey),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: GestureDetector(
+                      onTap: () => _removeUploadedPhoto(index),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.close,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 4,
+                    left: 4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.6),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        '${index + 1}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+        ],
+        
+        if (_selectedFactoryPhotos.isNotEmpty) ...[
+          const Text(
+            'New Photos to Upload:',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.darkText,
+            ),
+          ),
+          const SizedBox(height: 8),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+              childAspectRatio: 1,
+            ),
+            itemCount: _selectedFactoryPhotos.length,
+            itemBuilder: (context, index) {
+              return Stack(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.secondaryColor.withOpacity(0.5)),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.file(
+                        File(_selectedFactoryPhotos[index].path),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: GestureDetector(
+                      onTap: () => _removeSelectedPhoto(index),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.close,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 4,
+                    left: 4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.6),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        '${index + 1}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+        ],
+        
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.cardBackground,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: _selectedFactoryPhotos.length >= _maxPhotos 
+                ? Colors.grey 
+                : AppColors.primaryBlue.withOpacity(0.3),
+            ),
+          ),
+          child: Column(
             children: [
-              if (_pickedImageFile != null)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryBlue.withOpacity(0.05),
-                    border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Current Selection:',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.darkText,
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _pickedImageFile!.name,
-                        style: TextStyle(
-                          color: AppColors.darkText.withOpacity(0.7),
-                          fontSize: 13,
-                        ),
-                      ),
-                      if (_pickedImageFileSize != null)
-                        Text(
-                          '${(_pickedImageFileSize! / 1024).toStringAsFixed(1)} KB',
-                          style: TextStyle(
-                            color: AppColors.darkText.withOpacity(0.5),
-                            fontSize: 12,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              
-              ListTile(
-                leading: const Icon(Icons.photo_camera, color: AppColors.primaryBlue),
-                title: const Text('Take Photo'),
-                subtitle: const Text('Capture a new photo with camera'),
-                onTap: () {
-                  Navigator.of(ctx).pop();
-                  _pickImage(ImageSource.camera);
-                },
+              Icon(
+                Icons.photo_camera,
+                size: 40,
+                color: _selectedFactoryPhotos.length >= _maxPhotos 
+                  ? Colors.grey 
+                  : AppColors.primaryBlue,
               ),
-              ListTile(
-                leading: const Icon(Icons.photo_library, color: AppColors.primaryBlue),
-                title: const Text('Choose from Gallery'),
-                subtitle: const Text('Select from your device gallery'),
-                onTap: () {
-                  Navigator.of(ctx).pop();
-                  _pickImage(ImageSource.gallery);
-                },
-              ),
-              if (_profileImageUrl != null || _pickedImageFile != null)
-                ListTile(
-                  leading: const Icon(Icons.delete_outline, color: Colors.red),
-                  title: const Text('Remove Current Photo', style: TextStyle(color: Colors.red)),
-                  subtitle: const Text('Remove profile picture', style: TextStyle(color: Colors.red)),
-                  onTap: () {
-                    Navigator.of(ctx).pop();
-                    _removeProfileImage();
-                  },
+              const SizedBox(height: 8),
+              Text(
+                _selectedFactoryPhotos.length >= _maxPhotos
+                  ? 'Maximum $_maxPhotos photos reached'
+                  : 'Add Factory Photos (${_selectedFactoryPhotos.length}/$_maxPhotos)',
+                style: TextStyle(
+                  color: _selectedFactoryPhotos.length >= _maxPhotos 
+                    ? Colors.grey 
+                    : AppColors.darkText,
+                  fontWeight: FontWeight.w500,
                 ),
-              ListTile(
-                leading: const Icon(Icons.close, color: AppColors.primaryBlue),
-                title: const Text('Cancel'),
-                onTap: () => Navigator.of(ctx).pop(),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Tap to select photos of your factory',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 12,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton(
+                onPressed: _selectedFactoryPhotos.length >= _maxPhotos ? null : _pickFactoryPhotos,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _selectedFactoryPhotos.length >= _maxPhotos 
+                    ? Colors.grey 
+                    : AppColors.primaryBlue,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                ),
+                child: const Text('Select Photos'),
               ),
             ],
           ),
-        );
-      },
+        ),
+        
+        const SizedBox(height: 16),
+      ],
     );
   }
 
-  Future<void> _removeProfileImage() async {
-    setState(() {
-      _pickedImageFile = null;
-      _profileImageUrl = null;
-      _pickedImageFileSize = null;
-    });
-    
-    try {
-      await _firestore.collection('users').doc(widget.factoryOwnerUID).update({
-        'profileImageUrl': FieldValue.delete(),
-      });
-      _showStatusMessage('Profile photo removed');
-      widget.onProfileUpdated?.call();
-    } catch (e) {
-      _showStatusMessage('Failed to remove photo: ${e.toString()}');
-    }
-  }
-
-  // Cloudinary upload
-  Future<String?> _uploadImageToCloudinary(XFile imageFile) async {
-    try {
-      debugPrint('Starting Cloudinary upload...');
-      
-      final bytes = await imageFile.readAsBytes();
-      final fileSizeKB = (bytes.length / 1024).toStringAsFixed(1);
-      
-      _showStatusMessage('Uploading image (${imageFile.name}) - $fileSizeKB KB...');
-      
-      if (bytes.length > 1000000) {
-        _showStatusMessage('Image is too large. Please choose a smaller image (max 1MB).');
-        return null;
-      }
-
-      final url = Uri.parse("https://api.cloudinary.com/v1_1/$_cloudName/image/upload");
-      
-      final request = http.MultipartRequest('POST', url)
-        ..fields['upload_preset'] = _uploadPreset
-        ..files.add(http.MultipartFile.fromBytes(
-          'file',
-          bytes,
-          filename: imageFile.name,
-        ));
-
-      final streamedResponse = await request.send().timeout(
-        const Duration(seconds: 30),
-        onTimeout: () {
-          throw TimeoutException('Cloudinary upload timed out');
-        },
-      );
-
-      final response = await http.Response.fromStream(streamedResponse);
-      final responseData = json.decode(response.body);
-      
-      if (response.statusCode == 200) {
-        final imageUrl = responseData['secure_url'];
-        debugPrint('Cloudinary upload successful! URL: $imageUrl');
-        _showStatusMessage('Image uploaded successfully: ${imageFile.name}');
-        return imageUrl;
-      } else {
-        String errorMessage = 'Unknown error';
-        if (responseData['error'] != null) {
-          errorMessage = responseData['error']['message'] ?? 'Unknown Cloudinary error';
-        }
-        _showStatusMessage('Upload failed for ${imageFile.name}: $errorMessage');
-        return null;
-      }
-      
-    } on TimeoutException catch (e) {
-      debugPrint('Upload timeout: $e');
-      _showStatusMessage('Upload timed out for ${imageFile.name}. Please try again.');
-      return null;
-    } catch (e) {
-      debugPrint('Upload error: $e');
-      _showStatusMessage('Failed to upload ${imageFile.name}. Please try again.');
-      return null;
-    }
-  }
-
-  // 🔑 UPDATED SAVE METHOD WITH REFRESH
   Future<void> _updateFactoryData() async {
     if (!_formKey.currentState!.validate()) {
-      setState(() => _statusMessage = "Please correct the errors in the form.");
+      _showStatusMessage("Please correct the errors in the form.");
       return;
     }
 
     if (_selectedProvince == null || _selectedDistrict == null || _selectedCropType == null) {
-      setState(() => _statusMessage = "Please ensure all required fields are filled.");
+      _showStatusMessage("Please ensure all required fields are filled.");
       return;
     }
     
@@ -583,37 +836,24 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
     });
 
     try {
-      String? finalProfileImageUrl = _profileImageUrl;
-
-      if (_pickedImageFile != null) {
+      List<String> newPhotoUrls = [];
+      if (_selectedFactoryPhotos.isNotEmpty) {
         setState(() {
-          _uploadingImage = true;
+          _uploadingPhotos = true;
         });
         
-        final cloudinaryUrl = await _uploadImageToCloudinary(_pickedImageFile!);
-        if (cloudinaryUrl != null) {
-          finalProfileImageUrl = cloudinaryUrl;
-          
-          await _firestore.collection('users').doc(widget.factoryOwnerUID).update({
-            'profileImageUrl': cloudinaryUrl,
-          });
-        } else {
-          setState(() {
-            _isSaving = false;
-            _uploadingImage = false;
-          });
-          return;
-        }
+        newPhotoUrls = await _uploadFactoryPhotosToCloudinary();
         
         setState(() {
-          _uploadingImage = false;
+          _uploadingPhotos = false;
         });
       }
 
+      // Prepare update data - REMOVED 'ownerName' field
       final factoryDataToUpdate = {
         'factoryName': _factoryNameController.text.trim(),
         'address': _addressController.text.trim(),
-        'ownerName': _ownerNameController.text.trim(),
+        // REMOVED: 'ownerName': _ownerNameController.text.trim(),
         'contactNumber': _contactNumberController.text.trim(),
         'cropType': _selectedCropType,
         'country': 'Sri Lanka',
@@ -624,22 +864,31 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
         'updatedAt': FieldValue.serverTimestamp(),
       };
 
-      await _firestore.collection('factories').doc(widget.factoryOwnerUID).set(factoryDataToUpdate, SetOptions(merge: true));
-      
-      setState(() {
-        _profileImageUrl = finalProfileImageUrl;
-        _pickedImageFile = null;
-        _pickedImageFileSize = null;
-      });
+      if (newPhotoUrls.isNotEmpty) {
+        factoryDataToUpdate['factoryPhotos'] = FieldValue.arrayUnion(newPhotoUrls);
+      }
+
+      await _firestore.collection('factories').doc(widget.factoryOwnerUID).set(
+        factoryDataToUpdate,
+        SetOptions(merge: true),
+      );
+
+      if (newPhotoUrls.isNotEmpty) {
+        setState(() {
+          _uploadedFactoryPhotoUrls.addAll(newPhotoUrls);
+          _selectedFactoryPhotos.clear();
+        });
+      }
 
       _showStatusMessage("Factory details updated successfully!");
+      
       widget.onProfileUpdated?.call();
+      widget.onDataUpdated?.call();
 
-      // 🔑 AUTO-REFRESH AFTER SAVE
-      await _refreshData();
+      await _refreshDataAutomatically();
 
     } catch (e) {
-      _showStatusMessage("Error updating profile: $e");
+      _showStatusMessage("Error updating factory details: $e");
       debugPrint('Update Error: $e');
     } finally {
       setState(() {
@@ -648,7 +897,29 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
     }
   }
 
+  Future<void> _refreshDataAutomatically() async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    
+    await _loadInitialData();
+    
+    if (mounted) {
+      setState(() {
+        _statusMessage = "Data refreshed successfully!";
+      });
+    }
+  }
+
   void _showStatusMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 3),
+        backgroundColor: message.toLowerCase().contains('success') 
+            ? AppColors.secondaryColor 
+            : Colors.red,
+      ),
+    );
+    
     setState(() {
       _statusMessage = message;
     });
@@ -669,11 +940,8 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
       );
     }
 
-    final bool isNewDocument = _loadedData == null;
-    
     return Column(
       children: [
-        // 🔑 REFRESH BUTTON
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Row(
@@ -691,6 +959,7 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
             ],
           ),
         ),
+        
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(20.0),
@@ -699,26 +968,25 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (isNewDocument)
-                    const InfoCard(
-                      message: "Welcome! Please enter your factory details below to complete your profile.",
-                      color: Colors.orange,
-                    ),
-                  
                   if (_statusMessage != null)
                     InfoCard(
                       message: _statusMessage!,
-                      color: _statusMessage!.toLowerCase().contains('success') ? AppColors.secondaryColor : Colors.red,
+                      color: _statusMessage!.toLowerCase().contains('success') 
+                          ? AppColors.secondaryColor 
+                          : Colors.red,
                     ),
 
                   const SizedBox(height: 16),
                   
-                  _buildProfileImageSection(),
+                  _buildFactoryPhotosGallery(),
+                  
+                  // Factory Information Form
                   _buildInputLabel('Factory Name'),
                   _buildTextField(_factoryNameController, 'Sunshine Tea Factory'),
                                  
-                  _buildInputLabel('Owner Name'),
-                  _buildTextField(_ownerNameController, 'John Doe'),
+                  // REMOVED: Owner Name field
+                  // _buildInputLabel('Owner Name'),
+                  // _buildTextField(_ownerNameController, 'John Doe'),
 
                   _buildInputLabel('Contact Number'),
                   _buildTextField(_contactNumberController, '0771234567', TextInputType.phone),
@@ -760,8 +1028,8 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
 
                   GradientButton(
                     text: _isSaving ? 'Updating...' : 'Update Factory Details',
-                    onPressed: (_isSaving || _uploadingImage) ? null : _updateFactoryData,
-                    isEnabled: !_isSaving && !_uploadingImage,
+                    onPressed: (_isSaving || _uploadingPhotos) ? null : _updateFactoryData,
+                    isEnabled: !_isSaving && !_uploadingPhotos,
                   ),
                   
                   const SizedBox(height: 50),
@@ -772,154 +1040,6 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
         ),
       ],
     );
-  }
-
-  Widget _buildProfileImageSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildInputLabel('Profile Picture'),
-        const SizedBox(height: 8),
-        Center(
-          child: Stack(
-            children: [
-              Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.primaryBlue.withOpacity(0.3), width: 3),
-                ),
-                child: _uploadingImage
-                    ? Container(
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.grey,
-                        ),
-                        child: const Center(
-                          child: CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryBlue),
-                          ),
-                        ),
-                      )
-                    : CircleAvatar(
-                        radius: 56,
-                        backgroundColor: Colors.grey[200],
-                        backgroundImage: _getProfileImage(),
-                        child: _getProfileImage() == null
-                            ? const Icon(Icons.person, size: 50, color: AppColors.primaryBlue)
-                            : null,
-                      ),
-              ),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryBlue,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 3),
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.camera_alt, size: 18, color: Colors.white),
-                    onPressed: _openImageOptions,
-                    padding: EdgeInsets.zero,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        
-        if (_pickedImageFile != null)
-          Container(
-            width: double.infinity,
-            margin: const EdgeInsets.only(top: 12),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.primaryBlue.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.primaryBlue.withOpacity(0.3)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.image, size: 16, color: AppColors.primaryBlue),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Selected Image:',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.darkText,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _pickedImageFile!.name,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppColors.darkText.withOpacity(0.8),
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                if (_pickedImageFileSize != null)
-                  Text(
-                    'Size: ${(_pickedImageFileSize! / 1024).toStringAsFixed(1)} KB',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.darkText.withOpacity(0.6),
-                    ),
-                  ),
-              ],
-            ),
-          )
-        else if (_profileImageUrl != null)
-          Container(
-            width: double.infinity,
-            margin: const EdgeInsets.only(top: 12),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.secondaryColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.secondaryColor.withOpacity(0.3)),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.cloud_done, size: 16, color: AppColors.secondaryColor),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Current image stored in Cloudinary',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: AppColors.darkText.withOpacity(0.8),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        
-        const SizedBox(height: 16),
-      ],
-    );
-  }
-
-  ImageProvider? _getProfileImage() {
-    if (_pickedImageFile != null) {
-      return FileImage(File(_pickedImageFile!.path));
-    } else if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) {
-      return NetworkImage(_profileImageUrl!);
-    }
-    return null;
   }
 
   Widget _buildInputLabel(String text) {
@@ -1040,7 +1160,6 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
   }
 }
 
-// Geo Data and reusable widgets
 Map<String, List<String>> _getGeoData() {
   return {
     'Western Province': ['Colombo District', 'Gampaha District', 'Kalutara District'],

@@ -537,130 +537,140 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
   }
 
   // Fixed: Proper static data display from Firebase
-  Widget _buildExistingLocationDisplay() {
-    final User? user = _auth.currentUser;
-    if (user == null) return const SizedBox.shrink();
-    
-    final Map<String, dynamic>? savedData = _fetchedExistingData ?? widget.existingData;
-    
-    if (savedData == null || savedData.isEmpty) {
-      return const SizedBox.shrink();
-    }
+  // Fixed: Proper static data display from Firebase
+Widget _buildExistingLocationDisplay() {
+  final User? user = _auth.currentUser;
+  if (user == null) return const SizedBox.shrink();
+  
+  final Map<String, dynamic>? savedData = _fetchedExistingData ?? widget.existingData;
+  
+  if (savedData == null || savedData.isEmpty) {
+    return const SizedBox.shrink();
+  }
 
-    // Fixed: Use the stored string values directly for static display
-    final displayLat = savedData['latitudeString'] ?? savedData['latitude']?.toStringAsFixed(6) ?? '--';
-    final displayLng = savedData['longitudeString'] ?? savedData['longitude']?.toStringAsFixed(6) ?? '--';
-    final displayAddress = savedData['address'] ?? 'Address not available';
-    
-    double? savedLat;
-    double? savedLng;
-    
-    try {
-      savedLat = (savedData['latitude'] as num?)?.toDouble();
-      savedLng = (savedData['longitude'] as num?)?.toDouble();
-    } catch (e) {
-      print('Error parsing saved coordinates: $e');
-    }
+  // Fixed: Use the stored string values directly for static display
+  final displayLat = savedData['latitudeString'] ?? savedData['latitude']?.toStringAsFixed(6) ?? '--';
+  final displayLng = savedData['longitudeString'] ?? savedData['longitude']?.toStringAsFixed(6) ?? '--';
+  final displayAddress = savedData['address'] ?? 'Address not available';
+  
+  double? savedLat;
+  double? savedLng;
+  
+  try {
+    savedLat = (savedData['latitude'] as num?)?.toDouble();
+    savedLng = (savedData['longitude'] as num?)?.toDouble();
+  } catch (e) {
+    print('Error parsing saved coordinates: $e');
+  }
 
-    final openMapUrl = 'https://www.google.com/maps/search/?api=1&query=$displayLat,$displayLng';
+  final openMapUrl = 'https://www.google.com/maps/search/?api=1&query=$displayLat,$displayLng';
 
-    return Card(
-      color: _primaryBlue.withOpacity(0.05),
-      elevation: 3,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: _primaryBlue.withOpacity(0.2), width: 1),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+  return Card(
+    // CHANGED: Background color to light grey
+    color: Colors.grey[100], // Changed from _primaryBlue.withOpacity(0.05) to grey[100]
+    elevation: 3,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+      // CHANGED: Border color to grey
+      side: BorderSide(color: Colors.grey[300]!, width: 1), // Changed from _primaryBlue.withOpacity(0.2)
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.location_history,
+                // CHANGED: Icon color to grey
+                color: Colors.grey[700], // Changed from _primaryBlue to grey[700]
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Previously Saved Location',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  // CHANGED: Text color to grey
+                  color: Colors.grey[800], // Changed from _primaryBlue to grey[800]
+                ),
+              ),
+            ],
+          ),
+          // CHANGED: Divider color to light grey
+          const Divider(color: Color(0xFFE0E0E0)), // Changed from Color.fromARGB(255, 234, 186, 186)
+          _buildDetailRow('Saved Address', displayAddress),
+          _buildDetailRow('Latitude', displayLat),
+          _buildDetailRow('Longitude', displayLng),
+          _buildDetailRow('Updated At', 
+              (savedData['updatedAt'] is Timestamp) 
+                  ? (savedData['updatedAt'] as Timestamp).toDate().toString().split('.')[0] 
+                  : 'N/A'),
+          
+          const SizedBox(height: 12),
+          
+          if (savedLat != null && savedLng != null)
             Row(
               children: [
-                Icon(
-                  Icons.location_history,
-                  color: _primaryBlue,
-                  size: 24,
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      _mapController.move(LatLng(savedLat!, savedLng!), _zoomLevel);
+                    },
+                    // CHANGED: Button icon and text color to grey
+                    icon: Icon(Icons.travel_explore, size: 18, color: Colors.grey[700]),
+                    label: Text('View on Map', style: TextStyle(fontSize: 14, color: Colors.grey[700])),
+                    style: ElevatedButton.styleFrom(
+                      // CHANGED: Button background to light grey
+                      backgroundColor: Colors.grey[200], // Changed from _primaryBlue.withOpacity(0.1)
+                      foregroundColor: Colors.grey[700], // Changed from _primaryBlue
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  'Previously Saved Location',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: _primaryBlue,
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      if (await canLaunchUrlString(openMapUrl)) {
+                        await launchUrlString(openMapUrl);
+                      }
+                    },
+                    icon: Icon(Icons.open_in_new, size: 18, color: Colors.white),
+                    label: Text('Open in Maps', style: TextStyle(fontSize: 14, color: Colors.white)),
+                    style: ElevatedButton.styleFrom(
+                      // CHANGED: Button background to grey
+                      backgroundColor: Colors.grey[600], // Changed from _primaryBlue
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
-            const Divider(color: Colors.grey),
-            _buildDetailRow('Saved Address', displayAddress),
-            _buildDetailRow('Latitude', displayLat),
-            _buildDetailRow('Longitude', displayLng),
-            _buildDetailRow('Updated At', 
-                (savedData['updatedAt'] is Timestamp) 
-                    ? (savedData['updatedAt'] as Timestamp).toDate().toString().split('.')[0] 
-                    : 'N/A'),
-            
-            const SizedBox(height: 12),
-            
-            if (savedLat != null && savedLng != null)
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        _mapController.move(LatLng(savedLat!, savedLng!), _zoomLevel);
-                      },
-                      icon: Icon(Icons.travel_explore, size: 18, color: _primaryBlue),
-                      label: Text('View on Map', style: TextStyle(fontSize: 14, color: _primaryBlue)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _primaryBlue.withOpacity(0.1),
-                        foregroundColor: _primaryBlue,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () async {
-                        if (await canLaunchUrlString(openMapUrl)) {
-                          await launchUrlString(openMapUrl);
-                        }
-                      },
-                      icon: Icon(Icons.open_in_new, size: 18, color: Colors.white),
-                      label: Text('Open in Maps', style: TextStyle(fontSize: 14, color: Colors.white)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _primaryBlue,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            
-            const SizedBox(height: 16),
-            
-            Text(
-              'You can update a new location by selecting a point on the map below.',
-              style: TextStyle(
-                fontStyle: FontStyle.italic,
-                color: Colors.blueGrey,
-                fontSize: 13,
-              ),
+          
+          const SizedBox(height: 16),
+          
+          Text(
+            'You can update a new location by selecting a point on the map below.',
+            style: TextStyle(
+              fontStyle: FontStyle.italic,
+              // CHANGED: Text color to grey
+              color: const Color.fromARGB(255, 113, 121, 212), // Changed from Colors.blueGrey
+              fontSize: 13,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildLocationTypeSelection() {
     return Card(

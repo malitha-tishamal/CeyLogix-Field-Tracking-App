@@ -1,3 +1,4 @@
+// land_details.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -6,6 +7,12 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
 import 'dart:async';
+import 'land_owner_drawer.dart'; // Import your drawer
+import 'landowner_dashbord.dart'; // Import dashboard
+import 'user_profile.dart'; // Import profile page
+import 'land_location.dart'; // Import location page
+import 'developer_info.dart'; // Import developer info
+import '../Auth/login_page.dart'; // Import login page
 
 class AppColors {
   static const Color background = Color(0xFFEEEBFF);
@@ -69,6 +76,53 @@ class _LandDetailsState extends State<LandDetails> {
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: AppColors.background,
+      drawer: LandOwnerDrawer(
+        onNavigate: (route) {
+          Navigator.of(context).pop(); // Close drawer
+          
+          // Handle navigation based on route
+          switch (route) {
+            case 'dashboard':
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const LandOwnerDashboard()),
+              );
+              break;
+            case 'land_details':
+              // Already on this page
+              break;
+            case 'profile':
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const UserDetails()),
+              );
+              break;
+            case 'location':
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => LocationSelectionPage(
+                  onLocationSelected: (locationData) {
+                    // Handle location selection
+                    print('Selected Location: $locationData');
+                  },
+                )),
+              );
+              break;
+            case 'developer_info':
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const DeveloperInfoPage()),
+              );
+              break;
+          }
+        },
+        onLogout: () {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const LoginPage()),
+            (Route<dynamic> route) => false,
+          );
+        },
+      ),
       body: Column(
         children: [
           // Fixed Header
@@ -83,6 +137,7 @@ class _LandDetailsState extends State<LandDetails> {
                     key: ValueKey(currentUser!.uid),
                     landOwnerUID: currentUser!.uid,
                     onProfileUpdated: _fetchUserInfo,
+                    onDataUpdated: _showSuccessAndRefresh, // Add this callback
                   ),
                 ),
                 
@@ -107,6 +162,20 @@ class _LandDetailsState extends State<LandDetails> {
         ],
       ),
     );
+  }
+
+  void _showSuccessAndRefresh() {
+    // Show success message
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Land details updated successfully!'),
+        duration: const Duration(seconds: 3),
+        backgroundColor: AppColors.secondaryColor,
+      ),
+    );
+    
+    // Refresh user info
+    _fetchUserInfo();
   }
   
   Widget _buildProfileHeader(BuildContext context) {
@@ -136,20 +205,14 @@ class _LandDetailsState extends State<LandDetails> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              // Hamburger Menu Icon
               IconButton(
-                icon: const Icon(Icons.arrow_back, color: AppColors.headerTextDark, size: 28),
+                icon: const Icon(Icons.menu, color: AppColors.headerTextDark, size: 28),
                 onPressed: () {
-                  Navigator.pop(context);
+                  _scaffoldKey.currentState?.openDrawer();
                 },
               ),
-              Text(
-                'Land Details',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.headerTextDark,
-                ),
-              ),
+              
               const SizedBox(width: 48), // For balance
             ],
           ),
@@ -234,10 +297,12 @@ class _LandDetailsState extends State<LandDetails> {
 class LandOwnerProfileContent extends StatefulWidget {
   final String landOwnerUID;
   final VoidCallback? onProfileUpdated;
+  final VoidCallback? onDataUpdated; // New callback for data update
   
   const LandOwnerProfileContent({
     required this.landOwnerUID, 
     this.onProfileUpdated,
+    this.onDataUpdated, // Add this parameter
     super.key,
   });
 
@@ -830,11 +895,15 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
         });
       }
 
+      // Show success message
       _showStatusMessage("Land details updated successfully!");
+      
+      // Call callbacks
       widget.onProfileUpdated?.call();
+      widget.onDataUpdated?.call(); // Call the new callback
 
-      // Refresh data
-      await _loadInitialData();
+      // Refresh data automatically
+      await _refreshDataAutomatically();
 
     } catch (e) {
       _showStatusMessage("Error updating land details: $e");
@@ -842,6 +911,21 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
     } finally {
       setState(() {
         _isSaving = false;
+      });
+    }
+  }
+
+  Future<void> _refreshDataAutomatically() async {
+    // Delay for a moment to show success message
+    await Future.delayed(const Duration(milliseconds: 500));
+    
+    // Refresh the data
+    await _loadInitialData();
+    
+    // Show a brief message that data has been refreshed
+    if (mounted) {
+      setState(() {
+        _statusMessage = "Data refreshed successfully!";
       });
     }
   }

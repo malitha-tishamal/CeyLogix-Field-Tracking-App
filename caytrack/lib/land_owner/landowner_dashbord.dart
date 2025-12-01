@@ -107,15 +107,16 @@ class _LandOwnerDashboardState extends State<LandOwnerDashboard> {
         onNavigate: handleDrawerNavigate,
       ),
 
-      body: Stack(
+      body: Column(
         children: [
-          SafeArea(
+          // 1. Fixed Header
+          _buildDashboardHeader(context),
+          
+          // 2. Main Content with Footer
+          Expanded(
             child: Column(
               children: [
-                // 1. Updated Header Card
-                _buildDashboardHeader(context),
-                
-                // 2. Main Content
+                // Scrollable content
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(16.0),
@@ -147,23 +148,20 @@ class _LandOwnerDashboardState extends State<LandOwnerDashboard> {
                     ),
                   ),
                 ),
-              ],
-            ),
-          ),
-          
-          // 3. Fixed Footer Text
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Text(
-                'Developed By Malitha Tishamal',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppColors.darkText.withOpacity(0.7),
-                  fontSize: 12,
+                
+                // 3. Fixed Footer Text (Inside content area)
+                Container(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Text(
+                    'Developed By Malitha Tishamal',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: AppColors.darkText.withOpacity(0.7),
+                      fontSize: 12,
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
         ],

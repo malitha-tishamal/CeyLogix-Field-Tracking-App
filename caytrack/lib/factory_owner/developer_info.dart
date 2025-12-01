@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'factory_owner_drawer.dart';
@@ -30,7 +32,58 @@ class DeveloperInfoPage extends StatefulWidget {
 }
 
 class _DeveloperInfoPageState extends State<DeveloperInfoPage> {
+  final User? currentUser = FirebaseAuth.instance.currentUser;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  
+  // State variables to hold fetched data
+  String _loggedInUserName = 'Loading User...';
+  String _factoryName = 'Loading Factory...';
+  String _userRole = 'Factory Owner';
+  String? _profileImageUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchHeaderData();
+  }
+
+  // --- DATA FETCHING FUNCTION ---
+  void _fetchHeaderData() async {
+    final user = currentUser;
+    if (user == null) {
+      return;
+    }
+    
+    final String uid = user.uid;
+
+    try {
+      // 1. Fetch User Name and Role from 'users' collection
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      if (userDoc.exists) {
+        final userData = userDoc.data();
+        setState(() {
+          _loggedInUserName = userData?['name'] ?? 'Owner Name Missing';
+          _profileImageUrl = userData?['profileImageUrl'];
+          _userRole = userData?['role'] ?? 'Factory Owner';
+        });
+      }
+      
+      // 2. Fetch Factory Name from 'factories' collection
+      final factoryDoc = await FirebaseFirestore.instance.collection('factories').doc(uid).get();
+      if (factoryDoc.exists) {
+        setState(() {
+          _factoryName = factoryDoc.data()?['factoryName'] ?? 'Factory Name Missing';
+        });
+      }
+
+    } catch (e) {
+      debugPrint("Error fetching header data: $e");
+      setState(() {
+        _loggedInUserName = 'Data Error';
+        _factoryName = 'Data Error';
+      });
+    }
+  }
 
   void _handleDrawerNavigate(String routeName) {
     Navigator.pop(context);
@@ -129,39 +182,53 @@ class _DeveloperInfoPageState extends State<DeveloperInfoPage> {
         },
         onNavigate: _handleDrawerNavigate,
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // 🌟 UPDATED HEADER - Factory Owner Dashboard Style
-            _buildDashboardHeader(context),
-            // Pass the launcher functions to the content widget
-            DeveloperInfoContent(
-              launchURL: _launchURL,
-              launchEmail: _launchEmail,
-              launchPhone: _launchPhone,
-            ),
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Text(
-                  'CeyLogix Application v2.1.0',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: AppColors.darkText.withOpacity(0.7),
-                    fontSize: 12,
+      body: Column(
+        children: [
+          // 🌟 FIXED HEADER - Factory Owner Dashboard Style with Firebase Data
+          _buildDashboardHeader(context),
+          
+          // 🌟 SCROLLABLE CONTENT ONLY with Footer
+          Expanded(
+            child: Column(
+              children: [
+                // Scrollable content
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        // Pass the launcher functions to the content widget
+                        DeveloperInfoContent(
+                          launchURL: _launchURL,
+                          launchEmail: _launchEmail,
+                          launchPhone: _launchPhone,
+                        ),
+                        const SizedBox(height: 20),
+                      ],
+                    ),
                   ),
                 ),
-              ),
+                
+                // Footer (Fixed at bottom of content area)
+                Container(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Text(
+                    'Developed by Malitha Tishamal',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: AppColors.darkText.withOpacity(0.7),
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 20),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  // 🌟 UPDATED HEADER - Factory Owner Dashboard Style
+  // 🌟 FIXED HEADER - Factory Owner Dashboard Style with Firebase Data
   Widget _buildDashboardHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
@@ -200,61 +267,76 @@ class _DeveloperInfoPageState extends State<DeveloperInfoPage> {
           
           const SizedBox(height: 10),
           
-          // Developer Profile Section
           Row(
             children: [
-              // Developer Profile Picture
+              // Profile Picture with Firebase image
               Container(
                 width: 70,
                 height: 70,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF2764E7), Color(0xFF457AED)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+                  gradient: _profileImageUrl == null 
+                    ? const LinearGradient(
+                        colors: [AppColors.primaryBlue, Color(0xFF457AED)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : null,
                   border: Border.all(color: Colors.white, width: 3),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF2764E7).withOpacity(0.4),
+                      color: AppColors.primaryBlue.withOpacity(0.4),
                       blurRadius: 10,
                       offset: const Offset(0, 3),
                     ),
                   ],
+                  image: _profileImageUrl != null 
+                    ? DecorationImage(
+                        image: NetworkImage(_profileImageUrl!),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
                 ),
-                child: const Icon(Icons.code, size: 40, color: Colors.white),
+                child: _profileImageUrl == null
+                    ? const Icon(Icons.person, size: 40, color: Colors.white)
+                    : null,
               ),
               
               const SizedBox(width: 15),
               
-              // Developer Info
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Developer Name
-                  Text(
-                    'Malitha Tishamal',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.headerTextDark,
+              // User Info Display from Firebase
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 1. Factory Name
+                    Text(
+                      _factoryName, 
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.headerTextDark,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  // Role
-                  Text(
-                    'Full Stack Developer\nFlutter Specialist',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.headerTextDark.withOpacity(0.7),
+                    // 2. Logged-in User Name and Role
+                    Text(
+                      'Logged in as: $_loggedInUserName \n($_userRole)', 
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppColors.headerTextDark.withOpacity(0.7),
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
           
-          const SizedBox(height: 25),
+          const SizedBox(height: 25), 
           
           // Page Title
           Text(
@@ -514,60 +596,57 @@ class DeveloperInfoContent extends StatelessWidget {
     );
   }
 
-Widget _buildSocialMediaButton(SocialMediaItem item) {
-  return Column(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Tooltip(
-        message: 'Open ${item.label}',
-        child: GestureDetector(
-          onTap: () => launchURL(item.url),
-          child: Container(
-            width: 70,
-            height: 70,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [item.color.withOpacity(0.9), item.color],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: item.color.withOpacity(0.3),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
+  Widget _buildSocialMediaButton(SocialMediaItem item) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Tooltip(
+          message: 'Open ${item.label}',
+          child: GestureDetector(
+            onTap: () => launchURL(item.url),
+            child: Container(
+              width: 70,
+              height: 70,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [item.color.withOpacity(0.9), item.color],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-              ],
-            ),
-
-            // ⬇️ Centered + Padded Icon
-            child: Center(
-              child: FaIcon(
-                item.icon,
-                color: Colors.white,
-                size: 40, // Reduced for perfect fit
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: item.color.withOpacity(0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Center(
+                child: FaIcon(
+                  item.icon,
+                  color: Colors.white,
+                  size: 40,
+                ),
               ),
             ),
           ),
         ),
-      ),
 
-      const SizedBox(height: 10),
+        const SizedBox(height: 10),
 
-      Text(
-        item.label,
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          color: AppColors.darkText.withOpacity(0.7),
+        Text(
+          item.label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: AppColors.darkText.withOpacity(0.7),
+          ),
         ),
-      ),
-    ],
-  );
-}
-
+      ],
+    );
+  }
 
   // --- Contact Details Widgets: Clickable Email/Phone ---
   Widget _buildContactDetailsCard() {
