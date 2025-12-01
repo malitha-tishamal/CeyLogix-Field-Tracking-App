@@ -2,20 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:url_launcher/url_launcher_string.dart';
+import 'land_owner_drawer.dart'; // Make sure to import your drawer
 
 class LocationSelectionPage extends StatefulWidget {
   final Function(Map<String, dynamic>) onLocationSelected;
   final Map<String, dynamic>? existingData;
-  
+
   const LocationSelectionPage({
-    super.key, 
+    super.key,
     required this.onLocationSelected,
     this.existingData,
   });
@@ -28,17 +28,18 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
   late MapController _mapController;
   LatLng? _currentLocation;
   LatLng? _selectedLocation;
+  
   bool _isLoading = true;
   bool _isSaving = false;
+  
   String _address = '';
   String _latitude = '';
   String _longitude = '';
+  
   double _zoomLevel = 15.0;
 
-  // Location type selection
-  String _selectedLocationType = 'auto'; // 'auto' or 'manual'
+  String _selectedLocationType = 'auto';
 
-  // Manual location controllers
   final TextEditingController _manualLatController = TextEditingController();
   final TextEditingController _manualLngController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
@@ -46,7 +47,6 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // OpenStreetMap tile layers
   final List<Map<String, String>> _tileLayers = [
     {
       'name': 'OpenStreetMap Standard',
@@ -56,36 +56,177 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
   ];
 
   int _selectedTileLayer = 0;
+  Map<String, dynamic>? _fetchedExistingData;
+
+  // Header variables
+  String _loggedInUserName = 'Loading...';
+  String _landName = 'Loading...';
+  String _userRole = 'Land Owner';
+  String _landID = 'L-ID';
+  String? _profileImageUrl;
+
+  // Custom colors matching LandOwnerDashboard
+  static const Color _headerGradientStart = Color(0xFF869AEC);
+  static const Color _headerGradientEnd = Color(0xFFF7FAFF);
+  static const Color _headerTextDark = Color(0xFF333333);
+  static const Color _primaryBlue = Color(0xFF2764E7);
+  static const Color _accentRed = Color(0xFFE53935);
+  static const Color _accentTeal = Color(0xFF00BFA5);
+  static const Color _secondaryColor = Color(0xFF6AD96A);
+
+  // Scaffold key for drawer
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   void initState() {
     super.initState();
     _mapController = MapController();
+    
     _initializeFormData();
+    _fetchExistingLocation();
     _getCurrentLocation();
+    _fetchHeaderData(); // Fetch header data
+  }
+
+  // Drawer navigation handler
+  void _handleDrawerNavigate(String routeName) {
+    Navigator.pop(context); // Close drawer
+    
+    // Handle navigation based on route name
+    if (routeName == 'dashboard') {
+      Navigator.pop(context); // Go back to dashboard
+    } else if (routeName == 'profile') {
+      // Navigate to profile page
+      // Navigator.push(context, MaterialPageRoute(builder: (context) => ProfilePage()));
+    } else if (routeName == 'logout') {
+      _handleLogout();
+    }
+    // Add more routes as needed
+  }
+
+  void _handleLogout() async {
+    try {
+      await _auth.signOut();
+      // Navigate to login screen
+      // Navigator.pushAndRemoveUntil(
+      //   context,
+      //   MaterialPageRoute(builder: (context) => LoginPage()),
+      //   (route) => false,
+      // );
+    } catch (e) {
+      print('Logout error: $e');
+    }
+  }
+
+  // Fetch header data similar to LandOwnerDashboard
+  void _fetchHeaderData() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      return;
+    }
+    
+    final String uid = user.uid;
+    setState(() {
+      _landID = uid.length >= 8 ? uid.substring(0, 8) : uid.padRight(8, '0'); 
+    });
+
+    try {
+      // 1. Fetch User Name and Role from 'users' collection
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      if (userDoc.exists) {
+        final userData = userDoc.data();
+        setState(() {
+          _loggedInUserName = userData?['name'] ?? 'Owner Name Missing';
+          _profileImageUrl = userData?['profileImageUrl'];
+        });
+      }
+      
+      // 2. Fetch Land Name from 'lands' collection
+      final landDoc = await FirebaseFirestore.instance.collection('lands').doc(uid).get();
+      if (landDoc.exists) {
+        setState(() {
+          _landName = landDoc.data()?['landName'] ?? 'Land Name Missing';
+        });
+      }
+
+    } catch (e) {
+      debugPrint("Error fetching header data: $e");
+      setState(() {
+        _loggedInUserName = 'Data Error';
+        _landName = 'Data Error';
+      });
+    }
   }
 
   void _initializeFormData() {
-    // If editing existing data, populate form fields
     if (widget.existingData != null) {
-      // Set location if available
-      if (widget.existingData!['latitude'] != null && widget.existingData!['longitude'] != null) {
-        final lat = widget.existingData!['latitude'] is String 
-            ? double.parse(widget.existingData!['latitude']) 
-            : widget.existingData!['latitude'];
-        final lng = widget.existingData!['longitude'] is String 
-            ? double.parse(widget.existingData!['longitude']) 
-            : widget.existingData!['longitude'];
-        
-        _selectedLocation = LatLng(lat, lng);
-        _latitude = lat.toStringAsFixed(6);
-        _longitude = lng.toStringAsFixed(6);
-        _address = widget.existingData!['address'] ?? '';
-        
-        // Determine location type based on existing data
-        _selectedLocationType = widget.existingData!['locationType'] ?? 'auto';
-      }
+      _populateFieldsFromData(widget.existingData!);
     }
+  }
+  
+  Future<void> _fetchExistingLocation() async {
+    final User? user = _auth.currentUser;
+    if (user == null || widget.existingData != null) {
+      return;
+    }
+    
+    if (!mounted) return;
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final docSnapshot = await _firestore.collection('land_location').doc(user.uid).get();
+
+      if (docSnapshot.exists && docSnapshot.data() != null) {
+        final data = docSnapshot.data()!;
+        _fetchedExistingData = data;
+        
+        _populateFieldsFromData(data);
+        
+        // Force UI update with static data from Firebase
+        if (!mounted) return;
+        setState(() {
+          _isLoading = false;
+        });
+      } else {
+        if (!mounted) return;
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error fetching existing location: $e');
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+  
+  void _populateFieldsFromData(Map<String, dynamic> data) {
+    if (data['latitude'] != null && data['longitude'] != null) {
+      final lat = data['latitude'] is String 
+          ? double.tryParse(data['latitude']) ?? 0.0
+          : data['latitude'] as double;
+      final lng = data['longitude'] is String 
+          ? double.tryParse(data['longitude']) ?? 0.0
+          : data['longitude'] as double;
+      
+      _selectedLocation = LatLng(lat, lng);
+      // Fixed: Use latitudeString/longitudeString from Firebase for static display
+      _latitude = data['latitudeString'] ?? lat.toStringAsFixed(6);
+      _longitude = data['longitudeString'] ?? lng.toStringAsFixed(6);
+      
+      _address = data['address'] ?? 'Address not available';
+      _selectedLocationType = data['locationType'] ?? 'manual';
+    }
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _selectedLocation != null) {
+        _mapController.move(_selectedLocation!, _zoomLevel);
+      }
+    });
   }
 
   @override
@@ -100,47 +241,17 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-            _selectedLocationType = 'manual';
-            _currentLocation = const LatLng(6.9271, 79.8612);
-            _selectedLocation = _currentLocation;
-          });
-        }
-        _showErrorDialog('Location Service Disabled', 
-            'Please enable location services or use manual location selection.');
+        _handleLocationFailure('Location Service Disabled', 'Please enable location services.');
         return;
       }
 
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          if (mounted) {
-            setState(() {
-              _isLoading = false;
-              _selectedLocationType = 'manual';
-              _currentLocation = const LatLng(6.9271, 79.8612);
-              _selectedLocation = _currentLocation;
-            });
-          }
-          _showPermissionDeniedDialog();
+        if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+          _handleLocationFailure('Location Permission Required', 'This app needs location permission.');
           return;
         }
-      }
-
-      if (permission == LocationPermission.deniedForever) {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-            _selectedLocationType = 'manual';
-            _currentLocation = const LatLng(6.9271, 79.8612);
-            _selectedLocation = _currentLocation;
-          });
-        }
-        _showPermissionDeniedDialog();
-        return;
       }
 
       final position = await Geolocator.getCurrentPosition(
@@ -148,77 +259,44 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
       ).timeout(const Duration(seconds: 15));
       
       if (mounted) {
+        _currentLocation = LatLng(position.latitude, position.longitude);
+        
+        if (_selectedLocation == null) {
+          _selectedLocation = _currentLocation;
+          _selectedLocationType = 'auto';
+          await _getAddressFromLatLng(_currentLocation!);
+          
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              _mapController.move(_selectedLocation!, _zoomLevel);
+            }
+          });
+        }
+        
         setState(() {
-          _currentLocation = LatLng(position.latitude, position.longitude);
-          if (_selectedLocationType == 'auto') {
-            _selectedLocation = _currentLocation;
-          }
           _isLoading = false;
         });
-        
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            _mapController.move(_currentLocation!, _zoomLevel);
-          }
-        });
-        
-        if (_selectedLocationType == 'auto') {
-          await _getAddressFromLatLng(_currentLocation!);
-        }
       }
     } catch (e) {
       print('Location error: $e');
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _selectedLocationType = 'manual';
-          _currentLocation = const LatLng(6.9271, 79.8612);
-          _selectedLocation = _currentLocation;
-        });
-      }
-      _showErrorDialog('Location Error', 
-          'Failed to get current location. Please use manual location selection.');
+      _handleLocationFailure('Location Error', 'Failed to get current location.');
     }
   }
 
-  void _showPermissionDeniedDialog() {
-    if (!mounted) return;
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Location Permission Required'),
-        content: const Text('This app needs location permission for automatic location detection. You can use manual location selection.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Use Manual Selection'),
-          ),
-          TextButton(
-            onPressed: () => openAppSettings(),
-            child: const Text('Open Settings'),
-          ),
-        ],
-      ),
-    );
+  void _handleLocationFailure(String title, String message) {
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        _selectedLocationType = 'manual';
+        _currentLocation = const LatLng(6.9271, 79.8612);
+        _selectedLocation = _selectedLocation ?? _currentLocation;
+      });
+      if (title.contains('Disabled') || title.contains('Required')) {
+        _showErrorDialog(title, message);
+      }
+    }
   }
-
-  void _showErrorDialog(String title, String message) {
-    if (!mounted) return;
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
+  
   Future<void> _getAddressFromLatLng(LatLng latLng) async {
     try {
       final placemarks = await placemarkFromCoordinates(
@@ -242,12 +320,19 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
             _longitude = latLng.longitude.toStringAsFixed(6);
           });
         }
+      } else {
+         if (mounted) {
+          setState(() {
+            _address = 'Address not found for coordinates';
+            _latitude = latLng.latitude.toStringAsFixed(6);
+            _longitude = latLng.longitude.toStringAsFixed(6);
+          });
+        }
       }
     } catch (e) {
-      print('Geocoding error: $e');
       if (mounted) {
         setState(() {
-          _address = '${latLng.latitude.toStringAsFixed(6)}, ${latLng.longitude.toStringAsFixed(6)}';
+          _address = 'Lat: ${latLng.latitude.toStringAsFixed(6)}, Lng: ${latLng.longitude.toStringAsFixed(6)}';
           _latitude = latLng.latitude.toStringAsFixed(6);
           _longitude = latLng.longitude.toStringAsFixed(6);
         });
@@ -284,7 +369,7 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
       final lat = double.tryParse(_manualLatController.text);
       final lng = double.tryParse(_manualLngController.text);
       
-      if (lat != null && lng != null) {
+      if (lat != null && lng != null && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
         final newLocation = LatLng(lat, lng);
         setState(() {
           _selectedLocation = newLocation;
@@ -293,67 +378,34 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
         _getAddressFromLatLng(newLocation);
         _mapController.move(newLocation, _zoomLevel);
         
-        // Clear the text fields
         _manualLatController.clear();
         _manualLngController.clear();
         
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Location updated successfully!'),
-                backgroundColor: Colors.green,
-              ),
-            );
-          }
-        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Location updated using manual coordinates!'),
+            backgroundColor: _primaryBlue,
+          ),
+        );
       } else {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Please enter valid coordinates'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please enter valid coordinates (-90 to 90 for Lat, -180 to 180 for Lng)'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } catch (e) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      });
+      print('Manual coordinates error: $e');
     }
   }
 
   Future<void> _searchLocation() async {
-    if (!mounted) return;
-    if (_searchController.text.isEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Please enter a location to search'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-      });
-      return;
-    }
+    if (!mounted || _searchController.text.isEmpty) return;
 
-    if (mounted) {
-      setState(() {
-        _isLoading = true;
-      });
-    }
+    setState(() {
+      _isLoading = true;
+    });
 
     try {
       final response = await http.get(
@@ -367,237 +419,274 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
         
         if (results.isNotEmpty) {
           final result = results.first;
-          final lat = double.parse(result['lat']);
-          final lng = double.parse(result['lon']);
-          final newLocation = LatLng(lat, lng);
+          final newLocation = LatLng(double.parse(result['lat']), double.parse(result['lon']));
           
           if (mounted) {
             setState(() {
               _selectedLocation = newLocation;
               _selectedLocationType = 'manual';
-              _isLoading = false;
             });
-          }
-          
-          _getAddressFromLatLng(newLocation);
-          _mapController.move(newLocation, _zoomLevel);
-          
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Found: ${result['display_name']}'),
-                  backgroundColor: Colors.green,
-                ),
-              );
-            }
-          });
-        } else {
-          if (mounted) {
-            setState(() {
-              _isLoading = false;
-            });
-          }
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Location not found'),
-                  backgroundColor: Colors.red,
-                ),
-              );
-            }
-          });
-        }
-      } else {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-        }
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
+            _getAddressFromLatLng(newLocation);
+            _mapController.move(newLocation, _zoomLevel);
+            
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Search failed. Please try again.'),
-                backgroundColor: Colors.red,
+              SnackBar(
+                content: Text('Found: ${result['display_name']}'),
+                backgroundColor: _primaryBlue,
               ),
             );
           }
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
+        } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Search error: $e'),
+            const SnackBar(
+              content: Text('Location not found'),
               backgroundColor: Colors.red,
             ),
           );
         }
-      });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Search failed. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Search error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if(mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _saveToFirebase() async {
-    if (!mounted) return;
+    if (!mounted || _selectedLocation == null) return;
     
-    if (_selectedLocation == null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Please select a location'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      });
-      return;
-    }
-
-    if (mounted) {
-      setState(() {
-        _isSaving = true;
-      });
-    }
+    setState(() {
+      _isSaving = true;
+    });
 
     try {
       final User? user = _auth.currentUser;
       if (user == null) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Please login to save data'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please login to save data'),
+            backgroundColor: Colors.red,
+          ),
+        );
         return;
       }
 
-      // Prepare the location data for land_locations collection
+      final String documentId = user.uid;
+      final DocumentReference landLocationDocRef = 
+          _firestore.collection('land_location').doc(documentId);
+      
+      bool isUpdate = _fetchedExistingData != null || widget.existingData != null;
+
       final locationData = {
-        'userId': user.uid, // Add user ID to the document
+        'userId': user.uid,
         'address': _address,
         'latitude': _selectedLocation!.latitude,
         'longitude': _selectedLocation!.longitude,
         'latitudeString': _latitude,
         'longitudeString': _longitude,
         'locationType': _selectedLocationType,
-        'factoryIds': widget.existingData?['factoryIds'] ?? [],
-        'createdAt': widget.existingData?['createdAt'] ?? FieldValue.serverTimestamp(),
+        'createdAt': (widget.existingData?['createdAt'] ?? _fetchedExistingData?['createdAt']) 
+                     ?? FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       };
 
-      // Save to 'land_locations' collection as a separate document
-      final landLocationsRef = _firestore.collection('land_locations');
-      
-      if (widget.existingData != null && widget.existingData!['id'] != null) {
-        // Update existing land location
-        await landLocationsRef.doc(widget.existingData!['id']).update(locationData);
-        
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Location updated successfully!'),
-                backgroundColor: Colors.green,
-              ),
-            );
-          }
-        });
-      } else {
-        // Create new land location
-        final newDocRef = landLocationsRef.doc();
-        locationData['id'] = newDocRef.id; // Add the document ID to the data
-        
-        await newDocRef.set(locationData);
-        
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Location saved successfully!'),
-                backgroundColor: Colors.green,
-              ),
-            );
-          }
-        });
-      }
+      await landLocationDocRef.set(locationData);
 
-      // Call the callback with the saved data
-      widget.onLocationSelected(locationData);
+      final String successMessage = isUpdate 
+          ? 'Location updated successfully!'
+          : 'Location saved successfully!';
+
+      locationData['docId'] = documentId;
       
-      // Navigate back
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(successMessage),
+              backgroundColor: _primaryBlue,
+            ),
+          );
+          widget.onLocationSelected(locationData);
           Navigator.pop(context);
         }
       });
 
     } catch (e) {
       print('Firebase save error: $e');
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error saving location: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error saving location: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     } finally {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          setState(() {
-            _isSaving = false;
-          });
-        }
-      });
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
-  Widget _buildLocationTypeSelection() {
+  // Fixed: Proper static data display from Firebase
+  Widget _buildExistingLocationDisplay() {
+    final User? user = _auth.currentUser;
+    if (user == null) return const SizedBox.shrink();
+    
+    final Map<String, dynamic>? savedData = _fetchedExistingData ?? widget.existingData;
+    
+    if (savedData == null || savedData.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    // Fixed: Use the stored string values directly for static display
+    final displayLat = savedData['latitudeString'] ?? savedData['latitude']?.toStringAsFixed(6) ?? '--';
+    final displayLng = savedData['longitudeString'] ?? savedData['longitude']?.toStringAsFixed(6) ?? '--';
+    final displayAddress = savedData['address'] ?? 'Address not available';
+    
+    double? savedLat;
+    double? savedLng;
+    
+    try {
+      savedLat = (savedData['latitude'] as num?)?.toDouble();
+      savedLng = (savedData['longitude'] as num?)?.toDouble();
+    } catch (e) {
+      print('Error parsing saved coordinates: $e');
+    }
+
+    final openMapUrl = 'https://www.google.com/maps/search/?api=1&query=$displayLat,$displayLng';
+
     return Card(
+      color: _primaryBlue.withOpacity(0.05),
+      elevation: 3,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: _primaryBlue.withOpacity(0.2), width: 1),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Row(
+              children: [
+                Icon(
+                  Icons.location_history,
+                  color: _primaryBlue,
+                  size: 24,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Previously Saved Location',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: _primaryBlue,
+                  ),
+                ),
+              ],
+            ),
+            const Divider(color: Colors.grey),
+            _buildDetailRow('Saved Address', displayAddress),
+            _buildDetailRow('Latitude', displayLat),
+            _buildDetailRow('Longitude', displayLng),
+            _buildDetailRow('Updated At', 
+                (savedData['updatedAt'] is Timestamp) 
+                    ? (savedData['updatedAt'] as Timestamp).toDate().toString().split('.')[0] 
+                    : 'N/A'),
+            
+            const SizedBox(height: 12),
+            
+            if (savedLat != null && savedLng != null)
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        _mapController.move(LatLng(savedLat!, savedLng!), _zoomLevel);
+                      },
+                      icon: Icon(Icons.travel_explore, size: 18, color: _primaryBlue),
+                      label: Text('View on Map', style: TextStyle(fontSize: 14, color: _primaryBlue)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _primaryBlue.withOpacity(0.1),
+                        foregroundColor: _primaryBlue,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        if (await canLaunchUrlString(openMapUrl)) {
+                          await launchUrlString(openMapUrl);
+                        }
+                      },
+                      icon: Icon(Icons.open_in_new, size: 18, color: Colors.white),
+                      label: Text('Open in Maps', style: TextStyle(fontSize: 14, color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _primaryBlue,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            
+            const SizedBox(height: 16),
+            
+            Text(
+              'You can update a new location by selecting a point on the map below.',
+              style: TextStyle(
+                fontStyle: FontStyle.italic,
+                color: Colors.blueGrey,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLocationTypeSelection() {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
               'Select Location Method',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: _primaryBlue,
+              ),
             ),
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(
-                  child: _buildLocationTypeCard(
-                    'Auto Location',
-                    'Use your current location automatically',
-                    Icons.my_location,
-                    'auto',
-                  ),
-                ),
+                Expanded(child: _buildLocationTypeCard('Auto Location', 'Use your current location automatically', Icons.my_location, 'auto')),
                 const SizedBox(width: 12),
-                Expanded(
-                  child: _buildLocationTypeCard(
-                    'Manual Location',
-                    'Select location manually on map or enter coordinates',
-                    Icons.edit_location_alt,
-                    'manual',
-                  ),
-                ),
+                Expanded(child: _buildLocationTypeCard('Manual Location', 'Select location manually on map or enter coordinates', Icons.edit_location_alt, 'manual')),
               ],
             ),
           ],
@@ -607,6 +696,8 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
   }
 
   Widget _buildLocationTypeCard(String title, String description, IconData icon, String type) {
+    final bool isSelected = _selectedLocationType == type;
+    
     return GestureDetector(
       onTap: () {
         if (!mounted) return;
@@ -621,22 +712,26 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: _selectedLocationType == type ? Colors.green[50] : Colors.grey[50],
+          color: isSelected ? _primaryBlue.withOpacity(0.15) : Colors.grey[50],
           border: Border.all(
-            color: _selectedLocationType == type ? Colors.green : Colors.grey[300]!,
+            color: isSelected ? _primaryBlue : Colors.grey[300]!,
             width: 2,
           ),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
           children: [
-            Icon(icon, color: _selectedLocationType == type ? Colors.green : Colors.grey, size: 32),
+            Icon(
+              icon,
+              color: isSelected ? _primaryBlue : Colors.grey,
+              size: 32,
+            ),
             const SizedBox(height: 8),
             Text(
               title,
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                color: _selectedLocationType == type ? Colors.green : Colors.grey[700],
+                color: isSelected ? _primaryBlue : Colors.grey[700],
               ),
             ),
             const SizedBox(height: 4),
@@ -644,7 +739,7 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
               description,
               style: TextStyle(
                 fontSize: 12,
-                color: _selectedLocationType == type ? Colors.green[700] : Colors.grey[600],
+                color: isSelected ? _primaryBlue : Colors.grey[600],
               ),
               textAlign: TextAlign.center,
             ),
@@ -656,14 +751,22 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
 
   Widget _buildManualLocationInput() {
     return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Enter Coordinates Manually',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: _primaryBlue,
+              ),
             ),
             const SizedBox(height: 12),
             Row(
@@ -671,32 +774,52 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
                 Expanded(
                   child: TextField(
                     controller: _manualLatController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Latitude',
-                      border: OutlineInputBorder(),
+                      labelStyle: TextStyle(color: _primaryBlue),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: _primaryBlue),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: _primaryBlue, width: 2),
+                      ),
                     ),
-                    keyboardType: TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: TextField(
                     controller: _manualLngController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Longitude',
-                      border: OutlineInputBorder(),
+                      labelStyle: TextStyle(color: _primaryBlue),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: _primaryBlue),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: _primaryBlue, width: 2),
+                      ),
                     ),
-                    keyboardType: TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   ),
                 ),
                 const SizedBox(width: 12),
                 ElevatedButton(
                   onPressed: _useManualCoordinates,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green[700],
+                    backgroundColor: _primaryBlue,
+                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
-                  child: const Text('Go', style: TextStyle(color: Colors.white)),
+                  child: const Text('Go'),
                 ),
               ],
             ),
@@ -706,194 +829,346 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.existingData != null ? 'Edit Location' : 'Select Location'),
-        backgroundColor: Colors.green[700],
-        foregroundColor: Colors.white,
+  // Header Widget (same as LandOwnerDashboard)
+  Widget _buildDashboardHeader(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [_headerGradientStart, _headerGradientEnd], 
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(30), 
+          bottomRight: Radius.circular(30),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x10000000), 
+            blurRadius: 15,
+            offset: Offset(0, 5),
+          ),
+        ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.menu, color: _headerTextDark, size: 28),
+                onPressed: () {
+                  _scaffoldKey.currentState?.openDrawer();
+                },
+              ),
+              Text(
+                'Location Selection',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: _headerTextDark,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.arrow_back, color: _headerTextDark, size: 28),
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 10),
+          
+          Row(
+            children: [
+              // Profile Picture
+              Container(
+                width: 70,
+                height: 70,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: _profileImageUrl == null 
+                    ? const LinearGradient(
+                        colors: [_primaryBlue, Color(0xFF457AED)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : null,
+                  border: Border.all(color: Colors.white, width: 3),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _primaryBlue.withOpacity(0.4),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                  image: _profileImageUrl != null 
+                    ? DecorationImage(
+                        image: NetworkImage(_profileImageUrl!),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
+                ),
+                child: _profileImageUrl == null
+                    ? const Icon(Icons.person, size: 40, color: Colors.white)
+                    : null,
+              ),
+              
+              const SizedBox(width: 15),
+              
+              // User Info Display
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Location Type Selection
-                  _buildLocationTypeSelection(),
-                  
-                  const SizedBox(height: 16),
-                  
-                  // Manual Coordinates Input (only for manual selection)
-                  if (_selectedLocationType == 'manual') ...[
-                    _buildManualLocationInput(),
-                    const SizedBox(height: 16),
-                  ],
-                  
-                  // Search Bar
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Search Location',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: _searchController,
-                                  decoration: const InputDecoration(
-                                    hintText: 'Enter address or place name...',
-                                    border: OutlineInputBorder(),
-                                  ),
-                                  onSubmitted: (_) => _searchLocation(),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              ElevatedButton(
-                                onPressed: _searchLocation,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green[700],
-                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                                ),
-                                child: const Text('Search', style: TextStyle(color: Colors.white)),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
+                  // 1. Land Name
+                  Text(
+                    _landName, 
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: _headerTextDark,
                     ),
                   ),
-                  
-                  const SizedBox(height: 16),
-                  
-                  // Map
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              const Text(
-                                'Map',
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                              ),
-                              const Spacer(),
-                              IconButton(
-                                icon: const Icon(Icons.my_location),
-                                onPressed: _goToCurrentLocation,
-                                tooltip: 'Go to current location',
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Container(
-                            height: 400,
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey[300]!),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Stack(
-                              children: [
-                                FlutterMap(
-                                  mapController: _mapController,
-                                  options: MapOptions(
-                                    center: _currentLocation ?? const LatLng(6.9271, 79.8612),
-                                    zoom: _zoomLevel,
-                                    onTap: _onMapTap,
-                                  ),
-                                  children: [
-                                    TileLayer(
-                                      urlTemplate: _tileLayers[_selectedTileLayer]['url'],
-                                      userAgentPackageName: 'com.example.location_selector',
-                                    ),
-                                    MarkerLayer(
-                                      markers: _selectedLocation != null
-                                          ? [
-                                              Marker(
-                                                point: _selectedLocation!,
-                                                width: 40,
-                                                height: 40,
-                                                child: Icon(
-                                                  Icons.location_pin,
-                                                  color: _selectedLocationType == 'auto' ? Colors.green : Colors.blue,
-                                                  size: 40,
-                                                ),
-                                              ),
-                                            ]
-                                          : [],
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 16),
-                  
-                  // Location Details
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Selected Location Details',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 12),
-                          _buildDetailRow('Location Type', 
-                              _selectedLocationType == 'auto' ? 'Auto-detected' : 'Manual'),
-                          _buildDetailRow('Address', _address.isNotEmpty ? _address : 'Not selected'),
-                          _buildDetailRow('Latitude', _latitude.isNotEmpty ? _latitude : '--'),
-                          _buildDetailRow('Longitude', _longitude.isNotEmpty ? _longitude : '--'),
-                        ],
-                      ),
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 16),
-                  
-                  // Save Button
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _isSaving ? null : _saveToFirebase,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green[700],
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
-                      child: _isSaving
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                              ),
-                            )
-                          : const Text(
-                              'Save Location',
-                              style: TextStyle(fontSize: 16, color: Colors.white),
-                            ),
+                  // 2. Logged-in User Name and Role
+                  Text(
+                    'Logged in as: $_loggedInUserName \n($_userRole)', 
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: _headerTextDark.withOpacity(0.7),
                     ),
                   ),
                 ],
               ),
+            ],
+          ),
+          
+          const SizedBox(height: 25), 
+          
+          // Page specific title
+          Text(
+            'Select or Update Land Location',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: _headerTextDark,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      key: _scaffoldKey,
+      backgroundColor: Colors.grey[50],
+      // Add drawer here
+      drawer: LandOwnerDrawer(
+        onLogout: () {
+          _handleLogout();
+        },
+        onNavigate: _handleDrawerNavigate,
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                // Header from LandOwnerDashboard
+                _buildDashboardHeader(context),
+                
+                // Content area
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // 1. Existing Location Card (STATIC DATA FROM FIREBASE)
+                        _buildExistingLocationDisplay(),
+                        
+                        const SizedBox(height: 16),
+                        
+                        // 2. Location Type Selection
+                        _buildLocationTypeSelection(),
+                        
+                        const SizedBox(height: 16),
+                        
+                        // 3. Manual Coordinates Input
+                        if (_selectedLocationType == 'manual') ...[
+                          _buildManualLocationInput(),
+                          const SizedBox(height: 16),
+                        ],
+                        
+                        // 4. Map
+                        Card(
+                          elevation: 3,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'Map',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: _primaryBlue,
+                                      ),
+                                    ),
+                                    Row(
+                                      children: [
+                                        IconButton(
+                                          onPressed: _goToCurrentLocation,
+                                          icon: Icon(Icons.my_location, color: _primaryBlue),
+                                          tooltip: 'Go to current location',
+                                        ),
+                                        IconButton(
+                                          onPressed: () {
+                                            if (_selectedLocation != null) {
+                                              _mapController.move(_selectedLocation!, _zoomLevel);
+                                            }
+                                          },
+                                          icon: Icon(Icons.center_focus_strong, color: _primaryBlue),
+                                          tooltip: 'Center on selected location',
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Container(
+                                  height: 400,
+                                  decoration: BoxDecoration(
+                                    border: Border.all(color: _primaryBlue.withOpacity(0.3)),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: FlutterMap(
+                                    mapController: _mapController,
+                                    options: MapOptions(
+                                      center: _selectedLocation ?? const LatLng(6.9271, 79.8612),
+                                      zoom: _zoomLevel,
+                                      onTap: _onMapTap,
+                                    ),
+                                    children: [
+                                      TileLayer(
+                                        urlTemplate: _tileLayers[_selectedTileLayer]['url'],
+                                        userAgentPackageName: 'com.example.location_selector',
+                                      ),
+                                      MarkerLayer(
+                                        markers: _selectedLocation != null
+                                            ? [
+                                                Marker(
+                                                  point: _selectedLocation!,
+                                                  width: 40,
+                                                  height: 40,
+                                                  child: Icon(
+                                                    Icons.location_pin,
+                                                    color: _selectedLocationType == 'auto' 
+                                                        ? _secondaryColor 
+                                                        : _primaryBlue,
+                                                    size: 40,
+                                                  ),
+                                                ),
+                                              ]
+                                            : [],
+                                      ),
+                                      RichAttributionWidget(
+                                        attributions: [
+                                          TextSourceAttribution(
+                                            'OpenStreetMap contributors',
+                                            onTap: () => launchUrlString('https://openstreetmap.org/copyright'),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 16),
+                        
+                        // 5. Location Details (CURRENT SELECTION - NOT STATIC)
+                        Card(
+                          elevation: 3,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Current Selection (Changes on Map Tap)',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: _primaryBlue,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                _buildDetailRow('Location Type', _selectedLocationType == 'auto' ? 'Auto-detected' : 'Manual'),
+                                _buildDetailRow('Address', _address.isNotEmpty ? _address : 'Not selected'),
+                                _buildDetailRow('Latitude', _latitude.isNotEmpty ? _latitude : '--'),
+                                _buildDetailRow('Longitude', _longitude.isNotEmpty ? _longitude : '--'),
+                              ],
+                            ),
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 16),
+                        
+                        // 6. Save Button
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: _isSaving ? null : _saveToFirebase,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _primaryBlue,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 4,
+                            ),
+                            child: _isSaving
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    ),
+                                  )
+                                : Text(
+                                    (widget.existingData != null || _fetchedExistingData != null)
+                                        ? 'Update Location'
+                                        : 'Save Location',
+                                    style: const TextStyle(fontSize: 16),
+                                  ),
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 20),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
     );
   }
@@ -908,10 +1183,41 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
             width: 120,
             child: Text(
               '$title:',
-              style: const TextStyle(fontWeight: FontWeight.w500),
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                color: _primaryBlue,
+              ),
             ),
           ),
-          Expanded(child: Text(value)),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(color: Colors.black87),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  void _showErrorDialog(String title, String message) {
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          title,
+          style: TextStyle(color: _primaryBlue),
+        ),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'OK',
+              style: TextStyle(color: _primaryBlue),
+            ),
+          ),
         ],
       ),
     );
