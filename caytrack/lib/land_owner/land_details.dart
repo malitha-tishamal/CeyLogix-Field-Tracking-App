@@ -6,7 +6,6 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
 import 'dart:async';
-import 'land_owner_drawer.dart';
 
 class AppColors {
   static const Color background = Color(0xFFEEEBFF);
@@ -67,26 +66,18 @@ class _LandDetailsState extends State<LandDetails> {
       return const Scaffold(body: Center(child: Text("Error: User not logged in.")));
     }
 
-    void handleDrawerNavigate(String routeName) {
-      Navigator.pop(context);
-    }
-
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: AppColors.background,
-      drawer: LandOwnerDrawer(
-        onLogout: () {
-          FirebaseAuth.instance.signOut();
-          Navigator.pop(context);
-        },
-        onNavigate: handleDrawerNavigate,
-      ),
-      body: Stack(
+      body: Column(
         children: [
-          SafeArea(
+          // Fixed Header
+          _buildProfileHeader(context),
+          
+          // Scrollable Content with Footer
+          Expanded(
             child: Column(
               children: [
-                _buildProfileHeader(context),
                 Expanded(
                   child: LandOwnerProfileContent(
                     key: ValueKey(currentUser!.uid),
@@ -94,21 +85,23 @@ class _LandDetailsState extends State<LandDetails> {
                     onProfileUpdated: _fetchUserInfo,
                   ),
                 ),
-              ],
-            ),
-          ),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Text(
-                'Developed By Malitha Tishamal',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppColors.darkText.withOpacity(0.7),
-                  fontSize: 12,
+                
+                // Footer (Fixed at bottom of content area)
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(
+                      'Developed By Malitha Tishamal',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.darkText.withOpacity(0.7),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
         ],
@@ -144,11 +137,20 @@ class _LandDetailsState extends State<LandDetails> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
-                icon: const Icon(Icons.menu, color: AppColors.headerTextDark, size: 28),
+                icon: const Icon(Icons.arrow_back, color: AppColors.headerTextDark, size: 28),
                 onPressed: () {
-                  _scaffoldKey.currentState?.openDrawer();
+                  Navigator.pop(context);
                 },
               ),
+              Text(
+                'Land Details',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.headerTextDark,
+                ),
+              ),
+              const SizedBox(width: 48), // For balance
             ],
           ),
           
@@ -216,7 +218,7 @@ class _LandDetailsState extends State<LandDetails> {
           const SizedBox(height: 25),
           
           const Text(
-            'Manage Land Details',
+            'Manage Your Land Information',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -259,12 +261,13 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
   late TextEditingController _gnDivisionController;
   late TextEditingController _villageController;
 
-  // State variables
-  String? _profileImageUrl;
-  XFile? _pickedImageFile;
-  bool _uploadingImage = false;
-  int? _pickedImageFileSize;
-  
+  // State variables for LAND PHOTOS
+  List<XFile> _selectedLandPhotos = [];
+  List<String> _uploadedLandPhotoUrls = [];
+  bool _uploadingPhotos = false;
+  int _maxPhotos = 5;
+
+  // Other state variables
   String? _selectedProvince;
   String? _selectedDistrict;
   String? _selectedCropType;
@@ -297,14 +300,10 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
     });
 
     try {
-      final userDoc = await _firestore.collection('users').doc(widget.landOwnerUID).get();
       final factoriesSnapshot = await _firestore.collection('factories').get();
       final landDoc = await _firestore.collection('lands').doc(widget.landOwnerUID).get();
 
       if (mounted) {
-        final userData = userDoc.data();
-        _profileImageUrl = userData?['profileImageUrl'];
-
         _availableFactories = factoriesSnapshot.docs.map((doc) {
           final factoryData = doc.data();
           return {
@@ -317,6 +316,11 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
         if (landData != null) {
           _loadedData = landData;
           _populateFormData(landData);
+          
+          // Load existing land photos
+          if (landData['landPhotos'] != null && landData['landPhotos'] is List) {
+            _uploadedLandPhotoUrls = List<String>.from(landData['landPhotos']);
+          }
         }
 
         setState(() {
@@ -369,6 +373,7 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
     setState(() {
       _isLoading = true;
       _statusMessage = null;
+      _selectedLandPhotos.clear();
     });
     
     await _loadInitialData();
@@ -380,282 +385,393 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
     }
   }
 
-  // 🔑 FIXED & IMPROVED IMAGE PICKING METHOD
-  Future<void> _pickImage(ImageSource source) async {
+  // Pick Land Photos Method
+  Future<void> _pickLandPhotos() async {
     try {
-      final XFile? pickedFile = await _imagePicker.pickImage(
-        source: source,
-        maxWidth: 800,
-        maxHeight: 800,
-        imageQuality: 80,
+      if (_selectedLandPhotos.length >= _maxPhotos) {
+        _showStatusMessage('Maximum $_maxPhotos photos allowed');
+        return;
+      }
+
+      final List<XFile>? pickedFiles = await _imagePicker.pickMultiImage(
+        maxWidth: 1200,
+        maxHeight: 1200,
+        imageQuality: 85,
       );
 
-      if (pickedFile != null) {
-        final file = File(pickedFile.path);
-        if (await file.exists()) {
-          final stat = await file.stat();
-          final fileSizeKB = stat.size / 1024;
-          
-          // Check file size (max 5MB)
-          if (fileSizeKB > 5000) {
-            _showStatusMessage('Image is too large (${fileSizeKB.toStringAsFixed(1)} KB). Please choose an image under 5MB.');
-            return;
+      if (pickedFiles != null) {
+        int availableSlots = _maxPhotos - _selectedLandPhotos.length;
+        int filesToAdd = pickedFiles.length > availableSlots ? availableSlots : pickedFiles.length;
+        
+        for (int i = 0; i < filesToAdd; i++) {
+          final file = File(pickedFiles[i].path);
+          if (await file.exists()) {
+            final stat = await file.stat();
+            final fileSizeMB = stat.size / (1024 * 1024);
+            
+            if (fileSizeMB > 10) {
+              _showStatusMessage('${pickedFiles[i].name} is too large (${fileSizeMB.toStringAsFixed(1)} MB). Max 10MB per photo.');
+              continue;
+            }
+            
+            _selectedLandPhotos.add(pickedFiles[i]);
           }
-          
-          setState(() {
-            _pickedImageFile = pickedFile;
-            _pickedImageFileSize = stat.size;
-          });
-          
-          _showStatusMessage('Image selected: ${pickedFile.name} (${fileSizeKB.toStringAsFixed(1)} KB)');
-        } else {
-          _showStatusMessage('Selected file does not exist');
         }
+        
+        setState(() {});
+        _showStatusMessage('Added ${filesToAdd} photo(s). Total: ${_selectedLandPhotos.length}/$_maxPhotos');
       }
     } catch (e) {
-      _handleImagePickerError(e, source);
+      _showStatusMessage('Error selecting photos: ${e.toString()}');
     }
   }
 
-  // 🔑 IMPROVED ERROR HANDLING
-  void _handleImagePickerError(dynamic error, ImageSource source) {
-    String errorMessage = 'Failed to pick image: ${error.toString()}';
-    
-    if (error.toString().contains('unsupported') || error.toString().contains('operation')) {
-      errorMessage = 'Image picking is not supported on this platform or device. '
-          'Please check your device permissions and try again.';
-    } else if (error.toString().contains('permission')) {
-      errorMessage = 'Permission denied. Please enable camera and storage permissions in your device settings.';
-    } else if (source == ImageSource.camera && error.toString().contains('camera')) {
-      errorMessage = 'Camera not available. Please check if your device has a working camera.';
-    } else if (error.toString().contains('photo_access_denied')) {
-      errorMessage = 'Photo access denied. Please enable photo library access in your device settings.';
-    }
-    
-    _showStatusMessage(errorMessage);
+  // Remove selected photo
+  void _removeSelectedPhoto(int index) {
+    setState(() {
+      _selectedLandPhotos.removeAt(index);
+    });
+    _showStatusMessage('Photo removed');
   }
 
-  void _openImageOptions() {
-    showModalBottomSheet(
-      context: context,
-      builder: (ctx) {
-        return SafeArea(
-          child: Wrap(
+  // Remove uploaded photo
+  void _removeUploadedPhoto(int index) async {
+    try {
+      setState(() {
+        _uploadingPhotos = true;
+      });
+      
+      final urlToRemove = _uploadedLandPhotoUrls[index];
+      
+      // Remove from Firestore
+      await _firestore.collection('lands').doc(widget.landOwnerUID).update({
+        'landPhotos': FieldValue.arrayRemove([urlToRemove]),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      
+      setState(() {
+        _uploadedLandPhotoUrls.removeAt(index);
+      });
+      
+      _showStatusMessage('Photo removed successfully');
+    } catch (e) {
+      _showStatusMessage('Error removing photo: ${e.toString()}');
+    } finally {
+      setState(() {
+        _uploadingPhotos = false;
+      });
+    }
+  }
+
+  // Upload Land Photos to Cloudinary
+  Future<List<String>> _uploadLandPhotosToCloudinary() async {
+    List<String> uploadedUrls = [];
+    
+    for (int i = 0; i < _selectedLandPhotos.length; i++) {
+      final photo = _selectedLandPhotos[i];
+      try {
+        debugPrint('Uploading land photo ${i + 1}/${_selectedLandPhotos.length}: ${photo.name}');
+        
+        final bytes = await photo.readAsBytes();
+        final fileSizeMB = (bytes.length / (1024 * 1024)).toStringAsFixed(2);
+        
+        _showStatusMessage('Uploading photo ${i + 1} (${photo.name}) - $fileSizeMB MB...');
+
+        final url = Uri.parse("https://api.cloudinary.com/v1_1/$_cloudName/image/upload");
+        
+        final request = http.MultipartRequest('POST', url)
+          ..fields['upload_preset'] = _uploadPreset
+          ..files.add(http.MultipartFile.fromBytes(
+            'file',
+            bytes,
+            filename: 'land_${widget.landOwnerUID}_${DateTime.now().millisecondsSinceEpoch}_$i.jpg',
+          ));
+
+        final streamedResponse = await request.send().timeout(
+          const Duration(seconds: 45),
+        );
+
+        final response = await http.Response.fromStream(streamedResponse);
+        
+        if (response.statusCode == 200) {
+          final responseData = json.decode(response.body);
+          final imageUrl = responseData['secure_url'];
+          uploadedUrls.add(imageUrl);
+          debugPrint('✅ Photo ${i + 1} uploaded successfully!');
+        } else {
+          debugPrint('❌ Photo upload failed: ${response.statusCode}');
+          _showStatusMessage('Failed to upload photo ${i + 1}. Please try again.');
+        }
+      } catch (e) {
+        debugPrint('❌ Error uploading photo ${i + 1}: $e');
+        _showStatusMessage('Error uploading photo ${i + 1}. Please try again.');
+      }
+    }
+    
+    return uploadedUrls;
+  }
+
+  // Land Photos Gallery Widget
+  Widget _buildLandPhotosGallery() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildInputLabel('Land Photos (Max 5)'),
+        const SizedBox(height: 8),
+        
+        // Uploaded Photos Grid
+        if (_uploadedLandPhotoUrls.isNotEmpty) ...[
+          const Text(
+            'Currently Uploaded Photos:',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.darkText,
+            ),
+          ),
+          const SizedBox(height: 8),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+              childAspectRatio: 1,
+            ),
+            itemCount: _uploadedLandPhotoUrls.length,
+            itemBuilder: (context, index) {
+              return Stack(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.primaryBlue.withOpacity(0.3)),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        _uploadedLandPhotoUrls[index],
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Center(
+                            child: CircularProgressIndicator(
+                              value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                  : null,
+                              color: AppColors.primaryBlue,
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: Colors.grey[200],
+                            child: const Icon(Icons.broken_image, color: Colors.grey),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: GestureDetector(
+                      onTap: () => _removeUploadedPhoto(index),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.close,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 4,
+                    left: 4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.6),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        '${index + 1}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+        ],
+        
+        // Selected Photos Grid
+        if (_selectedLandPhotos.isNotEmpty) ...[
+          const Text(
+            'New Photos to Upload:',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.darkText,
+            ),
+          ),
+          const SizedBox(height: 8),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+              childAspectRatio: 1,
+            ),
+            itemCount: _selectedLandPhotos.length,
+            itemBuilder: (context, index) {
+              return Stack(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.secondaryColor.withOpacity(0.5)),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.file(
+                        File(_selectedLandPhotos[index].path),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: GestureDetector(
+                      onTap: () => _removeSelectedPhoto(index),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.close,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 4,
+                    left: 4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.6),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        '${index + 1}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+        ],
+        
+        // Add Photos Button
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.cardBackground,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: _selectedLandPhotos.length >= _maxPhotos 
+                ? Colors.grey 
+                : AppColors.primaryBlue.withOpacity(0.3),
+            ),
+          ),
+          child: Column(
             children: [
-              if (_pickedImageFile != null)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryBlue.withOpacity(0.05),
-                    border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Current Selection:',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.darkText,
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _pickedImageFile!.name,
-                        style: TextStyle(
-                          color: AppColors.darkText.withOpacity(0.7),
-                          fontSize: 13,
-                        ),
-                      ),
-                      if (_pickedImageFileSize != null)
-                        Text(
-                          '${(_pickedImageFileSize! / 1024).toStringAsFixed(1)} KB',
-                          style: TextStyle(
-                            color: AppColors.darkText.withOpacity(0.5),
-                            fontSize: 12,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              
-              // Camera option
-              ListTile(
-                leading: const Icon(Icons.photo_camera, color: AppColors.primaryBlue),
-                title: const Text('Take Photo'),
-                subtitle: const Text('Capture a new photo with camera'),
-                onTap: () {
-                  Navigator.of(ctx).pop();
-                  _pickImage(ImageSource.camera);
-                },
+              Icon(
+                Icons.photo_camera,
+                size: 40,
+                color: _selectedLandPhotos.length >= _maxPhotos 
+                  ? Colors.grey 
+                  : AppColors.primaryBlue,
               ),
-              
-              // Gallery option
-              ListTile(
-                leading: const Icon(Icons.photo_library, color: AppColors.primaryBlue),
-                title: const Text('Choose from Gallery'),
-                subtitle: const Text('Select from your device gallery'),
-                onTap: () {
-                  Navigator.of(ctx).pop();
-                  _pickImage(ImageSource.gallery);
-                },
-              ),
-              
-              if (_profileImageUrl != null || _pickedImageFile != null)
-                ListTile(
-                  leading: const Icon(Icons.delete_outline, color: Colors.red),
-                  title: const Text('Remove Current Photo', style: TextStyle(color: Colors.red)),
-                  subtitle: const Text('Remove profile picture', style: TextStyle(color: Colors.red)),
-                  onTap: () {
-                    Navigator.of(ctx).pop();
-                    _removeProfileImage();
-                  },
+              const SizedBox(height: 8),
+              Text(
+                _selectedLandPhotos.length >= _maxPhotos
+                  ? 'Maximum $_maxPhotos photos reached'
+                  : 'Add Land Photos (${_selectedLandPhotos.length}/$_maxPhotos)',
+                style: TextStyle(
+                  color: _selectedLandPhotos.length >= _maxPhotos 
+                    ? Colors.grey 
+                    : AppColors.darkText,
+                  fontWeight: FontWeight.w500,
                 ),
-              ListTile(
-                leading: const Icon(Icons.close, color: AppColors.primaryBlue),
-                title: const Text('Cancel'),
-                onTap: () => Navigator.of(ctx).pop(),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Tap to select photos of your land',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 12,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton(
+                onPressed: _selectedLandPhotos.length >= _maxPhotos ? null : _pickLandPhotos,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _selectedLandPhotos.length >= _maxPhotos 
+                    ? Colors.grey 
+                    : AppColors.primaryBlue,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                ),
+                child: const Text('Select Photos'),
               ),
             ],
           ),
-        );
-      },
-    );
-  }
-
-  Future<void> _removeProfileImage() async {
-    setState(() {
-      _pickedImageFile = null;
-      _profileImageUrl = null;
-      _pickedImageFileSize = null;
-    });
-    
-    try {
-      await _firestore.collection('users').doc(widget.landOwnerUID).update({
-        'profileImageUrl': FieldValue.delete(),
-      });
-      _showStatusMessage('Profile photo removed successfully');
-      widget.onProfileUpdated?.call();
-    } catch (e) {
-      _showStatusMessage('Failed to remove photo: ${e.toString()}');
-    }
-  }
-
-  // 🔑 IMPROVED CLOUDINARY UPLOAD
-  Future<String?> _uploadImageToCloudinary(XFile imageFile) async {
-    try {
-      debugPrint('Starting Cloudinary upload for: ${imageFile.name}');
-      
-      final bytes = await imageFile.readAsBytes();
-      final fileSizeKB = (bytes.length / 1024).toStringAsFixed(1);
-      
-      _showStatusMessage('Uploading image... ($fileSizeKB KB)');
-      
-      // Validate file size (max 10MB for safety)
-      if (bytes.length > 10000000) {
-        _showStatusMessage('Image is too large. Please choose an image under 10MB.');
-        return null;
-      }
-
-      final url = Uri.parse("https://api.cloudinary.com/v1_1/$_cloudName/image/upload");
-      
-      final request = http.MultipartRequest('POST', url)
-        ..fields['upload_preset'] = _uploadPreset
-        ..files.add(http.MultipartFile.fromBytes(
-          'file',
-          bytes,
-          filename: 'profile_${widget.landOwnerUID}_${DateTime.now().millisecondsSinceEpoch}.jpg',
-        ));
-
-      final streamedResponse = await request.send().timeout(
-        const Duration(seconds: 60),
-        onTimeout: () {
-          throw TimeoutException('Cloudinary upload timed out after 60 seconds');
-        },
-      );
-
-      final response = await http.Response.fromStream(streamedResponse);
-      
-      if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
-        final imageUrl = responseData['secure_url'];
-        debugPrint('✅ Cloudinary upload successful! URL: $imageUrl');
-        _showStatusMessage('Image uploaded successfully!');
-        return imageUrl;
-      } else {
-        debugPrint('❌ Cloudinary upload failed: ${response.statusCode} - ${response.body}');
-        String errorMessage = 'Upload failed with status ${response.statusCode}';
-        try {
-          final errorData = json.decode(response.body);
-          errorMessage = errorData['error']['message'] ?? errorMessage;
-        } catch (_) {}
+        ),
         
-        _showStatusMessage('Upload failed: $errorMessage');
-        return null;
-      }
-      
-    } on TimeoutException catch (e) {
-      debugPrint('⏰ Upload timeout: $e');
-      _showStatusMessage('Upload timed out. Please check your internet connection and try again.');
-      return null;
-    } catch (e) {
-      debugPrint('❌ Upload error: $e');
-      _showStatusMessage('Failed to upload image. Please try again.');
-      return null;
-    }
-  }
-
-  // 🔑 SEPARATE PROFILE PICTURE UPDATE METHOD
-  Future<void> _updateProfilePictureOnly() async {
-    if (_pickedImageFile == null) {
-      _showStatusMessage('Please select an image first');
-      return;
-    }
-
-    setState(() {
-      _uploadingImage = true;
-      _statusMessage = 'Uploading profile picture...';
-    });
-
-    try {
-      final cloudinaryUrl = await _uploadImageToCloudinary(_pickedImageFile!);
-      
-      if (cloudinaryUrl != null) {
-        // Update user profile in Firestore
-        await _firestore.collection('users').doc(widget.landOwnerUID).update({
-          'profileImageUrl': cloudinaryUrl,
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
-
-        setState(() {
-          _profileImageUrl = cloudinaryUrl;
-          _pickedImageFile = null;
-          _pickedImageFileSize = null;
-        });
-
-        _showStatusMessage('Profile picture updated successfully!');
-        widget.onProfileUpdated?.call();
-      }
-    } catch (e) {
-      _showStatusMessage('Error updating profile picture: $e');
-      debugPrint('Profile Picture Update Error: $e');
-    } finally {
-      setState(() {
-        _uploadingImage = false;
-      });
-    }
+        const SizedBox(height: 16),
+      ],
+    );
   }
 
   Future<void> _updateLandData() async {
     if (!_formKey.currentState!.validate()) {
-      setState(() => _statusMessage = "Please correct the errors in the form.");
+      _showStatusMessage("Please correct the errors in the form.");
       return;
     }
 
     if (_selectedProvince == null || _selectedDistrict == null || _selectedCropType == null) {
-      setState(() => _statusMessage = "Please ensure all required fields are filled.");
+      _showStatusMessage("Please ensure all required fields are filled.");
       return;
     }
     
@@ -665,37 +781,21 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
     });
 
     try {
-      // If there's a new image, upload it first
-      if (_pickedImageFile != null) {
+      // Upload new land photos if any
+      List<String> newPhotoUrls = [];
+      if (_selectedLandPhotos.isNotEmpty) {
         setState(() {
-          _uploadingImage = true;
+          _uploadingPhotos = true;
         });
         
-        final cloudinaryUrl = await _uploadImageToCloudinary(_pickedImageFile!);
-        if (cloudinaryUrl != null) {
-          // Update user profile with new image
-          await _firestore.collection('users').doc(widget.landOwnerUID).update({
-            'profileImageUrl': cloudinaryUrl,
-          });
-          
-          setState(() {
-            _profileImageUrl = cloudinaryUrl;
-          });
-        } else {
-          // If image upload fails, stop the process
-          setState(() {
-            _isSaving = false;
-            _uploadingImage = false;
-          });
-          return;
-        }
+        newPhotoUrls = await _uploadLandPhotosToCloudinary();
         
         setState(() {
-          _uploadingImage = false;
+          _uploadingPhotos = false;
         });
       }
 
-      // Update land data
+      // Prepare update data
       final landDataToUpdate = {
         'landName': _landNameController.text.trim(),
         'address': _addressController.text.trim(),
@@ -711,20 +811,30 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
         'updatedAt': FieldValue.serverTimestamp(),
       };
 
-      await _firestore.collection('lands').doc(widget.landOwnerUID).set(landDataToUpdate, SetOptions(merge: true));
-      
-      // Clear the picked image after successful upload
-      if (_pickedImageFile != null) {
+      // Add new photos to existing ones
+      if (newPhotoUrls.isNotEmpty) {
+        landDataToUpdate['landPhotos'] = FieldValue.arrayUnion(newPhotoUrls);
+      }
+
+      // Update Firestore
+      await _firestore.collection('lands').doc(widget.landOwnerUID).set(
+        landDataToUpdate,
+        SetOptions(merge: true),
+      );
+
+      // Update local state
+      if (newPhotoUrls.isNotEmpty) {
         setState(() {
-          _pickedImageFile = null;
-          _pickedImageFileSize = null;
+          _uploadedLandPhotoUrls.addAll(newPhotoUrls);
+          _selectedLandPhotos.clear();
         });
       }
 
       _showStatusMessage("Land details updated successfully!");
       widget.onProfileUpdated?.call();
 
-      await _refreshData();
+      // Refresh data
+      await _loadInitialData();
 
     } catch (e) {
       _showStatusMessage("Error updating land details: $e");
@@ -767,10 +877,9 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
       );
     }
 
-    final bool isNewDocument = _loadedData == null;
-    
     return Column(
       children: [
+        // Refresh Button
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Row(
@@ -788,6 +897,8 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
             ],
           ),
         ),
+        
+        // Form Content
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(20.0),
@@ -796,39 +907,21 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (isNewDocument)
-                    const InfoCard(
-                      message: "Welcome! Please enter your land details below to complete your profile.",
-                      color: Colors.orange,
-                    ),
-                  
+                  // Status Message
                   if (_statusMessage != null)
                     InfoCard(
                       message: _statusMessage!,
-                      color: _statusMessage!.toLowerCase().contains('success') ? AppColors.secondaryColor : Colors.red,
+                      color: _statusMessage!.toLowerCase().contains('success') 
+                          ? AppColors.secondaryColor 
+                          : Colors.red,
                     ),
 
                   const SizedBox(height: 16),
                   
-                  _buildProfileImageSection(),
+                  // Land Photos Section
+                  _buildLandPhotosGallery(),
                   
-                  // Quick Profile Picture Update Button
-                  if (_pickedImageFile != null && !_uploadingImage)
-                    Container(
-                      width: double.infinity,
-                      margin: const EdgeInsets.only(bottom: 16),
-                      child: ElevatedButton.icon(
-                        onPressed: _updateProfilePictureOnly,
-                        icon: const Icon(Icons.camera_alt),
-                        label: const Text('Update Profile Picture Only'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.secondaryColor,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                      ),
-                    ),
-
+                  // Land Information Form
                   _buildInputLabel('Land Name'),
                   _buildTextField(_landNameController, 'Green Valley Plantation'),
                                  
@@ -875,10 +968,11 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
                   
                   const SizedBox(height: 30),
 
+                  // Update Button
                   GradientButton(
                     text: _isSaving ? 'Updating...' : 'Update Land Details',
-                    onPressed: (_isSaving || _uploadingImage) ? null : _updateLandData,
-                    isEnabled: !_isSaving && !_uploadingImage,
+                    onPressed: (_isSaving || _uploadingPhotos) ? null : _updateLandData,
+                    isEnabled: !_isSaving && !_uploadingPhotos,
                   ),
                   
                   const SizedBox(height: 50),
@@ -887,145 +981,6 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
             ),
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _buildProfileImageSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildInputLabel('Profile Picture'),
-        const SizedBox(height: 8),
-        Center(
-          child: Stack(
-            children: [
-              Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.primaryBlue.withOpacity(0.3), width: 3),
-                ),
-                child: _uploadingImage
-                    ? Container(
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.grey,
-                        ),
-                        child: const Center(
-                          child: CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryBlue),
-                          ),
-                        ),
-                      )
-                    : CircleAvatar(
-                        radius: 56,
-                        backgroundColor: Colors.grey[200],
-                        backgroundImage: _getProfileImage(),
-                        child: _getProfileImage() == null
-                            ? const Icon(Icons.person, size: 50, color: AppColors.primaryBlue)
-                            : null,
-                      ),
-              ),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryBlue,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 3),
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.camera_alt, size: 18, color: Colors.white),
-                    onPressed: _openImageOptions,
-                    padding: EdgeInsets.zero,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        
-        if (_pickedImageFile != null)
-          Container(
-            width: double.infinity,
-            margin: const EdgeInsets.only(top: 12),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.primaryBlue.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.primaryBlue.withOpacity(0.3)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.image, size: 16, color: AppColors.primaryBlue),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Selected Image:',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.darkText,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _pickedImageFile!.name,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppColors.darkText.withOpacity(0.8),
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                if (_pickedImageFileSize != null)
-                  Text(
-                    'Size: ${(_pickedImageFileSize! / 1024).toStringAsFixed(1)} KB',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.darkText.withOpacity(0.6),
-                    ),
-                  ),
-              ],
-            ),
-          )
-        else if (_profileImageUrl != null)
-          Container(
-            width: double.infinity,
-            margin: const EdgeInsets.only(top: 12),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.secondaryColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.secondaryColor.withOpacity(0.3)),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.cloud_done, size: 16, color: AppColors.secondaryColor),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Current image stored in Cloudinary',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: AppColors.darkText.withOpacity(0.8),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        
-        const SizedBox(height: 16),
       ],
     );
   }
@@ -1100,15 +1055,6 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
         ),
       ],
     );
-  }
-
-  ImageProvider? _getProfileImage() {
-    if (_pickedImageFile != null) {
-      return FileImage(File(_pickedImageFile!.path));
-    } else if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) {
-      return NetworkImage(_profileImageUrl!);
-    }
-    return null;
   }
 
   Widget _buildInputLabel(String text) {
@@ -1229,7 +1175,7 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
   }
 }
 
-// Geo Data and reusable widgets
+// Helper functions and widgets
 Map<String, List<String>> _getGeoData() {
   return {
     'Western Province': ['Colombo District', 'Gampaha District', 'Kalutara District'],

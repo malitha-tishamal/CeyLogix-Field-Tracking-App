@@ -103,12 +103,15 @@ class _UserDetailsState extends State<UserDetails> {
         },
         onNavigate: handleDrawerNavigate,
       ),
-      body: Stack(
+      body: Column(
         children: [
-          SafeArea(
+          // Fixed Header
+          _buildProfileHeader(context),
+          
+          // Scrollable Content with Footer
+          Expanded(
             child: Column(
               children: [
-                _buildProfileHeader(context),
                 Expanded(
                   child: SingleChildScrollView(
                     // Using the modified widget
@@ -118,22 +121,23 @@ class _UserDetailsState extends State<UserDetails> {
                     ), 
                   ),
                 ),
-              ],
-            ),
-          ),
-          // Footer Text
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Text(
-                'Developed By Malitha Tishamal',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppColors.darkText.withOpacity(0.7),
-                  fontSize: 12,
+                
+                // Footer (Fixed at bottom of content area)
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(
+                      'Developed By Malitha Tishamal',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.darkText.withOpacity(0.7),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
         ],
@@ -188,7 +192,6 @@ class _UserDetailsState extends State<UserDetails> {
                 height: 70,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  
                   border: Border.all(color: Colors.white, width: 3),
                   boxShadow: [
                     BoxShadow(

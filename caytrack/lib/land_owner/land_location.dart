@@ -863,20 +863,8 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
                   _scaffoldKey.currentState?.openDrawer();
                 },
               ),
-              Text(
-                'Location Selection',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: _headerTextDark,
-                ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.arrow_back, color: _headerTextDark, size: 28),
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-              ),
+              
+             
             ],
           ),
           
@@ -980,192 +968,212 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
                 // Header from LandOwnerDashboard
                 _buildDashboardHeader(context),
                 
-                // Content area
+                // Content area with footer
                 Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // 1. Existing Location Card (STATIC DATA FROM FIREBASE)
-                        _buildExistingLocationDisplay(),
-                        
-                        const SizedBox(height: 16),
-                        
-                        // 2. Location Type Selection
-                        _buildLocationTypeSelection(),
-                        
-                        const SizedBox(height: 16),
-                        
-                        // 3. Manual Coordinates Input
-                        if (_selectedLocationType == 'manual') ...[
-                          _buildManualLocationInput(),
-                          const SizedBox(height: 16),
-                        ],
-                        
-                        // 4. Map
-                        Card(
-                          elevation: 3,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'Map',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: _primaryBlue,
-                                      ),
-                                    ),
-                                    Row(
-                                      children: [
-                                        IconButton(
-                                          onPressed: _goToCurrentLocation,
-                                          icon: Icon(Icons.my_location, color: _primaryBlue),
-                                          tooltip: 'Go to current location',
-                                        ),
-                                        IconButton(
-                                          onPressed: () {
-                                            if (_selectedLocation != null) {
-                                              _mapController.move(_selectedLocation!, _zoomLevel);
-                                            }
-                                          },
-                                          icon: Icon(Icons.center_focus_strong, color: _primaryBlue),
-                                          tooltip: 'Center on selected location',
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                  child: Column(
+                    children: [
+                      // Scrollable content
+                      Expanded(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // 1. Existing Location Card (STATIC DATA FROM FIREBASE)
+                              _buildExistingLocationDisplay(),
+                              
+                              const SizedBox(height: 16),
+                              
+                              // 2. Location Type Selection
+                              _buildLocationTypeSelection(),
+                              
+                              const SizedBox(height: 16),
+                              
+                              // 3. Manual Coordinates Input
+                              if (_selectedLocationType == 'manual') ...[
+                                _buildManualLocationInput(),
+                                const SizedBox(height: 16),
+                              ],
+                              
+                              // 4. Map
+                              Card(
+                                elevation: 3,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
-                                const SizedBox(height: 12),
-                                Container(
-                                  height: 400,
-                                  decoration: BoxDecoration(
-                                    border: Border.all(color: _primaryBlue.withOpacity(0.3)),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: FlutterMap(
-                                    mapController: _mapController,
-                                    options: MapOptions(
-                                      center: _selectedLocation ?? const LatLng(6.9271, 79.8612),
-                                      zoom: _zoomLevel,
-                                      onTap: _onMapTap,
-                                    ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      TileLayer(
-                                        urlTemplate: _tileLayers[_selectedTileLayer]['url'],
-                                        userAgentPackageName: 'com.example.location_selector',
-                                      ),
-                                      MarkerLayer(
-                                        markers: _selectedLocation != null
-                                            ? [
-                                                Marker(
-                                                  point: _selectedLocation!,
-                                                  width: 40,
-                                                  height: 40,
-                                                  child: Icon(
-                                                    Icons.location_pin,
-                                                    color: _selectedLocationType == 'auto' 
-                                                        ? _secondaryColor 
-                                                        : _primaryBlue,
-                                                    size: 40,
-                                                  ),
-                                                ),
-                                              ]
-                                            : [],
-                                      ),
-                                      RichAttributionWidget(
-                                        attributions: [
-                                          TextSourceAttribution(
-                                            'OpenStreetMap contributors',
-                                            onTap: () => launchUrlString('https://openstreetmap.org/copyright'),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            'Map',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: _primaryBlue,
+                                            ),
+                                          ),
+                                          Row(
+                                            children: [
+                                              IconButton(
+                                                onPressed: _goToCurrentLocation,
+                                                icon: Icon(Icons.my_location, color: _primaryBlue),
+                                                tooltip: 'Go to current location',
+                                              ),
+                                              IconButton(
+                                                onPressed: () {
+                                                  if (_selectedLocation != null) {
+                                                    _mapController.move(_selectedLocation!, _zoomLevel);
+                                                  }
+                                                },
+                                                icon: Icon(Icons.center_focus_strong, color: _primaryBlue),
+                                                tooltip: 'Center on selected location',
+                                              ),
+                                            ],
                                           ),
                                         ],
+                                      ),
+                                      const SizedBox(height: 12),
+                                      Container(
+                                        height: 400,
+                                        decoration: BoxDecoration(
+                                          border: Border.all(color: _primaryBlue.withOpacity(0.3)),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: FlutterMap(
+                                          mapController: _mapController,
+                                          options: MapOptions(
+                                            center: _selectedLocation ?? const LatLng(6.9271, 79.8612),
+                                            zoom: _zoomLevel,
+                                            onTap: _onMapTap,
+                                          ),
+                                          children: [
+                                            TileLayer(
+                                              urlTemplate: _tileLayers[_selectedTileLayer]['url'],
+                                              userAgentPackageName: 'com.example.location_selector',
+                                            ),
+                                            MarkerLayer(
+                                              markers: _selectedLocation != null
+                                                  ? [
+                                                      Marker(
+                                                        point: _selectedLocation!,
+                                                        width: 40,
+                                                        height: 40,
+                                                        child: Icon(
+                                                          Icons.location_pin,
+                                                          color: _selectedLocationType == 'auto' 
+                                                              ? _secondaryColor 
+                                                              : _primaryBlue,
+                                                          size: 40,
+                                                        ),
+                                                      ),
+                                                    ]
+                                                  : [],
+                                            ),
+                                            RichAttributionWidget(
+                                              attributions: [
+                                                TextSourceAttribution(
+                                                  'OpenStreetMap contributors',
+                                                  onTap: () => launchUrlString('https://openstreetmap.org/copyright'),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ],
                                   ),
                                 ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        
-                        const SizedBox(height: 16),
-                        
-                        // 5. Location Details (CURRENT SELECTION - NOT STATIC)
-                        Card(
-                          elevation: 3,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Current Selection (Changes on Map Tap)',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: _primaryBlue,
+                              ),
+                              
+                              const SizedBox(height: 16),
+                              
+                              // 5. Location Details (CURRENT SELECTION - NOT STATIC)
+                              Card(
+                                elevation: 3,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Current Selection (Changes on Map Tap)',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: _primaryBlue,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      _buildDetailRow('Location Type', _selectedLocationType == 'auto' ? 'Auto-detected' : 'Manual'),
+                                      _buildDetailRow('Address', _address.isNotEmpty ? _address : 'Not selected'),
+                                      _buildDetailRow('Latitude', _latitude.isNotEmpty ? _latitude : '--'),
+                                      _buildDetailRow('Longitude', _longitude.isNotEmpty ? _longitude : '--'),
+                                    ],
                                   ),
                                 ),
-                                const SizedBox(height: 12),
-                                _buildDetailRow('Location Type', _selectedLocationType == 'auto' ? 'Auto-detected' : 'Manual'),
-                                _buildDetailRow('Address', _address.isNotEmpty ? _address : 'Not selected'),
-                                _buildDetailRow('Latitude', _latitude.isNotEmpty ? _latitude : '--'),
-                                _buildDetailRow('Longitude', _longitude.isNotEmpty ? _longitude : '--'),
-                              ],
-                            ),
-                          ),
-                        ),
-                        
-                        const SizedBox(height: 16),
-                        
-                        // 6. Save Button
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: _isSaving ? null : _saveToFirebase,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: _primaryBlue,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
                               ),
-                              elevation: 4,
-                            ),
-                            child: _isSaving
-                                ? const SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              
+                              const SizedBox(height: 16),
+                              
+                              // 6. Save Button
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  onPressed: _isSaving ? null : _saveToFirebase,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: _primaryBlue,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
                                     ),
-                                  )
-                                : Text(
-                                    (widget.existingData != null || _fetchedExistingData != null)
-                                        ? 'Update Location'
-                                        : 'Save Location',
-                                    style: const TextStyle(fontSize: 16),
+                                    elevation: 4,
                                   ),
+                                  child: _isSaving
+                                      ? const SizedBox(
+                                          height: 20,
+                                          width: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                          ),
+                                        )
+                                      : Text(
+                                          (widget.existingData != null || _fetchedExistingData != null)
+                                              ? 'Update Location'
+                                              : 'Save Location',
+                                          style: const TextStyle(fontSize: 16),
+                                        ),
+                                ),
+                              ),
+                              
+                              const SizedBox(height: 20),
+                            ],
                           ),
                         ),
-                        
-                        const SizedBox(height: 20),
-                      ],
-                    ),
+                      ),
+                      
+                      // Footer (Fixed at bottom of content area)
+                      Container(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Text(
+                          'Developed By Malitha Tishamal',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: _headerTextDark.withOpacity(0.7),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -1196,8 +1204,7 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
             ),
           ),
         ],
-      ),
-    );
+      ));
   }
   
   void _showErrorDialog(String title, String message) {
