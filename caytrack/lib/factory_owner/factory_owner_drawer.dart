@@ -7,6 +7,8 @@ import 'user_profile.dart'; // Import the User Profile page (Contains UserDetail
 import 'developer_info.dart'; // 💡 NEW: Import the Developer Info page
 import '../Auth/login_page.dart'; // Import the Login page
 import 'land_details.dart';
+import 'lands_map.dart';
+
 
 // --- Hardcoded Colors for Simplicity (Replace with AppColors if available) ---
 const Color _primaryBlue = Color(0xFF2764E7);
@@ -311,8 +313,22 @@ class _FactoryOwnerDrawerState extends State<FactoryOwnerDrawer> {
                   },
                 ),
               
-            
-              _buildModernDrawerItem(icon: Icons.location_on, label: "Land Details Map", description: "Map with Land Details ", onTap: () => widget.onNavigate("inventory")),
+              // 5. Land Details Map - FIXED LINK
+              _buildModernDrawerItem(
+                icon: Icons.location_on, 
+                label: "Land Details Map", 
+                description: "Map with Land Details", 
+                onTap: () {
+                  Navigator.of(context).pop(); // Close drawer
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => FactoryLocationsPage(
+                       // currentUser: FirebaseAuth.instance.currentUser,
+                      ),
+                    ),
+                  );
+                },
+              ),
               
               // 6. Developer Info 💡 NEW NAVIGATION
               _buildModernDrawerItem(

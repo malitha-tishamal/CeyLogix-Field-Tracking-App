@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'factory_owner_drawer.dart';
+import 'land_details.dart'; // Import the LandDetailsPage
 
 // Reusing AppColors locally
 class AppColors {
@@ -208,6 +209,56 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
   );
  }
 
+ // Navigate to LandDetailsPage with category lands
+ void _navigateToCategoryDetails({
+   required String categoryTitle,
+   required List<Map<String, dynamic>> lands,
+   required String categoryType,
+   required IconData icon,
+   required Color color,
+ }) {
+  if (lands.isEmpty) {
+   ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+     content: Text('No lands found in $categoryTitle category'),
+     backgroundColor: AppColors.accentRed,
+    ),
+   );
+   return;
+  }
+
+  Navigator.push(
+   context,
+   MaterialPageRoute(
+    builder: (context) => LandDetailsPage(
+     currentUser: currentUser,
+     categoryTitle: categoryTitle,
+     lands: lands,
+     categoryType: categoryType,
+     icon: icon,
+     color: color,
+    ),
+   ),
+  );
+ }
+
+ // Navigate to all lands
+ void _navigateToAllLands() {
+  Navigator.push(
+   context,
+   MaterialPageRoute(
+    builder: (context) => LandDetailsPage(
+     currentUser: currentUser,
+     categoryTitle: 'All Associated Lands',
+     lands: _allAssociatedLands,
+     categoryType: 'All',
+     icon: Icons.landscape,
+     color: AppColors.primaryBlue,
+    ),
+   ),
+  );
+ }
+
  @override
  Widget build(BuildContext context) {
   void handleDrawerNavigate(String routeName) {
@@ -241,7 +292,7 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
             _buildSectionTitle('Associated Lands', Icons.landscape_rounded),
             const SizedBox(height: 10),
             _buildAssociatedLandsSection(),
-            const SizedBox(height: 30),          
+            const SizedBox(height: 30),
             const SizedBox(height: 50),
            ],
           ),
@@ -479,6 +530,7 @@ Widget _buildAssociatedLandsSection() {
                       icon: Icons.landscape,
                       color: AppColors.primaryBlue,
                       iconColor: Colors.white,
+                      onTap: _navigateToAllLands,
                     ),
                     const SizedBox(width: 12),
                     _buildLandStatCard(
@@ -487,6 +539,13 @@ Widget _buildAssociatedLandsSection() {
                       icon: Icons.agriculture,
                       color: AppColors.successGreen,
                       iconColor: Colors.white,
+                      onTap: () => _navigateToCategoryDetails(
+                        categoryTitle: 'Tea Lands',
+                        lands: _teaLands,
+                        categoryType: 'Tea',
+                        icon: Icons.agriculture,
+                        color: AppColors.successGreen,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     _buildLandStatCard(
@@ -495,6 +554,13 @@ Widget _buildAssociatedLandsSection() {
                       icon: Icons.spa,
                       color: AppColors.warningOrange,
                       iconColor: Colors.white,
+                      onTap: () => _navigateToCategoryDetails(
+                        categoryTitle: 'Cinnamon Lands',
+                        lands: _cinnamonLands,
+                        categoryType: 'Cinnamon',
+                        icon: Icons.spa,
+                        color: AppColors.warningOrange,
+                      ),
                     ),
                   ],
                 ),
@@ -510,6 +576,13 @@ Widget _buildAssociatedLandsSection() {
                       icon: Icons.all_inclusive,
                       color: AppColors.accentTeal,
                       iconColor: Colors.white,
+                      onTap: () => _navigateToCategoryDetails(
+                        categoryTitle: 'Multi-Crop Lands',
+                        lands: _multiCropLands,
+                        categoryType: 'Both',
+                        icon: Icons.all_inclusive,
+                        color: AppColors.accentTeal,
+                      ),
                     ),
                   ],
                 ),
@@ -537,48 +610,52 @@ Widget _buildAssociatedLandsSection() {
    required IconData icon,
    required Color color,
    required Color iconColor,
+   required VoidCallback onTap,
  }) {
-  return Container(
-   width: 100,
-   padding: const EdgeInsets.all(12),
-   decoration: BoxDecoration(
-    gradient: LinearGradient(
-     colors: [color, Color.lerp(color, Colors.black, 0.1)!],
-     begin: Alignment.topLeft,
-     end: Alignment.bottomRight,
+  return GestureDetector(
+   onTap: onTap,
+   child: Container(
+    width: 100,
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+     gradient: LinearGradient(
+      colors: [color, Color.lerp(color, Colors.black, 0.1)!],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+     ),
+     borderRadius: BorderRadius.circular(12),
+     boxShadow: [
+      BoxShadow(
+       color: color.withOpacity(0.3),
+       blurRadius: 8,
+       offset: const Offset(0, 4),
+      ),
+     ],
     ),
-    borderRadius: BorderRadius.circular(12),
-    boxShadow: [
-     BoxShadow(
-      color: color.withOpacity(0.3),
-      blurRadius: 8,
-      offset: const Offset(0, 4),
-     ),
-    ],
-   ),
-   child: Column(
-    mainAxisAlignment: MainAxisAlignment.center,
-    children: [
-     Icon(icon, size: 18, color: iconColor),
-     const SizedBox(height: 6),
-     Text(
-      value,
-      style: const TextStyle(
-       fontSize: 18,
-       fontWeight: FontWeight.bold,
-       color: Colors.white,
+    child: Column(
+     mainAxisAlignment: MainAxisAlignment.center,
+     children: [
+      Icon(icon, size: 18, color: iconColor),
+      const SizedBox(height: 6),
+      Text(
+       value,
+       style: const TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.bold,
+        color: Colors.white,
+       ),
       ),
-     ),
-     const SizedBox(height: 4),
-     Text(
-      title,
-      style: TextStyle(
-       fontSize: 10,
-       color: Colors.white.withOpacity(0.9),
+      const SizedBox(height: 4),
+      Text(
+       title,
+       style: TextStyle(
+        fontSize: 10,
+        color: Colors.white.withOpacity(0.9),
+       ),
+       textAlign: TextAlign.center,
       ),
-      textAlign: TextAlign.center,
-     ),
-    ],
+     ],
+    ),
    ),
   );
  }
@@ -587,12 +664,32 @@ Widget _buildAssociatedLandsSection() {
   return Column(
    crossAxisAlignment: CrossAxisAlignment.start,
    children: [
+    // View All Lands Button
+    Container(
+  margin: const EdgeInsets.only(bottom: 16),
+  child: ElevatedButton.icon(
+    onPressed: _navigateToAllLands,
+    icon: const Icon(Icons.grid_view, size: 18),
+    label: const Text('View All Associated Lands'),
+    style: ElevatedButton.styleFrom(
+      backgroundColor: AppColors.primaryBlue,
+      foregroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+    ),
+  ),
+),
+
+
     if (_cinnamonLands.isNotEmpty)
      _buildLandCategorySection(
       title: 'Cinnamon Lands',
       icon: Icons.spa,
       color: AppColors.warningOrange,
       lands: _cinnamonLands,
+      totalLands: _cinnamonLands.length,
      ),
     if (_teaLands.isNotEmpty)
      _buildLandCategorySection(
@@ -600,6 +697,7 @@ Widget _buildAssociatedLandsSection() {
       icon: Icons.agriculture,
       color: AppColors.successGreen,
       lands: _teaLands,
+      totalLands: _teaLands.length,
      ),
     if (_multiCropLands.isNotEmpty)
      _buildLandCategorySection(
@@ -607,6 +705,7 @@ Widget _buildAssociatedLandsSection() {
       icon: Icons.all_inclusive,
       color: AppColors.accentTeal,
       lands: _multiCropLands,
+      totalLands: _multiCropLands.length,
      ),
    ],
   );
@@ -617,7 +716,12 @@ Widget _buildAssociatedLandsSection() {
    required IconData icon,
    required Color color,
    required List<Map<String, dynamic>> lands,
+   required int totalLands,
  }) {
+  // Take only first 5 lands for display
+  final displayLands = lands.length > 5 ? lands.sublist(0, 5) : lands;
+  final hasMoreLands = lands.length > 5;
+
   return Column(
    crossAxisAlignment: CrossAxisAlignment.start,
    children: [
@@ -653,7 +757,7 @@ Widget _buildAssociatedLandsSection() {
         borderRadius: BorderRadius.circular(15),
        ),
        child: Text(
-        '${lands.length} lands',
+        '$totalLands lands',
         style: TextStyle(
          fontSize: 12,
          fontWeight: FontWeight.w600,
@@ -665,14 +769,49 @@ Widget _buildAssociatedLandsSection() {
     ),
     const SizedBox(height: 10),
     Column(
-     children: lands.asMap().entries.map((entry) {
-      final index = entry.key;
-      final land = entry.value;
-      return _buildLandCard(land, index, color);
-     }).toList(),
+     children: [
+      ...displayLands.asMap().entries.map((entry) {
+       final index = entry.key;
+       final land = entry.value;
+       return _buildLandCard(land, index, color);
+      }).toList(),
+      
+      // View All Button for this category
+      if (hasMoreLands)
+       Container(
+        margin: const EdgeInsets.only(top: 8),
+        child: TextButton.icon(
+         onPressed: () {
+          _navigateToCategoryDetails(
+           categoryTitle: title,
+           lands: lands,
+           categoryType: _getCategoryTypeFromTitle(title),
+           icon: icon,
+           color: color,
+          );
+         },
+         icon: Icon(Icons.arrow_forward, size: 16, color: color),
+         label: Text(
+          'View All ${lands.length} Lands',
+          style: TextStyle(
+           fontSize: 14,
+           fontWeight: FontWeight.w600,
+           color: color,
+          ),
+         ),
+        ),
+       ),
+     ],
     ),
    ],
   );
+ }
+
+ String _getCategoryTypeFromTitle(String title) {
+  if (title.contains('Tea')) return 'Tea';
+  if (title.contains('Cinnamon')) return 'Cinnamon';
+  if (title.contains('Multi')) return 'Both';
+  return 'All';
  }
 
  Widget _buildLandCard(Map<String, dynamic> land, int index, Color categoryColor) {
@@ -713,7 +852,16 @@ Widget _buildAssociatedLandsSection() {
            color: mainColor.withOpacity(0.1),
            borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(icon, color: mainColor, size: 26),
+          child: Center(
+           child: Text(
+            '${index + 1}',
+            style: TextStyle(
+             fontSize: 18,
+             fontWeight: FontWeight.bold,
+             color: mainColor,
+            ),
+           ),
+          ),
          ),
          const SizedBox(width: 12),
          Expanded(
