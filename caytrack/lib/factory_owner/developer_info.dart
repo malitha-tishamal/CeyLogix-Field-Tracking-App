@@ -309,9 +309,8 @@ class _DeveloperInfoPageState extends State<DeveloperInfoPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 1. Factory Name
                     Text(
-                      _factoryName, 
+                     _loggedInUserName, 
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -322,7 +321,7 @@ class _DeveloperInfoPageState extends State<DeveloperInfoPage> {
                     ),
                     // 2. Logged-in User Name and Role
                     Text(
-                      'Logged in as: $_loggedInUserName \n($_userRole)', 
+                      'Factory Name: $_factoryName \n($_userRole)', 
                       style: TextStyle(
                         fontSize: 14,
                         color: AppColors.headerTextDark.withOpacity(0.7),

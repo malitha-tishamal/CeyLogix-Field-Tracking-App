@@ -18,6 +18,7 @@ class AppColors {
   static const Color headerGradientStart = Color.fromARGB(255, 134, 164, 236);
   static const Color headerGradientEnd = Color(0xFFF7FAFF);
   static const Color headerTextDark = Color(0xFF333333);
+  static const Color accentColor = Color(0xFF4A90E2);
 }
 
 class FactoryDetails extends StatefulWidget {
@@ -36,6 +37,7 @@ class _FactoryDetailsState extends State<FactoryDetails> {
   String? _profileImageUrl;
   String _factoryName = 'Loading';
   String _factoryLocation = '';
+  String? _factoryLogoUrl;
 
   @override
   void initState() {
@@ -79,7 +81,8 @@ class _FactoryDetailsState extends State<FactoryDetails> {
           if (mounted) {
             setState(() {
               _factoryName = factoryData?['factoryName'] ?? 'No Factory Name';
-             // _factoryLocation = factoryData?['address'] ?? '';
+              _factoryLocation = factoryData?['address'] ?? '';
+              _factoryLogoUrl = factoryData?['factoryLogoUrl'];
             });
           }
         } else {
@@ -87,6 +90,7 @@ class _FactoryDetailsState extends State<FactoryDetails> {
             setState(() {
               _factoryName = 'Factory Not Registered';
               _factoryLocation = '';
+              _factoryLogoUrl = null;
             });
           }
         }
@@ -95,6 +99,7 @@ class _FactoryDetailsState extends State<FactoryDetails> {
         if (mounted) {
           setState(() {
             _factoryName = 'Error Loading';
+            _factoryLogoUrl = null;
           });
         }
       }
@@ -133,6 +138,12 @@ class _FactoryDetailsState extends State<FactoryDetails> {
                     factoryOwnerUID: currentUser!.uid,
                     onProfileUpdated: _fetchUserInfo,
                     onDataUpdated: _showSuccessAndRefresh,
+                    factoryLogoUrl: _factoryLogoUrl,
+                    onLogoUpdated: (String? newLogoUrl) {
+                      setState(() {
+                        _factoryLogoUrl = newLogoUrl;
+                      });
+                    },
                   ),
                 ),
               ],
@@ -210,36 +221,55 @@ class _FactoryDetailsState extends State<FactoryDetails> {
           
           Row(
             children: [
-              Container(
-                width: 70,
-                height: 70,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: _profileImageUrl == null 
-                    ? const LinearGradient(
-                        colors: [AppColors.primaryBlue, Color(0xFF457AED)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                    : null,
-                  border: Border.all(color: Colors.white, width: 3),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primaryBlue.withOpacity(0.4),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
+              // Factory Logo Display
+              Stack(
+                children: [
+                  Container(
+                    width: 70,
+                    height: 70,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: _factoryLogoUrl == null 
+                        ? const LinearGradient(
+                            colors: [AppColors.primaryBlue, Color(0xFF457AED)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          )
+                        : null,
+                      border: Border.all(color: Colors.white, width: 3),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primaryBlue.withOpacity(0.4),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                      image: _factoryLogoUrl != null 
+                        ? DecorationImage(
+                            image: NetworkImage(_factoryLogoUrl!),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
                     ),
-                  ],
-                  image: _profileImageUrl != null 
-                    ? DecorationImage(
-                        image: NetworkImage(_profileImageUrl!),
-                        fit: BoxFit.cover,
-                      )
-                    : null,
-                ),
-                child: _profileImageUrl == null
-                    ? const Icon(Icons.factory, size: 40, color: Colors.white)
-                    : null,
+                    child: _factoryLogoUrl == null
+                      ? const Icon(Icons.factory, size: 40, color: Colors.white)
+                      : null,
+                  ),
+                  // Badge indicating factory logo
+                  if (_factoryLogoUrl != null)
+                    Positioned(
+                      top: 0,
+                      right: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.secondaryColor,
+                        ),
+                        child: const Icon(Icons.business, size: 12, color: Colors.white),
+                      ),
+                    ),
+                ],
               ),
               
               const SizedBox(width: 15),
@@ -307,11 +337,15 @@ class FactoryOwnerProfileContent extends StatefulWidget {
   final String factoryOwnerUID;
   final VoidCallback? onProfileUpdated;
   final VoidCallback? onDataUpdated;
+  final String? factoryLogoUrl;
+  final Function(String?)? onLogoUpdated;
   
   const FactoryOwnerProfileContent({
     required this.factoryOwnerUID, 
     this.onProfileUpdated,
     this.onDataUpdated,
+    this.factoryLogoUrl,
+    this.onLogoUpdated,
     super.key,
   });
 
@@ -327,7 +361,7 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
   final String _cloudName = "dqeptzlsb";
   final String _uploadPreset = "flutter_ceytrack_upload";
 
-  // Text Controllers - REMOVE _ownerNameController
+  // Text Controllers
   late TextEditingController _factoryNameController;
   late TextEditingController _addressController;
   late TextEditingController _contactNumberController;
@@ -339,6 +373,11 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
   List<String> _uploadedFactoryPhotoUrls = [];
   bool _uploadingPhotos = false;
   int _maxPhotos = 5;
+
+  // State variables for FACTORY LOGO
+  XFile? _selectedLogoFile;
+  String? _uploadedLogoUrl;
+  bool _uploadingLogo = false;
 
   // Other state variables
   String? _selectedProvince;
@@ -357,10 +396,11 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
     super.initState();
     _factoryNameController = TextEditingController();
     _addressController = TextEditingController();
-    _contactNumberController = TextEditingController();  // Only contact number controller
+    _contactNumberController = TextEditingController();
     _agDivisionController = TextEditingController();
     _gnDivisionController = TextEditingController();
     
+    _uploadedLogoUrl = widget.factoryLogoUrl;
     _loadInitialData();
   }
 
@@ -381,6 +421,8 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
           if (factoryData['factoryPhotos'] != null && factoryData['factoryPhotos'] is List) {
             _uploadedFactoryPhotoUrls = List<String>.from(factoryData['factoryPhotos']);
           }
+          
+          _uploadedLogoUrl = factoryData['factoryLogoUrl'] ?? widget.factoryLogoUrl;
         }
 
         setState(() {
@@ -400,7 +442,6 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
   void _populateFormData(Map<String, dynamic> data) {
     _factoryNameController.text = data['factoryName'] ?? '';
     _addressController.text = data['address'] ?? '';
-    // REMOVED: _ownerNameController.text = data['ownerName'] ?? '';
     _contactNumberController.text = data['contactNumber'] ?? '';
     _agDivisionController.text = data['agDivision'] ?? '';
     _gnDivisionController.text = data['gnDivision'] ?? '';
@@ -421,7 +462,6 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
   void dispose() {
     _factoryNameController.dispose();
     _addressController.dispose();
-    // REMOVED: _ownerNameController.dispose();
     _contactNumberController.dispose();
     _agDivisionController.dispose();
     _gnDivisionController.dispose();
@@ -433,6 +473,7 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
       _isLoading = true;
       _statusMessage = null;
       _selectedFactoryPhotos.clear();
+      _selectedLogoFile = null;
     });
     
     await _loadInitialData();
@@ -441,6 +482,118 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
       setState(() {
         _statusMessage = "Data refreshed successfully!";
       });
+    }
+  }
+
+  // Pick Factory Logo Method
+  Future<void> _pickFactoryLogo() async {
+    try {
+      final XFile? pickedFile = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 85,
+      );
+
+      if (pickedFile != null) {
+        final file = File(pickedFile.path);
+        if (await file.exists()) {
+          final stat = await file.stat();
+          final fileSizeMB = stat.size / (1024 * 1024);
+          
+          if (fileSizeMB > 5) {
+            _showStatusMessage('Logo is too large (${fileSizeMB.toStringAsFixed(1)} MB). Max 5MB.');
+            return;
+          }
+          
+          setState(() {
+            _selectedLogoFile = pickedFile;
+          });
+          _showStatusMessage('Logo selected. Tap Update to upload.');
+        }
+      }
+    } catch (e) {
+      _showStatusMessage('Error selecting logo: ${e.toString()}');
+    }
+  }
+
+  // Remove selected logo
+  void _removeSelectedLogo() {
+    setState(() {
+      _selectedLogoFile = null;
+    });
+    _showStatusMessage('Logo removed');
+  }
+
+  // Remove uploaded logo
+  void _removeUploadedLogo() async {
+    try {
+      setState(() {
+        _uploadingLogo = true;
+      });
+      
+      await _firestore.collection('factories').doc(widget.factoryOwnerUID).update({
+        'factoryLogoUrl': FieldValue.delete(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      
+      setState(() {
+        _uploadedLogoUrl = null;
+      });
+      
+      widget.onLogoUpdated?.call(null);
+      _showStatusMessage('Logo removed successfully');
+    } catch (e) {
+      _showStatusMessage('Error removing logo: ${e.toString()}');
+    } finally {
+      setState(() {
+        _uploadingLogo = false;
+      });
+    }
+  }
+
+  // Upload Factory Logo to Cloudinary
+  Future<String?> _uploadLogoToCloudinary() async {
+    if (_selectedLogoFile == null) return null;
+    
+    try {
+      debugPrint('Uploading factory logo: ${_selectedLogoFile!.name}');
+      
+      final bytes = await _selectedLogoFile!.readAsBytes();
+      final fileSizeMB = (bytes.length / (1024 * 1024)).toStringAsFixed(2);
+      
+      _showStatusMessage('Uploading logo - $fileSizeMB MB...');
+
+      final url = Uri.parse("https://api.cloudinary.com/v1_1/$_cloudName/image/upload");
+      
+      final request = http.MultipartRequest('POST', url)
+        ..fields['upload_preset'] = _uploadPreset
+        ..files.add(http.MultipartFile.fromBytes(
+          'file',
+          bytes,
+          filename: 'factory_logo_${widget.factoryOwnerUID}_${DateTime.now().millisecondsSinceEpoch}.jpg',
+        ));
+
+      final streamedResponse = await request.send().timeout(
+        const Duration(seconds: 30),
+      );
+
+      final response = await http.Response.fromStream(streamedResponse);
+      
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        final imageUrl = responseData['secure_url'];
+        debugPrint('✅ Logo uploaded successfully!');
+        return imageUrl;
+      } else {
+        debugPrint('❌ Logo upload failed: ${response.statusCode}');
+        _showStatusMessage('Failed to upload logo. Please try again.');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('❌ Error uploading logo: $e');
+      _showStatusMessage('Error uploading logo. Please try again.');
+      return null;
     }
   }
 
@@ -567,6 +720,143 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
     }
     
     return uploadedUrls;
+  }
+
+  // Factory Logo Widget
+  Widget _buildFactoryLogoSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildInputLabel('Factory Logo'),
+        const SizedBox(height: 8),
+        
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.cardBackground,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.accentColor.withOpacity(0.3)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                // Logo Preview
+                Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.primaryBlue.withOpacity(0.3)),
+                  ),
+                  child: _buildLogoPreview(),
+                ),
+                
+                const SizedBox(height: 16),
+                
+                // Upload/Remove Buttons
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: _pickFactoryLogo,
+                      icon: const Icon(Icons.upload, size: 16),
+                      label: const Text('Upload Logo'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryBlue,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                    
+                    const SizedBox(width: 12),
+                    
+                    if (_uploadedLogoUrl != null || _selectedLogoFile != null)
+                      ElevatedButton.icon(
+                        onPressed: _uploadedLogoUrl != null 
+                          ? _removeUploadedLogo
+                          : _removeSelectedLogo,
+                        icon: const Icon(Icons.delete, size: 16),
+                        label: Text(_uploadedLogoUrl != null ? 'Remove Logo' : 'Cancel'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                  ],
+                ),
+                
+                const SizedBox(height: 8),
+                
+                Text(
+                  'Upload a square logo for your factory (Max 5MB)',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 12,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+        
+        const SizedBox(height: 20),
+      ],
+    );
+  }
+
+  Widget _buildLogoPreview() {
+    if (_selectedLogoFile != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.file(
+          File(_selectedLogoFile!.path),
+          fit: BoxFit.cover,
+        ),
+      );
+    } else if (_uploadedLogoUrl != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.network(
+          _uploadedLogoUrl!,
+          fit: BoxFit.cover,
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return Center(
+              child: CircularProgressIndicator(
+                value: loadingProgress.expectedTotalBytes != null
+                    ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                    : null,
+                color: AppColors.primaryBlue,
+              ),
+            );
+          },
+          errorBuilder: (context, error, stackTrace) {
+            return Container(
+              color: Colors.grey[200],
+              child: const Icon(Icons.broken_image, color: Colors.grey),
+            );
+          },
+        ),
+      );
+    } else {
+      return Container(
+        color: Colors.grey[100],
+        child: const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.business, size: 40, color: Colors.grey),
+            SizedBox(height: 8),
+            Text(
+              'No Logo',
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   // Factory Photos Gallery Widget
@@ -836,6 +1126,21 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
     });
 
     try {
+      // Upload logo if selected
+      String? newLogoUrl;
+      if (_selectedLogoFile != null) {
+        setState(() {
+          _uploadingLogo = true;
+        });
+        
+        newLogoUrl = await _uploadLogoToCloudinary();
+        
+        setState(() {
+          _uploadingLogo = false;
+        });
+      }
+
+      // Upload photos if selected
       List<String> newPhotoUrls = [];
       if (_selectedFactoryPhotos.isNotEmpty) {
         setState(() {
@@ -849,11 +1154,10 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
         });
       }
 
-      // Prepare update data - REMOVED 'ownerName' field
+      // Prepare update data
       final factoryDataToUpdate = {
         'factoryName': _factoryNameController.text.trim(),
         'address': _addressController.text.trim(),
-        // REMOVED: 'ownerName': _ownerNameController.text.trim(),
         'contactNumber': _contactNumberController.text.trim(),
         'cropType': _selectedCropType,
         'country': 'Sri Lanka',
@@ -864,14 +1168,30 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
         'updatedAt': FieldValue.serverTimestamp(),
       };
 
+      // Add logo URL if uploaded
+      if (newLogoUrl != null) {
+        factoryDataToUpdate['factoryLogoUrl'] = newLogoUrl;
+        widget.onLogoUpdated?.call(newLogoUrl);
+      }
+
+      // Add photo URLs if uploaded
       if (newPhotoUrls.isNotEmpty) {
         factoryDataToUpdate['factoryPhotos'] = FieldValue.arrayUnion(newPhotoUrls);
       }
 
+      // Update Firestore
       await _firestore.collection('factories').doc(widget.factoryOwnerUID).set(
         factoryDataToUpdate,
         SetOptions(merge: true),
       );
+
+      // Update local state
+      if (newLogoUrl != null) {
+        setState(() {
+          _uploadedLogoUrl = newLogoUrl;
+          _selectedLogoFile = null;
+        });
+      }
 
       if (newPhotoUrls.isNotEmpty) {
         setState(() {
@@ -978,16 +1298,16 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
 
                   const SizedBox(height: 16),
                   
+                  // Factory Logo Section
+                  _buildFactoryLogoSection(),
+                  
+                  // Factory Photos Section
                   _buildFactoryPhotosGallery(),
                   
                   // Factory Information Form
                   _buildInputLabel('Factory Name'),
                   _buildTextField(_factoryNameController, 'Sunshine Tea Factory'),
                                  
-                  // REMOVED: Owner Name field
-                  // _buildInputLabel('Owner Name'),
-                  // _buildTextField(_ownerNameController, 'John Doe'),
-
                   _buildInputLabel('Contact Number'),
                   _buildTextField(_contactNumberController, '0771234567', TextInputType.phone),
 
@@ -1027,9 +1347,13 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
                   const SizedBox(height: 30),
 
                   GradientButton(
-                    text: _isSaving ? 'Updating...' : 'Update Factory Details',
-                    onPressed: (_isSaving || _uploadingPhotos) ? null : _updateFactoryData,
-                    isEnabled: !_isSaving && !_uploadingPhotos,
+                    text: _isSaving 
+                      ? 'Updating...' 
+                      : 'Update Factory Details',
+                    onPressed: (_isSaving || _uploadingPhotos || _uploadingLogo) 
+                      ? null 
+                      : _updateFactoryData,
+                    isEnabled: !_isSaving && !_uploadingPhotos && !_uploadingLogo,
                   ),
                   
                   const SizedBox(height: 50),

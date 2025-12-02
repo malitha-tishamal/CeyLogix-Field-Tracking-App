@@ -313,9 +313,9 @@ class _DeveloperInfoPageState extends State<DeveloperInfoPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 1. Land Name
+                    // 1. Land Owner Name
                     Text(
-                      _landName, 
+                      _loggedInUserName,
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -324,11 +324,11 @@ class _DeveloperInfoPageState extends State<DeveloperInfoPage> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    // 2. Logged-in User Name and Role
+                    //Land Name Name and Role
                     Text(
-                      'Logged in as: $_loggedInUserName \n($_userRole)', 
+                      'Land Name: $_landName \n($_userRole)', 
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 16,
                         color: AppColors.headerTextDark.withOpacity(0.7),
                       ),
                       maxLines: 2,

@@ -921,9 +921,9 @@ Widget _buildExistingLocationDisplay() {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 1. Land Name
+
                   Text(
-                    _landName, 
+                    _loggedInUserName, 
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -932,9 +932,9 @@ Widget _buildExistingLocationDisplay() {
                   ),
                   // 2. Logged-in User Name and Role
                   Text(
-                    'Logged in as: $_loggedInUserName \n($_userRole)', 
+                    'Land Name: $_landName \n($_userRole)', 
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 16,
                       color: _headerTextDark.withOpacity(0.7),
                     ),
                   ),

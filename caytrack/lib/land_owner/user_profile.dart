@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
 import 'dart:async';
-import 'land_owner_drawer.dart'; // Ensure this file exists for the drawer
+import 'land_owner_drawer.dart';
 
 // --- 1. COLOR PALETTE ---
 class AppColors {
@@ -15,10 +15,13 @@ class AppColors {
   static const Color primaryBlue = Color(0xFF2764E7);
   static const Color cardBackground = Colors.white;
   static const Color secondaryColor = Color(0xFF6AD96A);
-  
-  static const Color headerGradientStart = Color.fromARGB(255, 134, 164, 236);
-  static const Color headerGradientEnd = Color(0xFFF7FAFF);
   static const Color headerTextDark = Color(0xFF333333);
+  static const Color accentPurple = Color.fromRGBO(134, 164, 236, 1);
+  static const Color errorRed = Color(0xFFD32F2F);
+  
+  // Header gradient colors matching DeveloperInfoPage
+  static const Color headerGradientStart = Color(0xFF869AEC);
+  static const Color headerGradientEnd = Color(0xFFF7FAFF);
 }
 
 // --- 2. MAIN SCREEN (User Details - Handles the Header) ---
@@ -33,53 +36,67 @@ class _UserDetailsState extends State<UserDetails> {
   final User? currentUser = FirebaseAuth.instance.currentUser;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  // State variables for dynamic user info
-  String _userName = 'Loading...';
-  String _userRole = 'Loading...';
-  String? _userEmail;
+  // State variables for dynamic user info - Same as DeveloperInfoPage
+  String _loggedInUserName = 'Loading User...';
+  String _landName = 'Loading Land...';
+  String _userRole = 'Land Owner';
+  String _landID = 'L-ID';
   String? _profileImageUrl;
 
   @override
   void initState() {
     super.initState();
-    _fetchUserInfo();
+    _fetchHeaderData();
   }
 
-  // Fetch user data from the 'users' collection (for Header Display)
-  void _fetchUserInfo() async {
+  // --- DATA FETCHING FUNCTION (Same as DeveloperInfoPage) ---
+  void _fetchHeaderData() async {
     final user = currentUser;
-    if (user != null) {
-      try {
-        final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-          
-        if (doc.exists) {
-          final data = doc.data();
-          setState(() {
-            _userName = data?['name'] ?? 'Land Owner';
-            _userRole = data?['role'] ?? 'Land owner';
-            _userEmail = data?['email'] ?? user.email;
-            _profileImageUrl = data?['profileImageUrl'];
-          });
-        } else {
-          // Fallback
-          setState(() {
-            _userName = user.displayName ?? user.email ?? 'Land User';
-            _userRole = 'Land owner';
-            _userEmail = user.email;
-          });
-        }
-      } catch (e) {
-        debugPrint("Error fetching user info: $e");
+    if (user == null) {
+      return;
+    }
+    
+    final String uid = user.uid;
+    setState(() {
+      _landID = uid.substring(0, 8); 
+    });
+
+    try {
+      // 1. Fetch User Name and Role from 'users' collection
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      if (userDoc.exists) {
+        final userData = userDoc.data();
         setState(() {
-          _userName = 'Error Loading Name';
-          _userRole = 'Land owner';
-          _userEmail = user.email;
+          _loggedInUserName = userData?['name'] ?? 'Owner Name Missing';
+          _profileImageUrl = userData?['profileImageUrl'];
+          _userRole = userData?['role'] ?? 'Land Owner';
         });
       }
+      
+      // 2. Fetch Land Name from 'lands' collection
+      final landDoc = await FirebaseFirestore.instance.collection('lands').doc(uid).get();
+      if (landDoc.exists) {
+        setState(() {
+          _landName = landDoc.data()?['landName'] ?? 'Land Name Missing';
+        });
+      } else {
+        // If land doesn't exist, show user email as fallback
+        setState(() {
+          _landName = user.email?.split('@')[0] ?? 'User Account';
+        });
+      }
+
+    } catch (e) {
+      debugPrint("Error fetching header data: $e");
+      setState(() {
+        _loggedInUserName = 'Data Error';
+        _landName = 'Data Error';
+      });
     }
+  }
+
+  void _handleDrawerNavigate(String routeName) {
+    Navigator.pop(context);
   }
 
   @override
@@ -88,52 +105,44 @@ class _UserDetailsState extends State<UserDetails> {
       return const Scaffold(body: Center(child: Text("Error: User not logged in.")));
     }
 
-    void handleDrawerNavigate(String routeName) {
-      Navigator.pop(context);
-      // Implement navigation logic here (e.g., to dashboard)
-    }
-
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: AppColors.background,
-      drawer: LandOwnerDrawer( // Re-using FactoryOwnerDrawer
+      drawer: LandOwnerDrawer(
         onLogout: () {
           FirebaseAuth.instance.signOut();
-          Navigator.pop(context);
+          Navigator.of(context).pop();
         },
-        onNavigate: handleDrawerNavigate,
+        onNavigate: _handleDrawerNavigate,
       ),
       body: Column(
         children: [
-          // Fixed Header
-          _buildProfileHeader(context),
+          // 🌟 FIXED HEADER - Same as DeveloperInfoPage
+          _buildDashboardHeader(context),
           
-          // Scrollable Content with Footer
+          // 🌟 SCROLLABLE CONTENT ONLY with Footer
           Expanded(
             child: Column(
               children: [
+                // Scrollable content
                 Expanded(
                   child: SingleChildScrollView(
-                    // Using the modified widget
                     child: UserProfileContentOnly(
                       userUID: currentUser!.uid,
-                      onProfileUpdated: _fetchUserInfo, // Refresh header when profile updates
-                    ), 
+                      onProfileUpdated: _fetchHeaderData,
+                    ),
                   ),
                 ),
                 
                 // Footer (Fixed at bottom of content area)
-                Align(
-                  alignment: Alignment.bottomCenter,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Text(
-                      'Developed By Malitha Tishamal',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: AppColors.darkText.withOpacity(0.7),
-                        fontSize: 12,
-                      ),
+                Container(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Text(
+                    'Developed by Malitha Tishamal',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: AppColors.darkText.withOpacity(0.7),
+                      fontSize: 12,
                     ),
                   ),
                 ),
@@ -144,14 +153,14 @@ class _UserDetailsState extends State<UserDetails> {
       ),
     );
   }
- 
-  // Profile Header (Displays fetched Name, Role, Email)
-  Widget _buildProfileHeader(BuildContext context) {
+
+  // 🌟 FIXED HEADER - Factory Owner Dashboard Style with Firebase Data
+  Widget _buildDashboardHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
+          colors: [Color(0xFF869AEC), AppColors.headerGradientEnd],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         ),
@@ -186,12 +195,19 @@ class _UserDetailsState extends State<UserDetails> {
           
           Row(
             children: [
-              // Profile Image with fallback to icon
+              // Profile Picture with Firebase image
               Container(
                 width: 70,
                 height: 70,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
+                  gradient: _profileImageUrl == null 
+                    ? const LinearGradient(
+                        colors: [AppColors.primaryBlue, Color(0xFF457AED)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : null,
                   border: Border.all(color: Colors.white, width: 3),
                   boxShadow: [
                     BoxShadow(
@@ -214,34 +230,44 @@ class _UserDetailsState extends State<UserDetails> {
               
               const SizedBox(width: 15),
               
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _userName,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.headerTextDark,
+              // User Info Display from Firebase
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 1. Land Owner Name
+                    Text(
+                      _loggedInUserName,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.headerTextDark,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  Text(
-                    _userRole,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.headerTextDark.withOpacity(0.7),
+                    //Land Name Name and Role
+                    Text(
+                      'Land Name: $_landName \n($_userRole)', 
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: AppColors.headerTextDark.withOpacity(0.7),
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
           
-          const SizedBox(height: 25),
+          const SizedBox(height: 25), 
           
-          const Text(
+          // Page Title
+          Text(
             'Manage User Details',
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
               color: AppColors.headerTextDark,
