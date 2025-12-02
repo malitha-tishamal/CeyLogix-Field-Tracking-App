@@ -759,8 +759,8 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
                   children: [
                     ElevatedButton.icon(
                       onPressed: _pickFactoryLogo,
-                      icon: const Icon(Icons.upload, size: 16),
-                      label: const Text('Upload Logo'),
+                      icon: const Icon(Icons.camera, size: 16),
+                      label: const Text('Select Logo'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primaryBlue,
                         foregroundColor: Colors.white,
@@ -775,7 +775,7 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
                           ? _removeUploadedLogo
                           : _removeSelectedLogo,
                         icon: const Icon(Icons.delete, size: 16),
-                        label: Text(_uploadedLogoUrl != null ? 'Remove Logo' : 'Cancel'),
+                        label: Text(_uploadedLogoUrl != null ? 'Remove' : 'Cancel'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.red,
                           foregroundColor: Colors.white,

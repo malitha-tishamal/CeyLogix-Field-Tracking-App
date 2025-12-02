@@ -6,6 +6,7 @@ import 'factory_owner_dashboard.dart'; // Import the Dashboard page
 import 'user_profile.dart'; // Import the User Profile page (Contains UserDetails)
 import 'developer_info.dart'; // 💡 NEW: Import the Developer Info page
 import '../Auth/login_page.dart'; // Import the Login page
+import 'land_details.dart';
 
 // --- Hardcoded Colors for Simplicity (Replace with AppColors if available) ---
 const Color _primaryBlue = Color(0xFF2764E7);
@@ -269,7 +270,7 @@ class _FactoryOwnerDrawerState extends State<FactoryOwnerDrawer> {
               
               // 2. Factory Details
               _buildModernDrawerItem(
-                icon: Icons.business_center_rounded,
+                icon: Icons.factory,
                 label: "Factory Details",
                 description: "Update company information",
                 onTap: () {
@@ -293,11 +294,25 @@ class _FactoryOwnerDrawerState extends State<FactoryOwnerDrawer> {
                 },
               ),
               
-              // 4. Production
-              _buildModernDrawerItem(icon: Icons.analytics_rounded, label: "Land Owners", description: "Monitor manufacturing", onTap: () => widget.onNavigate("production")),
+             
+                _buildModernDrawerItem(
+                  icon: Icons.landscape,
+                  label: "Land Details",
+                  description: "View All Associated Lands",
+                  onTap: () {
+                    Navigator.of(context).pop(); 
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => LandDetailsPage(
+                          currentUser: FirebaseAuth.instance.currentUser,
+                        ),
+                      ),
+                    );
+                  },
+                ),
               
-              // 5. Inventory
-             // _buildModernDrawerItem(icon: Icons.inventory_rounded, label: "Inventory", description: "Stock management", onTap: () => widget.onNavigate("inventory")),
+            
+              _buildModernDrawerItem(icon: Icons.location_on, label: "Land Details Map", description: "Map with Land Details ", onTap: () => widget.onNavigate("inventory")),
               
               // 6. Developer Info 💡 NEW NAVIGATION
               _buildModernDrawerItem(

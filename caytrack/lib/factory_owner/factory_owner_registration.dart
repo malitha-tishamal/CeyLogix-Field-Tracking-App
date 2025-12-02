@@ -6,11 +6,7 @@ import 'dart:convert';
 // Import the LoginPage from the specified path
 import '../Auth/login_page.dart'; 
 
-// =========================================================================
-// 🟢 FIREBASE CONFIGURATION (INJECTED FROM USER'S JSON) 🟢
-// **Note:** Replace this with your actual, secure Firebase config when deploying.
-// The provided keys are for demonstration/debugging purposes based on previous input.
-// =========================================================================
+
 const String __firebase_config = 
  '{"apiKey": "AIzaSyAxAOhKav-NmOQeMfZh899xy4NmKXQCfM0g", "appId": "1:324646185920:android:f37297d4a7124bb308b625", "messagingSenderId": "324646185920", "projectId": "ceylogix-df065"}'; 
 const String __app_id = '1:324646185920:android:f37297d4a7124bb308b625'; 

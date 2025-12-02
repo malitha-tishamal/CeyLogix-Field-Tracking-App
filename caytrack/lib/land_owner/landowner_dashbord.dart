@@ -1,3 +1,4 @@
+// land_owner_dashboard.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -60,6 +61,7 @@ class _LandOwnerDashboardState extends State<LandOwnerDashboard> {
   String? _teaLandSize;
   String? _cinnamonLandSize;
   String? _landSizeDetails;
+  List<String> _landPhotos = [];
 
   @override
   void initState() {
@@ -108,7 +110,7 @@ class _LandOwnerDashboardState extends State<LandOwnerDashboard> {
     }
   }
 
-  // Fetch land size data
+  // Fetch land size data and photos
   void _fetchLandSizeData() async {
     final user = currentUser;
     if (user == null) return;
@@ -128,6 +130,7 @@ class _LandOwnerDashboardState extends State<LandOwnerDashboard> {
           _teaLandSize = landData?['teaLandSize']?.toString();
           _cinnamonLandSize = landData?['cinnamonLandSize']?.toString();
           _landSizeDetails = landData?['landSizeDetails'];
+          _landPhotos = List<String>.from(landData?['landPhotos'] ?? []);
         });
       }
     } catch (e) {
@@ -135,7 +138,7 @@ class _LandOwnerDashboardState extends State<LandOwnerDashboard> {
     }
   }
 
-  // Fetch associated factories
+  // Fetch associated factories with owner names
   void _fetchAssociatedFactories() async {
     final user = currentUser;
     if (user == null) return;
@@ -168,10 +171,34 @@ class _LandOwnerDashboardState extends State<LandOwnerDashboard> {
             final factoryDoc =
                 await _firestore.collection('factories').doc(factoryId).get();
             if (factoryDoc.exists) {
-              final factoryData = factoryDoc.data();
+              final factoryData = factoryDoc.data() as Map<String, dynamic>;
+              
+              // Get owner UID from factory data
+              String? ownerUid = factoryData['owner'];
+              String ownerName = 'Unknown Owner';
+              
+              // Fetch owner name from users table
+              if (ownerUid != null && ownerUid.isNotEmpty) {
+                try {
+                  final userDoc = await _firestore
+                      .collection('users')
+                      .doc(ownerUid)
+                      .get();
+                  
+                  if (userDoc.exists) {
+                    final userData = userDoc.data() as Map<String, dynamic>;
+                    ownerName = userData['name'] ?? 'Unknown Owner';
+                  }
+                } catch (e) {
+                  debugPrint("Error fetching owner info for $ownerUid: $e");
+                }
+              }
+              
+              // Add factory data with owner name
               factories.add({
                 'id': factoryId,
-                ...factoryData!,
+                ...factoryData,
+                'ownerName': ownerName, // Add owner name to factory data
               });
             }
           } catch (e) {
@@ -874,9 +901,11 @@ Widget _buildFactoryStatsCards() {
     final updatedAt = factory['updatedAt'] != null
         ? (factory['updatedAt'] as Timestamp).toDate()
         : null;
+    
+    // Get factory logo URL
+    final factoryLogoUrl = factory['factoryLogoUrl'];
 
     final mainColor = categoryColor;
-    // FIX: Create a separate method to get icon for factory crop type
     final icon = _getFactoryCropIcon(cropType);
 
     return Container(
@@ -908,18 +937,11 @@ Widget _buildFactoryStatsCards() {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Factory Logo/Icon Container
                     Container(
                       width: 60,
                       height: 60,
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            mainColor,
-                            Color.lerp(mainColor, Colors.black, 0.2)!,
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
@@ -929,10 +951,70 @@ Widget _buildFactoryStatsCards() {
                           ),
                         ],
                       ),
-                      child: Icon(
-                        icon,
-                        color: Colors.white,
-                        size: 30,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: factoryLogoUrl != null && factoryLogoUrl.isNotEmpty
+                            ? Image.network(
+                                factoryLogoUrl,
+                                fit: BoxFit.cover,
+                                loadingBuilder: (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return Container(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          mainColor,
+                                          Color.lerp(mainColor, Colors.black, 0.2)!,
+                                        ],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                    ),
+                                    child: const Center(
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          mainColor,
+                                          Color.lerp(mainColor, Colors.black, 0.2)!,
+                                        ],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                    ),
+                                    child: Icon(
+                                      icon,
+                                      color: Colors.white,
+                                      size: 30,
+                                    ),
+                                  );
+                                },
+                              )
+                            : Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      mainColor,
+                                      Color.lerp(mainColor, Colors.black, 0.2)!,
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                ),
+                                child: Icon(
+                                  icon,
+                                  color: Colors.white,
+                                  size: 30,
+                                ),
+                              ),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -1438,6 +1520,7 @@ Widget _buildFactoryStatsCards() {
         teaLandSize: _teaLandSize,
         cinnamonLandSize: _cinnamonLandSize,
         landSizeDetails: _landSizeDetails,
+        landPhotos: _landPhotos,
       ),
     );
   }
@@ -1468,6 +1551,11 @@ class FactoryDetailsModal extends StatelessWidget {
     final updatedAt = factory['updatedAt'] != null
         ? (factory['updatedAt'] as Timestamp).toDate()
         : null;
+    
+    // Get factory logo URL
+    final factoryLogoUrl = factory['factoryLogoUrl'];
+    // Get factory photos array
+    final factoryPhotos = List<String>.from(factory['factoryPhotos'] ?? []);
 
     final Map<String, Color> cropColors = {
       'Cinnamon': AppColors.warningOrange,
@@ -1478,7 +1566,7 @@ class FactoryDetailsModal extends StatelessWidget {
     final mainColor = cropColors[cropType] ?? AppColors.primaryBlue;
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.85,
+      height: MediaQuery.of(context).size.height * 0.90,
       decoration: const BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.only(
@@ -1506,14 +1594,85 @@ class FactoryDetailsModal extends StatelessWidget {
             ),
             child: Row(
               children: [
+                // Factory Logo Container
                 Container(
-                  width: 50,
-                  height: 50,
+                  width: 60,
+                  height: 60,
                   decoration: BoxDecoration(
-                    color: mainColor,
                     borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: mainColor.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                  child: Icon(Icons.factory, color: Colors.white, size: 28),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: factoryLogoUrl != null && factoryLogoUrl.isNotEmpty
+                        ? Image.network(
+                            factoryLogoUrl,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      mainColor,
+                                      Color.lerp(mainColor, Colors.black, 0.2)!,
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                ),
+                                child: const Center(
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      mainColor,
+                                      Color.lerp(mainColor, Colors.black, 0.2)!,
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                ),
+                                child: Icon(
+                                  Icons.factory,
+                                  color: Colors.white,
+                                  size: 28,
+                                ),
+                              );
+                            },
+                          )
+                        : Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  mainColor,
+                                  Color.lerp(mainColor, Colors.black, 0.2)!,
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.factory,
+                              color: Colors.white,
+                              size: 28,
+                            ),
+                          ),
+                  ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -1569,6 +1728,68 @@ class FactoryDetailsModal extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 24),
+                  
+                  // 🆕 Factory Photos Section
+                  if (factoryPhotos.isNotEmpty)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildDetailSection(
+                          title: 'Factory Photos',
+                          icon: Icons.photo_camera,
+                          children: [
+                            const SizedBox(height: 8),
+                            Text(
+                              'Total ${factoryPhotos.length} photo${factoryPhotos.length > 1 ? 's' : ''}',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: AppColors.secondaryText,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            GridView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 3,
+                                crossAxisSpacing: 8,
+                                mainAxisSpacing: 8,
+                                childAspectRatio: 1,
+                              ),
+                              itemCount: factoryPhotos.length,
+                              itemBuilder: (context, index) {
+                                return ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.network(
+                                    factoryPhotos[index],
+                                    fit: BoxFit.cover,
+                                    loadingBuilder: (context, child, loadingProgress) {
+                                      if (loadingProgress == null) return child;
+                                      return Center(
+                                        child: CircularProgressIndicator(
+                                          value: loadingProgress.expectedTotalBytes != null
+                                              ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                              : null,
+                                          color: mainColor,
+                                        ),
+                                      );
+                                    },
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        color: Colors.grey[200],
+                                        child: const Icon(Icons.broken_image, color: Colors.grey),
+                                      );
+                                    },
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+                    ),
+                  
                   _buildDetailSection(
                     title: 'Location Details',
                     icon: Icons.location_on,
@@ -1738,7 +1959,7 @@ class FactoryDetailsModal extends StatelessWidget {
             ),
           ),
         ],
-      ),
+      )
     );
   }
 }
@@ -1750,6 +1971,7 @@ class LandSizeDetailsModal extends StatelessWidget {
   final String? teaLandSize;
   final String? cinnamonLandSize;
   final String? landSizeDetails;
+  final List<String> landPhotos;
 
   const LandSizeDetailsModal({
     super.key,
@@ -1759,6 +1981,7 @@ class LandSizeDetailsModal extends StatelessWidget {
     required this.teaLandSize,
     required this.cinnamonLandSize,
     required this.landSizeDetails,
+    required this.landPhotos,
   });
 
   @override
@@ -1767,7 +1990,7 @@ class LandSizeDetailsModal extends StatelessWidget {
     final IconData mainIcon = _getModalCropIcon(cropType);
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.7,
+      height: MediaQuery.of(context).size.height * 0.85,
       decoration: const BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.only(
@@ -1889,13 +2112,76 @@ class LandSizeDetailsModal extends StatelessWidget {
                     children: _buildLandSizeDetails(),
                   ),
                   const SizedBox(height: 24),
+                  
+                  // 🆕 Land Photos Section
+                  if (landPhotos.isNotEmpty)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildDetailSection(
+                          title: 'Land Photos',
+                          icon: Icons.photo_camera,
+                          children: [
+                            const SizedBox(height: 8),
+                            Text(
+                              'Total ${landPhotos.length} photo${landPhotos.length > 1 ? 's' : ''}',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: AppColors.secondaryText,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            GridView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 3,
+                                crossAxisSpacing: 8,
+                                mainAxisSpacing: 8,
+                                childAspectRatio: 1,
+                              ),
+                              itemCount: landPhotos.length,
+                              itemBuilder: (context, index) {
+                                return ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.network(
+                                    landPhotos[index],
+                                    fit: BoxFit.cover,
+                                    loadingBuilder: (context, child, loadingProgress) {
+                                      if (loadingProgress == null) return child;
+                                      return Center(
+                                        child: CircularProgressIndicator(
+                                          value: loadingProgress.expectedTotalBytes != null
+                                              ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                              : null,
+                                          color: mainColor,
+                                        ),
+                                      );
+                                    },
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        color: Colors.grey[200],
+                                        child: const Icon(Icons.broken_image, color: Colors.grey),
+                                      );
+                                    },
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+                    ),
+                  
                   if (cropType == 'Both')
                     _buildDetailSection(
                       title: 'Crop-wise Breakdown',
-                      icon: Icons.insights, // Changed from Icons.breakdown to Icons.insights
+                      icon: Icons.insights,
                       children: _buildCropBreakdownDetails(),
                     ),
-                  const SizedBox(height: 30),
+                  if (cropType == 'Both') const SizedBox(height: 24),
+                  
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -2097,7 +2383,7 @@ class LandSizeDetailsModal extends StatelessWidget {
             ),
           ),
         ],
-      ),
+      )
     );
   }
 
