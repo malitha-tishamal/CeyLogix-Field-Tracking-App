@@ -9,9 +9,9 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
-        android:label="caytrack"
+        android:label="CayTrack"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/launcher_icon">
 
         <activity
             android:name=".MainActivity"
@@ -47,6 +47,17 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+    </queries>
+
+    <queries>
+          <intent>
+            <action android:name="android.intent.action.DIAL" />
+            <data android:scheme="tel" />
+          </intent>
+          <intent>
+            <action android:name="android.intent.action.CALL" />
+            <data android:scheme="tel" />
+          </intent>
     </queries>
 
 </manifest>

@@ -25,6 +25,51 @@ class AppColors {
   static const Color headerTextDark = Color(0xFF333333);
 }
 
+// Responsive Helper Extension
+extension ResponsiveExtensions on BuildContext {
+  // Responsive padding
+  double get paddingSmall {
+    final width = MediaQuery.of(this).size.width;
+    if (width < 600) return 12.0;
+    if (width < 900) return 16.0;
+    return 20.0;
+  }
+  
+  double get paddingMedium {
+    final width = MediaQuery.of(this).size.width;
+    if (width < 600) return 16.0;
+    if (width < 900) return 20.0;
+    return 24.0;
+  }
+  
+  double get paddingLarge {
+    final width = MediaQuery.of(this).size.width;
+    if (width < 600) return 20.0;
+    if (width < 900) return 24.0;
+    return 32.0;
+  }
+  
+  // Screen size detection
+  bool get isSmallScreen => MediaQuery.of(this).size.width < 600;
+  bool get isMediumScreen => MediaQuery.of(this).size.width >= 600 && MediaQuery.of(this).size.width < 900;
+  bool get isLargeScreen => MediaQuery.of(this).size.width >= 900;
+  
+  // Photo grid columns
+  int get photoGridColumns {
+    final width = MediaQuery.of(this).size.width;
+    if (width < 400) return 2;
+    if (width < 600) return 3;
+    if (width < 900) return 4;
+    return 5;
+  }
+  
+  // Font size based on screen
+  double get fontSizeSmall => isSmallScreen ? 12.0 : 14.0;
+  double get fontSizeMedium => isSmallScreen ? 14.0 : 16.0;
+  double get fontSizeLarge => isSmallScreen ? 16.0 : 18.0;
+  double get fontSizeExtraLarge => isSmallScreen ? 18.0 : 20.0;
+}
+
 class LandDetails extends StatefulWidget {
   const LandDetails({super.key});
 
@@ -149,40 +194,42 @@ class _LandDetailsState extends State<LandDetails> {
           );
         },
       ),
-      body: Column(
-        children: [
-          // 🌟 FIXED HEADER - Shows Username, Land Name, and Role
-          _buildDashboardHeader(context),
-          
-          // Scrollable Content with Footer
-          Expanded(
-            child: Column(
-              children: [
-                Expanded(
-                  child: LandOwnerProfileContent(
-                    key: ValueKey(currentUser!.uid),
-                    landOwnerUID: currentUser!.uid,
-                    onProfileUpdated: _fetchHeaderData,
-                    onDataUpdated: _showSuccessAndRefresh,
-                  ),
-                ),
-                
-                // Footer (Fixed at bottom of content area)
-                Container(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Text(
-                    'Developed By Malitha Tishamal',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: AppColors.darkText.withOpacity(0.7),
-                      fontSize: 12,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // 🌟 RESPONSIVE HEADER - Adapts to screen size
+            _buildResponsiveHeader(context),
+            
+            // Scrollable Content with Footer
+            Expanded(
+              child: Column(
+                children: [
+                  Expanded(
+                    child: LandOwnerProfileContent(
+                      key: ValueKey(currentUser!.uid),
+                      landOwnerUID: currentUser!.uid,
+                      onProfileUpdated: _fetchHeaderData,
+                      onDataUpdated: _showSuccessAndRefresh,
                     ),
                   ),
-                ),
-              ],
+                  
+                  // Footer (Fixed at bottom of content area)
+                  Container(
+                    padding: EdgeInsets.all(context.paddingSmall),
+                    child: Text(
+                      'Developed By Malitha Tishamal',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.darkText.withOpacity(0.7),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -201,10 +248,18 @@ class _LandDetailsState extends State<LandDetails> {
     _fetchHeaderData();
   }
   
-  // 🌟 FIXED HEADER - Shows Username, Land Name, and Role
-  Widget _buildDashboardHeader(BuildContext context) {
+  // 🌟 RESPONSIVE HEADER - Adapts to screen size
+  Widget _buildResponsiveHeader(BuildContext context) {
+    final isSmallScreen = context.isSmallScreen;
+    final isMediumScreen = context.isMediumScreen;
+    
     return Container(
-      padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
+      padding: EdgeInsets.only(
+        top: isSmallScreen ? 10 : 15,
+        left: isSmallScreen ? 16 : 24,
+        right: isSmallScreen ? 16 : 24,
+        bottom: isSmallScreen ? 16 : 24,
+      ),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
@@ -226,113 +281,45 @@ class _LandDetailsState extends State<LandDetails> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Menu Button and Hamburger Menu
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
-                icon: const Icon(Icons.menu, color: AppColors.headerTextDark, size: 28),
+                icon: Icon(
+                  Icons.menu,
+                  color: AppColors.headerTextDark,
+                  size: isSmallScreen ? 24 : 28,
+                ),
                 onPressed: () {
                   _scaffoldKey.currentState?.openDrawer();
                 },
               ),
+              // Optional: Add notification or other icons for larger screens
+              if (!isSmallScreen)
+                IconButton(
+                  icon: Icon(Icons.notifications, size: isSmallScreen ? 22 : 26),
+                  onPressed: () {
+                    // Handle notifications
+                  },
+                ),
             ],
           ),
           
-          const SizedBox(height: 10),
+          SizedBox(height: isSmallScreen ? 8 : 12),
           
-          Row(
-            children: [
-              // Profile Picture with Firebase image
-              Container(
-                width: 70,
-                height: 70,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: _profileImageUrl == null 
-                    ? const LinearGradient(
-                        colors: [AppColors.primaryBlue, Color(0xFF457AED)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                    : null,
-                  border: Border.all(color: Colors.white, width: 3),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primaryBlue.withOpacity(0.4),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                  image: _profileImageUrl != null 
-                    ? DecorationImage(
-                        image: NetworkImage(_profileImageUrl!),
-                        fit: BoxFit.cover,
-                      )
-                    : null,
-                ),
-                child: _profileImageUrl == null
-                    ? const Icon(Icons.person, size: 40, color: Colors.white)
-                    : null,
-              ),
-              
-              const SizedBox(width: 15),
-              
-              // User Info Display from Firebase - Shows Username, Land Name, and Role
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 1. Username
-                    Text(
-                      _loggedInUserName,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.headerTextDark,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    
-                    const SizedBox(height: 2),
-                    
-                    // 2. Land Name
-                    Text(
-                      'Land Name: ' + _landName,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: AppColors.headerTextDark.withOpacity(0.8),
-                        fontWeight: FontWeight.w500,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    
-                    const SizedBox(height: 2),
-                    
-                    // 3. Role
-                    Text(
-                      '($_userRole)', // Role in parentheses
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppColors.headerTextDark.withOpacity(0.6),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+          // Profile and User Info Section - Responsive Layout
+          isSmallScreen 
+            ? _buildSmallScreenHeader()
+            : _buildLargeScreenHeader(isMediumScreen),
           
-          const SizedBox(height: 25),
+          SizedBox(height: isSmallScreen ? 16 : 20),
           
           // Page Title
-          const Text(
+          Text(
             'Manage Your Land Information',
             style: TextStyle(
-              fontSize: 16,
+              fontSize: isSmallScreen ? 15 : 16,
               fontWeight: FontWeight.w600,
               color: AppColors.headerTextDark,
             ),
@@ -341,17 +328,199 @@ class _LandDetailsState extends State<LandDetails> {
       ),
     );
   }
+
+  // Header for small screens (mobile)
+  Widget _buildSmallScreenHeader() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            // Profile Picture
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: _profileImageUrl == null 
+                  ? const LinearGradient(
+                      colors: [AppColors.primaryBlue, Color(0xFF457AED)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : null,
+                border: Border.all(color: Colors.white, width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primaryBlue.withOpacity(0.4),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+                image: _profileImageUrl != null 
+                  ? DecorationImage(
+                      image: NetworkImage(_profileImageUrl!),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
+              ),
+              child: _profileImageUrl == null
+                ? const Icon(Icons.person, size: 32, color: Colors.white)
+                : null,
+            ),
+            
+            const SizedBox(width: 12),
+            
+            // User Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _loggedInUserName,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.headerTextDark,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  
+                  const SizedBox(height: 2),
+                  
+                  Text(
+                    'Land Name: ' + _landName,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.headerTextDark.withOpacity(0.8),
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  
+                  const SizedBox(height: 2),
+                  
+                  Text(
+                    '($_userRole)',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.headerTextDark.withOpacity(0.6),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // Header for larger screens (tablet/desktop)
+  Widget _buildLargeScreenHeader(bool isMediumScreen) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Profile Picture
+        Container(
+          width: isMediumScreen ? 70 : 80,
+          height: isMediumScreen ? 70 : 80,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: _profileImageUrl == null 
+              ? const LinearGradient(
+                  colors: [AppColors.primaryBlue, Color(0xFF457AED)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : null,
+            border: Border.all(color: Colors.white, width: 3),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primaryBlue.withOpacity(0.4),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
+            image: _profileImageUrl != null 
+              ? DecorationImage(
+                  image: NetworkImage(_profileImageUrl!),
+                  fit: BoxFit.cover,
+                )
+              : null,
+          ),
+          child: _profileImageUrl == null
+            ? Icon(
+                Icons.person,
+                size: isMediumScreen ? 40 : 45,
+                color: Colors.white,
+              )
+            : null,
+        ),
+        
+        SizedBox(width: isMediumScreen ? 15 : 20),
+        
+        // User Info
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _loggedInUserName,
+                style: TextStyle(
+                  fontSize: isMediumScreen ? 18 : 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.headerTextDark,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              
+              SizedBox(height: isMediumScreen ? 4 : 6),
+              
+              Text(
+                'Land Name: ' + _landName,
+                style: TextStyle(
+                  fontSize: isMediumScreen ? 16 : 17,
+                  color: AppColors.headerTextDark.withOpacity(0.8),
+                  fontWeight: FontWeight.w500,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              
+              SizedBox(height: isMediumScreen ? 4 : 6),
+              
+              Text(
+                '($_userRole)',
+                style: TextStyle(
+                  fontSize: isMediumScreen ? 14 : 15,
+                  color: AppColors.headerTextDark.withOpacity(0.6),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class LandOwnerProfileContent extends StatefulWidget {
   final String landOwnerUID;
   final VoidCallback? onProfileUpdated;
-  final VoidCallback? onDataUpdated; // New callback for data update
+  final VoidCallback? onDataUpdated;
   
   const LandOwnerProfileContent({
     required this.landOwnerUID, 
     this.onProfileUpdated,
-    this.onDataUpdated, // Add this parameter
+    this.onDataUpdated,
     super.key,
   });
 
@@ -393,7 +562,7 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
   bool _isLoading = true;
   Map<String, dynamic>? _loadedData;
 
-  // NEW: Tea and Cinnamon specific land size controllers
+  // Tea and Cinnamon specific land size controllers
   late TextEditingController _teaLandSizeController;
   late TextEditingController _cinnamonLandSizeController;
 
@@ -405,8 +574,8 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
     _landNameController = TextEditingController();
     _addressController = TextEditingController();
     _landSizeController = TextEditingController();
-    _teaLandSizeController = TextEditingController(); // Initialize tea controller
-    _cinnamonLandSizeController = TextEditingController(); // Initialize cinnamon controller
+    _teaLandSizeController = TextEditingController();
+    _cinnamonLandSizeController = TextEditingController();
     _agDivisionController = TextEditingController();
     _gnDivisionController = TextEditingController();
     _villageController = TextEditingController();
@@ -471,31 +640,26 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
 
     // Load land sizes based on crop type
     if (_selectedCropType == 'Tea') {
-      // Tea විට landSize එකෙන් ලබාගන්න
       if (data['landSize'] != null) {
         _landSizeController.text = data['landSize'].toString();
       } else if (data['teaLandSize'] != null) {
         _landSizeController.text = data['teaLandSize'].toString();
       }
       
-      // Clear both crop fields
       _teaLandSizeController.clear();
       _cinnamonLandSizeController.clear();
       
     } else if (_selectedCropType == 'Cinnamon') {
-      // Cinnamon විට landSize එකෙන් ලබාගන්න
       if (data['landSize'] != null) {
         _landSizeController.text = data['landSize'].toString();
       } else if (data['cinnamonLandSize'] != null) {
         _landSizeController.text = data['cinnamonLandSize'].toString();
       }
       
-      // Clear both crop fields
       _teaLandSizeController.clear();
       _cinnamonLandSizeController.clear();
       
     } else if (_selectedCropType == 'Both') {
-      // Both විට වෙන වෙනම fields වලින් ලබාගන්න
       if (data['teaLandSize'] != null) {
         _teaLandSizeController.text = data['teaLandSize'].toString();
       }
@@ -503,7 +667,6 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
         _cinnamonLandSizeController.text = data['cinnamonLandSize'].toString();
       }
       
-      // Clear single crop field
       _landSizeController.clear();
     }
 
@@ -520,8 +683,8 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
     _landNameController.dispose();
     _addressController.dispose();
     _landSizeController.dispose();
-    _teaLandSizeController.dispose(); // Dispose tea controller
-    _cinnamonLandSizeController.dispose(); // Dispose cinnamon controller
+    _teaLandSizeController.dispose();
+    _cinnamonLandSizeController.dispose();
     _agDivisionController.dispose();
     _gnDivisionController.dispose();
     _villageController.dispose();
@@ -670,8 +833,11 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
     return uploadedUrls;
   }
 
-  // Land Photos Gallery Widget
+  // Land Photos Gallery Widget - Responsive
   Widget _buildLandPhotosGallery() {
+    final isSmallScreen = context.isSmallScreen;
+    final crossAxisCount = context.photoGridColumns;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -692,10 +858,10 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              crossAxisSpacing: isSmallScreen ? 6 : 8,
+              mainAxisSpacing: isSmallScreen ? 6 : 8,
               childAspectRatio: 1,
             ),
             itemCount: _uploadedLandPhotoUrls.length,
@@ -704,11 +870,11 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
                 children: [
                   Container(
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(isSmallScreen ? 6 : 8),
                       border: Border.all(color: AppColors.primaryBlue.withOpacity(0.3)),
                     ),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(isSmallScreen ? 6 : 8),
                       child: Image.network(
                         _uploadedLandPhotoUrls[index],
                         fit: BoxFit.cover,
@@ -720,13 +886,17 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
                                   ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
                                   : null,
                               color: AppColors.primaryBlue,
+                              strokeWidth: 2,
                             ),
                           );
                         },
                         errorBuilder: (context, error, stackTrace) {
                           return Container(
                             color: Colors.grey[200],
-                            child: const Icon(Icons.broken_image, color: Colors.grey),
+                            child: Icon(Icons.broken_image, 
+                              color: Colors.grey,
+                              size: isSmallScreen ? 30 : 40,
+                            ),
                           );
                         },
                       ),
@@ -738,14 +908,14 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
                     child: GestureDetector(
                       onTap: () => _removeUploadedPhoto(index),
                       child: Container(
-                        padding: const EdgeInsets.all(4),
+                        padding: const EdgeInsets.all(3),
                         decoration: const BoxDecoration(
                           color: Colors.red,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.close,
-                          size: 16,
+                          size: isSmallScreen ? 14 : 16,
                           color: Colors.white,
                         ),
                       ),
@@ -755,16 +925,16 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
                     bottom: 4,
                     left: 4,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                       decoration: BoxDecoration(
                         color: Colors.black.withOpacity(0.6),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
                         '${index + 1}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
-                          fontSize: 10,
+                          fontSize: isSmallScreen ? 9 : 10,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -791,10 +961,10 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              crossAxisSpacing: isSmallScreen ? 6 : 8,
+              mainAxisSpacing: isSmallScreen ? 6 : 8,
               childAspectRatio: 1,
             ),
             itemCount: _selectedLandPhotos.length,
@@ -803,11 +973,11 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
                 children: [
                   Container(
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(isSmallScreen ? 6 : 8),
                       border: Border.all(color: AppColors.secondaryColor.withOpacity(0.5)),
                     ),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(isSmallScreen ? 6 : 8),
                       child: Image.file(
                         File(_selectedLandPhotos[index].path),
                         fit: BoxFit.cover,
@@ -820,14 +990,14 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
                     child: GestureDetector(
                       onTap: () => _removeSelectedPhoto(index),
                       child: Container(
-                        padding: const EdgeInsets.all(4),
+                        padding: const EdgeInsets.all(3),
                         decoration: const BoxDecoration(
                           color: Colors.red,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.close,
-                          size: 16,
+                          size: isSmallScreen ? 14 : 16,
                           color: Colors.white,
                         ),
                       ),
@@ -837,16 +1007,16 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
                     bottom: 4,
                     left: 4,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                       decoration: BoxDecoration(
                         color: Colors.black.withOpacity(0.6),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
                         '${index + 1}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
-                          fontSize: 10,
+                          fontSize: isSmallScreen ? 9 : 10,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -859,13 +1029,13 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
           const SizedBox(height: 16),
         ],
         
-        // Add Photos Button
+        // Add Photos Button - Responsive
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
           decoration: BoxDecoration(
             color: AppColors.cardBackground,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
             border: Border.all(
               color: _selectedLandPhotos.length >= _maxPhotos 
                 ? Colors.grey 
@@ -876,12 +1046,12 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
             children: [
               Icon(
                 Icons.photo_camera,
-                size: 40,
+                size: isSmallScreen ? 32 : 40,
                 color: _selectedLandPhotos.length >= _maxPhotos 
                   ? Colors.grey 
                   : AppColors.primaryBlue,
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: isSmallScreen ? 6 : 8),
               Text(
                 _selectedLandPhotos.length >= _maxPhotos
                   ? 'Maximum $_maxPhotos photos reached'
@@ -891,34 +1061,50 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
                     ? Colors.grey 
                     : AppColors.darkText,
                   fontWeight: FontWeight.w500,
+                  fontSize: isSmallScreen ? 14 : 16,
                 ),
+                textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: isSmallScreen ? 2 : 4),
               Text(
                 'Tap to select photos of your land',
                 style: TextStyle(
                   color: Colors.grey[600],
-                  fontSize: 12,
+                  fontSize: isSmallScreen ? 11 : 12,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: _selectedLandPhotos.length >= _maxPhotos ? null : _pickLandPhotos,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _selectedLandPhotos.length >= _maxPhotos 
-                    ? Colors.grey 
-                    : AppColors.primaryBlue,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              SizedBox(height: isSmallScreen ? 8 : 12),
+              SizedBox(
+                width: isSmallScreen ? double.infinity : null,
+                child: ElevatedButton(
+                  onPressed: _selectedLandPhotos.length >= _maxPhotos ? null : _pickLandPhotos,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _selectedLandPhotos.length >= _maxPhotos 
+                      ? Colors.grey 
+                      : AppColors.primaryBlue,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isSmallScreen ? 20 : 24,
+                      vertical: isSmallScreen ? 10 : 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(isSmallScreen ? 8 : 10),
+                    ),
+                  ),
+                  child: Text(
+                    'Select Photos',
+                    style: TextStyle(
+                      fontSize: isSmallScreen ? 14 : 16,
+                    ),
+                  ),
                 ),
-                child: const Text('Select Photos'),
               ),
             ],
           ),
         ),
         
-        const SizedBox(height: 16),
+        SizedBox(height: isSmallScreen ? 12 : 16),
       ],
     );
   }
@@ -977,7 +1163,7 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
         }
         landDataToUpdate['landSize'] = teaSize.toString();
         landDataToUpdate['landSizeUnit'] = 'Hectares';
-        landDataToUpdate['teaLandSize'] = teaSize.toString(); // Tea size save කරන්න
+        landDataToUpdate['teaLandSize'] = teaSize.toString();
         
       } else if (_selectedCropType == 'Cinnamon') {
         final cinnamonSize = double.tryParse(_landSizeController.text.trim()) ?? 0.0;
@@ -986,7 +1172,7 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
         }
         landDataToUpdate['landSize'] = cinnamonSize.toString();
         landDataToUpdate['landSizeUnit'] = 'Hectares';
-        landDataToUpdate['cinnamonLandSize'] = cinnamonSize.toString(); // Cinnamon size save කරන්න
+        landDataToUpdate['cinnamonLandSize'] = cinnamonSize.toString();
         
       } else if (_selectedCropType == 'Both') {
         final teaSize = double.tryParse(_teaLandSizeController.text.trim()) ?? 0.0;
@@ -1015,7 +1201,7 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
         if (cinnamonSize > 0) {
           landDataToUpdate['cinnamonLandSize'] = cinnamonSize.toString();
         }
-        landDataToUpdate['landSize'] = totalLandSize.toString(); // Total sum save කරන්න
+        landDataToUpdate['landSize'] = totalLandSize.toString();
         landDataToUpdate['landSizeUnit'] = 'Hectares';
         landDataToUpdate['landSizeDetails'] = landSizeDetails;
       }
@@ -1081,13 +1267,9 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
   }
 
   Future<void> _refreshDataAutomatically() async {
-    // Delay for a moment to show success message
     await Future.delayed(const Duration(milliseconds: 500));
-    
-    // Refresh the data
     await _loadInitialData();
     
-    // Show a brief message that data has been refreshed
     if (mounted) {
       setState(() {
         _statusMessage = "Data refreshed successfully!";
@@ -1113,6 +1295,9 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
 
   @override
   Widget build(BuildContext context) {
+    final isSmallScreen = context.isSmallScreen;
+    final isMediumScreen = context.isMediumScreen;
+
     if (_isLoading) {
       return const Center(
         child: Column(
@@ -1128,19 +1313,37 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
 
     return Column(
       children: [
-        // Refresh Button
+        // Refresh Button - Responsive
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: EdgeInsets.symmetric(
+            horizontal: isSmallScreen ? 12 : 16,
+            vertical: isSmallScreen ? 6 : 8,
+          ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               ElevatedButton.icon(
                 onPressed: _refreshData,
-                icon: const Icon(Icons.refresh, size: 16),
-                label: const Text('Refresh'),
+                icon: Icon(
+                  Icons.refresh,
+                  size: isSmallScreen ? 14 : 16,
+                ),
+                label: Text(
+                  'Refresh',
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 13 : 14,
+                  ),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryBlue,
                   foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isSmallScreen ? 12 : 16,
+                    vertical: isSmallScreen ? 8 : 10,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(isSmallScreen ? 8 : 10),
+                  ),
                 ),
               ),
             ],
@@ -1150,99 +1353,115 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
         // Form Content
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20.0),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Status Message
-                  if (_statusMessage != null)
-                    InfoCard(
-                      message: _statusMessage!,
-                      color: _statusMessage!.toLowerCase().contains('success') 
-                          ? AppColors.secondaryColor 
-                          : Colors.red,
-                    ),
+            padding: EdgeInsets.symmetric(
+              horizontal: isSmallScreen ? 16 : 20,
+              vertical: isSmallScreen ? 12 : 16,
+            ),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: isMediumScreen ? 700 : 900,
+              ),
+              child: Center(
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Status Message
+                      if (_statusMessage != null)
+                        InfoCard(
+                          message: _statusMessage!,
+                          color: _statusMessage!.toLowerCase().contains('success') 
+                              ? AppColors.secondaryColor 
+                              : Colors.red,
+                        ),
 
-                  const SizedBox(height: 16),
-                  
-                  // Land Photos Section
-                  _buildLandPhotosGallery(),
-                  
-                  // Land Information Form
-                  _buildInputLabel('Land Name'),
-                  _buildTextField(_landNameController, 'Green Valley Plantation'),
+                      SizedBox(height: isSmallScreen ? 12 : 16),
+                      
+                      // Land Photos Section
+                      _buildLandPhotosGallery(),
+                      
+                      // Land Information Form
+                      _buildInputLabel('Land Name'),
+                      _buildTextField(_landNameController, 'Green Valley Plantation'),
 
-                  // Crop Type Dropdown
-                  _buildInputLabel('Crop Type'),
-                  _buildCropTypeDropdown(),
-                  
-                  // NEW: Dynamic Land Size Field based on Crop Type
-                  if (_selectedCropType == 'Tea')
-                    _buildLandSizeField(
-                      label: 'Tea Land Size',
-                      hint: 'Enter tea land size in hectares (e.g., 5)',
-                      controller: _landSizeController,
-                      unit: 'ha',
-                    )
-                  else if (_selectedCropType == 'Cinnamon')
-                    _buildLandSizeField(
-                      label: 'Cinnamon Land Size',
-                      hint: 'Enter cinnamon land size in hectares (e.g., 3)',
-                      controller: _landSizeController,
-                      unit: 'ha',
-                    )
-                  else if (_selectedCropType == 'Both')
-                    _buildBothCropsLandSizeFields(),
-                                 
-                  _buildInputLabel('Village'),
-                  _buildTextField(_villageController, 'e.g., Peradeniya'),
+                      // Crop Type Dropdown
+                      _buildInputLabel('Crop Type'),
+                      _buildCropTypeDropdown(),
+                      
+                      // Dynamic Land Size Field based on Crop Type
+                      if (_selectedCropType == 'Tea')
+                        _buildLandSizeField(
+                          label: 'Tea Land Size',
+                          hint: 'Enter tea land size in hectares (e.g., 5)',
+                          controller: _landSizeController,
+                          unit: 'ha',
+                        )
+                      else if (_selectedCropType == 'Cinnamon')
+                        _buildLandSizeField(
+                          label: 'Cinnamon Land Size',
+                          hint: 'Enter cinnamon land size in hectares (e.g., 3)',
+                          controller: _landSizeController,
+                          unit: 'ha',
+                        )
+                      else if (_selectedCropType == 'Both')
+                        _buildBothCropsLandSizeFields(),
+                                     
+                      _buildInputLabel('Village'),
+                      _buildTextField(_villageController, 'e.g., Peradeniya'),
 
-                  _buildInputLabel('Address Line'),
-                  _buildTextField(_addressController, 'e.g., Kandy Road'),
+                      _buildInputLabel('Address Line'),
+                      _buildTextField(_addressController, 'e.g., Kandy Road'),
 
-                  // 🆕 UPDATED: Associated Factories Section
-                  _buildFactorySelection(),
-                  
-                  _buildInputLabel('Country (Fixed)'),
-                  const FixedInfoBox(value: 'Sri Lanka'),
-                  
-                  _buildInputLabel('Province'),
-                  _buildProvinceDropdown(),
-                  
-                  if (_selectedProvince != null) ...[
-                    _buildInputLabel('District'),
-                    _buildDistrictDropdown(),
-                  ],
-                  
-                  _buildInputLabel('A/G Division'),
-                  _buildTextField(
-                    _agDivisionController, 
-                    'Enter A/G Division (e.g., Kandy Divisional Secretariat)',
-                    TextInputType.text,
-                    false
+                      // Associated Factories Section
+                      _buildFactorySelection(),
+                      
+                      _buildInputLabel('Country (Fixed)'),
+                      const FixedInfoBox(value: 'Sri Lanka'),
+                      
+                      _buildInputLabel('Province'),
+                      _buildProvinceDropdown(),
+                      
+                      if (_selectedProvince != null) ...[
+                        _buildInputLabel('District'),
+                        _buildDistrictDropdown(),
+                      ],
+                      
+                      _buildInputLabel('A/G Division'),
+                      _buildTextField(
+                        _agDivisionController, 
+                        'Enter A/G Division (e.g., Kandy Divisional Secretariat)',
+                        TextInputType.text,
+                        false
+                      ),
+                      
+                      _buildInputLabel('G/N Division'),
+                      _buildTextField(
+                        _gnDivisionController, 
+                        'Enter G/N Division (e.g., Kandy Town)',
+                        TextInputType.text,
+                        false
+                      ),
+                      
+                      SizedBox(height: isSmallScreen ? 20 : 30),
+
+                      // Update Button - Responsive
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isSmallScreen ? 0 : 20,
+                        ),
+                        child: GradientButton(
+                          text: _isSaving ? 'Updating...' : 'Update Land Details',
+                          onPressed: (_isSaving || _uploadingPhotos) ? null : _updateLandData,
+                          isEnabled: !_isSaving && !_uploadingPhotos,
+                          isSmallScreen: isSmallScreen,
+                        ),
+                      ),
+                      
+                      SizedBox(height: isSmallScreen ? 30 : 50),
+                    ],
                   ),
-                  
-                  _buildInputLabel('G/N Division'),
-                  _buildTextField(
-                    _gnDivisionController, 
-                    'Enter G/N Division (e.g., Kandy Town)',
-                    TextInputType.text,
-                    false
-                  ),
-                  
-                  const SizedBox(height: 30),
-
-                  // Update Button
-                  GradientButton(
-                    text: _isSaving ? 'Updating...' : 'Update Land Details',
-                    onPressed: (_isSaving || _uploadingPhotos) ? null : _updateLandData,
-                    isEnabled: !_isSaving && !_uploadingPhotos,
-                  ),
-                  
-                  const SizedBox(height: 50),
-                ],
+                ),
               ),
             ),
           ),
@@ -1251,30 +1470,35 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
     );
   }
 
-  // NEW: Land Size Field for Single Crop
+  // Land Size Field for Single Crop
   Widget _buildLandSizeField({
     required String label,
     required String hint,
     required TextEditingController controller,
     required String unit,
   }) {
+    final isSmallScreen = context.isSmallScreen;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
             _buildInputLabel(label),
-            const SizedBox(width: 8),
+            SizedBox(width: isSmallScreen ? 6 : 8),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: EdgeInsets.symmetric(
+                horizontal: isSmallScreen ? 6 : 8,
+                vertical: isSmallScreen ? 2 : 4,
+              ),
               decoration: BoxDecoration(
                 color: AppColors.primaryBlue.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(isSmallScreen ? 4 : 6),
               ),
               child: Text(
                 'in $unit',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: isSmallScreen ? 11 : 12,
                   fontWeight: FontWeight.w600,
                   color: AppColors.primaryBlue,
                 ),
@@ -1287,7 +1511,7 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
         Container(
           decoration: BoxDecoration(
             color: AppColors.cardBackground,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
             border: Border.all(color: AppColors.primaryBlue.withOpacity(0.2)),
           ),
           child: Row(
@@ -1296,11 +1520,20 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
                 child: TextFormField(
                   controller: controller,
                   keyboardType: TextInputType.numberWithOptions(decimal: true),
-                  style: const TextStyle(color: AppColors.darkText),
+                  style: TextStyle(
+                    color: AppColors.darkText,
+                    fontSize: isSmallScreen ? 14 : 16,
+                  ),
                   decoration: InputDecoration(
                     hintText: hint,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
+                    contentPadding: EdgeInsets.symmetric(
+                      vertical: isSmallScreen ? 14.0 : 16.0,
+                      horizontal: isSmallScreen ? 16.0 : 20.0,
+                    ),
                     border: InputBorder.none,
+                    hintStyle: TextStyle(
+                      fontSize: isSmallScreen ? 14 : 15,
+                    ),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
@@ -1323,11 +1556,13 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
               
               // Unit display on the right
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: EdgeInsets.symmetric(
+                  horizontal: isSmallScreen ? 12 : 16,
+                ),
                 child: Text(
                   unit,
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: isSmallScreen ? 14 : 16,
                     fontWeight: FontWeight.w600,
                     color: AppColors.primaryBlue,
                   ),
@@ -1340,8 +1575,10 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
     );
   }
 
-  // NEW: Land Size Fields for Both Crops
+  // Land Size Fields for Both Crops
   Widget _buildBothCropsLandSizeFields() {
+    final isSmallScreen = context.isSmallScreen;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1349,22 +1586,26 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
         
         // Information box
         Container(
-          padding: const EdgeInsets.all(12),
-          margin: const EdgeInsets.only(bottom: 12),
+          padding: EdgeInsets.all(isSmallScreen ? 10 : 12),
+          margin: EdgeInsets.only(bottom: isSmallScreen ? 10 : 12),
           decoration: BoxDecoration(
             color: AppColors.secondaryColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(isSmallScreen ? 6 : 8),
             border: Border.all(color: AppColors.secondaryColor.withOpacity(0.2)),
           ),
           child: Row(
             children: [
-              Icon(Icons.info_outline, size: 18, color: AppColors.secondaryColor),
-              const SizedBox(width: 8),
+              Icon(
+                Icons.info_outline,
+                size: isSmallScreen ? 16 : 18,
+                color: AppColors.secondaryColor,
+              ),
+              SizedBox(width: isSmallScreen ? 6 : 8),
               Expanded(
                 child: Text(
                   'Please enter land sizes for both crops separately (in hectares)',
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: isSmallScreen ? 12 : 13,
                     color: AppColors.darkText.withOpacity(0.8),
                   ),
                 ),
@@ -1375,7 +1616,7 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
         
         // Tea Land Size
         Padding(
-          padding: const EdgeInsets.only(bottom: 16),
+          padding: EdgeInsets.only(bottom: isSmallScreen ? 12 : 16),
           child: _buildCropSpecificLandSizeField(
             cropName: 'Tea',
             controller: _teaLandSizeController,
@@ -1384,7 +1625,7 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
         
         // Cinnamon Land Size
         Padding(
-          padding: const EdgeInsets.only(bottom: 8),
+          padding: EdgeInsets.only(bottom: isSmallScreen ? 8 : 8),
           child: _buildCropSpecificLandSizeField(
             cropName: 'Cinnamon',
             controller: _cinnamonLandSizeController,
@@ -1399,11 +1640,11 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
             
             if (teaSize.isEmpty && cinnamonSize.isEmpty) {
               return Padding(
-                padding: const EdgeInsets.only(top: 4, left: 4),
+                padding: EdgeInsets.only(top: 4, left: 4),
                 child: Text(
                   'At least one land size must be provided',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: isSmallScreen ? 11 : 12,
                     color: Colors.red,
                   ),
                 ),
@@ -1421,6 +1662,9 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
     required String cropName,
     required TextEditingController controller,
   }) {
+    final isSmallScreen = context.isSmallScreen;
+    final color = cropName == 'Tea' ? Colors.green : Colors.orange;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1429,37 +1673,38 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
             Text(
               '$cropName Land Size',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: isSmallScreen ? 13 : 14,
                 fontWeight: FontWeight.w600,
                 color: AppColors.darkText,
               ),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: isSmallScreen ? 6 : 8),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: EdgeInsets.symmetric(
+                horizontal: isSmallScreen ? 6 : 8,
+                vertical: isSmallScreen ? 2 : 4,
+              ),
               decoration: BoxDecoration(
-                color: cropName == 'Tea' 
-                  ? Colors.green.withOpacity(0.1)
-                  : Colors.orange.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(6),
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(isSmallScreen ? 4 : 6),
               ),
               child: Text(
                 'in hectares',
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: isSmallScreen ? 10 : 11,
                   fontWeight: FontWeight.w500,
-                  color: cropName == 'Tea' ? Colors.green : Colors.orange,
+                  color: color,
                 ),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: isSmallScreen ? 6 : 8),
         
         Container(
           decoration: BoxDecoration(
             color: AppColors.cardBackground,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
             border: Border.all(color: AppColors.primaryBlue.withOpacity(0.2)),
           ),
           child: Row(
@@ -1468,11 +1713,20 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
                 child: TextFormField(
                   controller: controller,
                   keyboardType: TextInputType.numberWithOptions(decimal: true),
-                  style: const TextStyle(color: AppColors.darkText),
+                  style: TextStyle(
+                    color: AppColors.darkText,
+                    fontSize: isSmallScreen ? 14 : 16,
+                  ),
                   decoration: InputDecoration(
                     hintText: 'Enter $cropName land size (e.g., 2.5)',
-                    contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
+                    contentPadding: EdgeInsets.symmetric(
+                      vertical: isSmallScreen ? 14.0 : 16.0,
+                      horizontal: isSmallScreen ? 16.0 : 20.0,
+                    ),
                     border: InputBorder.none,
+                    hintStyle: TextStyle(
+                      fontSize: isSmallScreen ? 14 : 15,
+                    ),
                   ),
                   validator: (value) {
                     // Only validate if field is not empty
@@ -1492,13 +1746,15 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
               
               // Unit display
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: EdgeInsets.symmetric(
+                  horizontal: isSmallScreen ? 12 : 16,
+                ),
                 child: Text(
                   'ha',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: isSmallScreen ? 14 : 16,
                     fontWeight: FontWeight.w600,
-                    color: cropName == 'Tea' ? Colors.green : Colors.orange,
+                    color: color,
                   ),
                 ),
               ),
@@ -1520,11 +1776,9 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
           _selectedCropType = newValue;
           // Clear appropriate fields when crop type changes
           if (newValue != 'Both') {
-            // Single crop වෙලා change කරනවා නම්, both crop fields clear කරන්න
             _teaLandSizeController.clear();
             _cinnamonLandSizeController.clear();
           } else {
-            // Both වෙලා change කරනවා නම්, single crop field clear කරන්න
             _landSizeController.clear();
           }
         });
@@ -1532,32 +1786,38 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
     );
   }
 
-  // 🆕 UPDATED: Associated Factories Widget with Improved UI
+  // Associated Factories Widget with Responsive UI
   Widget _buildFactorySelection() {
+    final isSmallScreen = context.isSmallScreen;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildInputLabel('Associated Factories'),
-        const SizedBox(height: 8),
+        SizedBox(height: isSmallScreen ? 6 : 8),
         
         // Info box for selection guidance
         Container(
-          padding: const EdgeInsets.all(12),
-          margin: const EdgeInsets.only(bottom: 12),
+          padding: EdgeInsets.all(isSmallScreen ? 10 : 12),
+          margin: EdgeInsets.only(bottom: isSmallScreen ? 10 : 12),
           decoration: BoxDecoration(
             color: AppColors.primaryBlue.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(isSmallScreen ? 6 : 8),
             border: Border.all(color: AppColors.primaryBlue.withOpacity(0.2)),
           ),
           child: Row(
             children: [
-              Icon(Icons.info_outline, size: 18, color: AppColors.primaryBlue),
-              const SizedBox(width: 8),
+              Icon(
+                Icons.info_outline,
+                size: isSmallScreen ? 16 : 18,
+                color: AppColors.primaryBlue,
+              ),
+              SizedBox(width: isSmallScreen ? 6 : 8),
               Expanded(
                 child: Text(
                   'Select factories you supply your crops to',
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: isSmallScreen ? 12 : 13,
                     color: AppColors.darkText.withOpacity(0.8),
                   ),
                 ),
@@ -1569,19 +1829,19 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
         Container(
           decoration: BoxDecoration(
             color: AppColors.cardBackground,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
             border: Border.all(color: AppColors.primaryBlue.withOpacity(0.2)),
           ),
           child: Column(
             children: [
               // Header
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
                 decoration: BoxDecoration(
                   color: AppColors.primaryBlue.withOpacity(0.05),
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(12),
-                    topRight: Radius.circular(12),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(isSmallScreen ? 10 : 12),
+                    topRight: Radius.circular(isSmallScreen ? 10 : 12),
                   ),
                 ),
                 child: Row(
@@ -1589,12 +1849,16 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.factory, size: 20, color: AppColors.primaryBlue),
-                        const SizedBox(width: 8),
+                        Icon(
+                          Icons.factory,
+                          size: isSmallScreen ? 18 : 20,
+                          color: AppColors.primaryBlue,
+                        ),
+                        SizedBox(width: isSmallScreen ? 6 : 8),
                         Text(
                           'Available Factories',
                           style: TextStyle(
-                            fontSize: 15,
+                            fontSize: isSmallScreen ? 14 : 15,
                             fontWeight: FontWeight.w600,
                             color: AppColors.darkText,
                           ),
@@ -1603,7 +1867,10 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
                     ),
                     if (_selectedFactoryIds.isNotEmpty)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isSmallScreen ? 6 : 8,
+                          vertical: isSmallScreen ? 2 : 4,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.primaryBlue.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(20),
@@ -1611,7 +1878,7 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
                         child: Text(
                           '${_selectedFactoryIds.length} selected',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: isSmallScreen ? 11 : 12,
                             fontWeight: FontWeight.w500,
                             color: AppColors.primaryBlue,
                           ),
@@ -1624,12 +1891,15 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
               // Factory List
               if (_availableFactories.isNotEmpty) ...[
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isSmallScreen ? 12 : 16,
+                    vertical: isSmallScreen ? 8 : 12,
+                  ),
                   child: Column(
                     children: _availableFactories.map((factory) {
                       final isSelected = _selectedFactoryIds.contains(factory['id']);
                       return Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
+                        padding: EdgeInsets.only(bottom: isSmallScreen ? 6 : 8),
                         child: FactorySelectionCard(
                           factoryName: factory['factoryName'] ?? 'Unknown Factory',
                           isSelected: isSelected,
@@ -1650,29 +1920,35 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
                 
                 // Selected factories summary
                 if (_selectedFactoryIds.isNotEmpty) ...[
-                  Divider(height: 1, color: AppColors.primaryBlue.withOpacity(0.1)),
+                  Divider(
+                    height: 1,
+                    color: AppColors.primaryBlue.withOpacity(0.1),
+                  ),
                   Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'Selected Factories:',
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: isSmallScreen ? 13 : 14,
                             fontWeight: FontWeight.w600,
                             color: AppColors.darkText.withOpacity(0.8),
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: isSmallScreen ? 6 : 8),
                         Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
+                          spacing: isSmallScreen ? 6 : 8,
+                          runSpacing: isSmallScreen ? 6 : 8,
                           children: _availableFactories
                               .where((factory) => _selectedFactoryIds.contains(factory['id']))
                               .map((factory) {
                             return Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: isSmallScreen ? 10 : 12,
+                                vertical: isSmallScreen ? 4 : 6,
+                              ),
                               decoration: BoxDecoration(
                                 color: AppColors.primaryBlue.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(20),
@@ -1684,12 +1960,12 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
                                   Text(
                                     factory['factoryName'],
                                     style: TextStyle(
-                                      fontSize: 13,
+                                      fontSize: isSmallScreen ? 12 : 13,
                                       color: AppColors.primaryBlue,
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
-                                  const SizedBox(width: 6),
+                                  SizedBox(width: isSmallScreen ? 4 : 6),
                                   GestureDetector(
                                     onTap: () {
                                       setState(() {
@@ -1698,7 +1974,7 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
                                     },
                                     child: Icon(
                                       Icons.close,
-                                      size: 16,
+                                      size: isSmallScreen ? 14 : 16,
                                       color: AppColors.primaryBlue,
                                     ),
                                   ),
@@ -1713,24 +1989,28 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
                 ],
               ] else ...[
                 Padding(
-                  padding: const EdgeInsets.all(20),
+                  padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
                   child: Column(
                     children: [
-                      Icon(Icons.factory_outlined, size: 48, color: Colors.grey[400]),
-                      const SizedBox(height: 12),
+                      Icon(
+                        Icons.factory_outlined,
+                        size: isSmallScreen ? 40 : 48,
+                        color: Colors.grey[400],
+                      ),
+                      SizedBox(height: isSmallScreen ? 8 : 12),
                       Text(
                         'No factories available',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: isSmallScreen ? 13 : 14,
                           color: Colors.grey[600],
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: isSmallScreen ? 6 : 8),
                       Text(
                         'Factories will appear here once they are registered',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: isSmallScreen ? 11 : 12,
                           color: Colors.grey[500],
                         ),
                       ),
@@ -1744,11 +2024,11 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
         
         // Helper text
         Padding(
-          padding: const EdgeInsets.only(top: 8, left: 4),
+          padding: EdgeInsets.only(top: isSmallScreen ? 6 : 8, left: 4),
           child: Text(
             'You can select multiple factories',
             style: TextStyle(
-              fontSize: 12,
+              fontSize: isSmallScreen ? 11 : 12,
               color: AppColors.darkText.withOpacity(0.5),
             ),
           ),
@@ -1758,14 +2038,19 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
   }
 
   Widget _buildInputLabel(String text) {
+    final isSmallScreen = context.isSmallScreen;
+    
     return Padding(
-      padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
+      padding: EdgeInsets.only(
+        top: isSmallScreen ? 12.0 : 16.0,
+        bottom: isSmallScreen ? 6.0 : 8.0,
+      ),
       child: Text(
         text,
-        style: const TextStyle(
+        style: TextStyle(
           color: AppColors.darkText,
           fontWeight: FontWeight.w600,
-          fontSize: 16,
+          fontSize: isSmallScreen ? 15 : 16,
         ),
       ),
     );
@@ -1777,20 +2062,31 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
     [TextInputType keyboardType = TextInputType.text,
     bool isRequired = true]
   ) {
+    final isSmallScreen = context.isSmallScreen;
+    
     return Container(
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
         border: Border.all(color: AppColors.primaryBlue.withOpacity(0.2)),
       ),
       child: TextFormField(
         controller: controller,
         keyboardType: keyboardType,
-        style: const TextStyle(color: AppColors.darkText),
+        style: TextStyle(
+          color: AppColors.darkText,
+          fontSize: isSmallScreen ? 14 : 16,
+        ),
         decoration: InputDecoration(
           hintText: hintText,
-          contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
+          contentPadding: EdgeInsets.symmetric(
+            vertical: isSmallScreen ? 14.0 : 16.0,
+            horizontal: isSmallScreen ? 16.0 : 20.0,
+          ),
           border: InputBorder.none,
+          hintStyle: TextStyle(
+            fontSize: isSmallScreen ? 14 : 15,
+          ),
         ),
         validator: isRequired ? (value) {
           if (value == null || value.isEmpty) {
@@ -1835,24 +2131,44 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
     required List<T> items,
     required void Function(T?) onChanged,
   }) {
+    final isSmallScreen = context.isSmallScreen;
+    
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      padding: EdgeInsets.symmetric(
+        horizontal: isSmallScreen ? 12.0 : 16.0,
+      ),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
         border: Border.all(color: AppColors.primaryBlue.withOpacity(0.2)),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<T>(
           value: value,
-          hint: Text(hint, style: TextStyle(color: AppColors.darkText.withOpacity(0.5))),
           isExpanded: true,
-          icon: const Icon(Icons.arrow_drop_down, color: AppColors.primaryBlue),
-          style: const TextStyle(color: AppColors.darkText, fontSize: 16),
+          hint: Text(
+            hint,
+            style: TextStyle(
+              color: AppColors.darkText.withOpacity(0.5),
+              fontSize: isSmallScreen ? 14 : 16,
+            ),
+          ),
+          icon: Icon(
+            Icons.arrow_drop_down,
+            color: AppColors.primaryBlue,
+            size: isSmallScreen ? 24 : 28,
+          ),
+          style: TextStyle(
+            color: AppColors.darkText,
+            fontSize: isSmallScreen ? 14 : 16,
+          ),
           items: items.map<DropdownMenuItem<T>>((T item) {
             return DropdownMenuItem<T>(
               value: item,
-              child: Text(item.toString()),
+              child: Text(
+                item.toString(),
+                style: TextStyle(fontSize: isSmallScreen ? 14 : 16),
+              ),
             );
           }).toList(),
           onChanged: onChanged,
@@ -1862,7 +2178,7 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
   }
 }
 
-// 🆕 NEW: Factory Selection Card Widget
+// Factory Selection Card Widget
 class FactorySelectionCard extends StatelessWidget {
   final String factoryName;
   final bool isSelected;
@@ -1877,16 +2193,18 @@ class FactorySelectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isSmallScreen = context.isSmallScreen;
+    
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(isSmallScreen ? 6 : 8),
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(isSmallScreen ? 10 : 12),
         decoration: BoxDecoration(
           color: isSelected 
             ? AppColors.primaryBlue.withOpacity(0.1)
             : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(isSmallScreen ? 6 : 8),
           border: Border.all(
             color: isSelected 
               ? AppColors.primaryBlue.withOpacity(0.3)
@@ -1897,37 +2215,41 @@ class FactorySelectionCard extends StatelessWidget {
           children: [
             // Checkbox
             Container(
-              width: 20,
-              height: 20,
+              width: isSmallScreen ? 18 : 20,
+              height: isSmallScreen ? 18 : 20,
               decoration: BoxDecoration(
                 color: isSelected ? AppColors.primaryBlue : Colors.white,
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(isSmallScreen ? 3 : 4),
                 border: Border.all(
                   color: isSelected ? AppColors.primaryBlue : Colors.grey.shade400,
                 ),
               ),
               child: isSelected
-                  ? const Icon(Icons.check, size: 14, color: Colors.white)
+                  ? Icon(
+                      Icons.check,
+                      size: isSmallScreen ? 12 : 14,
+                      color: Colors.white,
+                    )
                   : null,
             ),
             
-            const SizedBox(width: 12),
+            SizedBox(width: isSmallScreen ? 10 : 12),
             
             // Factory Icon
             Icon(
               Icons.factory,
-              size: 24,
+              size: isSmallScreen ? 20 : 24,
               color: isSelected ? AppColors.primaryBlue : Colors.grey[600],
             ),
             
-            const SizedBox(width: 12),
+            SizedBox(width: isSmallScreen ? 10 : 12),
             
             // Factory Name
             Expanded(
               child: Text(
                 factoryName,
                 style: TextStyle(
-                  fontSize: 15,
+                  fontSize: isSmallScreen ? 14 : 15,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                   color: isSelected ? AppColors.darkText : AppColors.darkText.withOpacity(0.7),
                 ),
@@ -1938,7 +2260,7 @@ class FactorySelectionCard extends StatelessWidget {
             if (isSelected)
               Icon(
                 Icons.check_circle,
-                size: 20,
+                size: isSmallScreen ? 18 : 20,
                 color: AppColors.primaryBlue,
               ),
           ],
@@ -1963,25 +2285,35 @@ Map<String, List<String>> _getGeoData() {
   };
 }
 
+// Responsive Gradient Button
 class GradientButton extends StatelessWidget {
   final String text;
   final VoidCallback? onPressed;
   final bool isEnabled;
+  final bool isSmallScreen;
 
-  const GradientButton({required this.text, required this.onPressed, this.isEnabled = true, super.key});
+  const GradientButton({
+    required this.text,
+    required this.onPressed,
+    this.isEnabled = true,
+    this.isSmallScreen = false,
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: isEnabled ? onPressed : null,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
       child: Opacity(
         opacity: isEnabled ? 1.0 : 0.6,
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 16.0),
+          padding: EdgeInsets.symmetric(
+            vertical: isSmallScreen ? 14.0 : 16.0,
+          ),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
             gradient: isEnabled
               ? const LinearGradient(
                   colors: [AppColors.primaryBlue, Color(0xFF457AED)],
@@ -1997,8 +2329,8 @@ class GradientButton extends StatelessWidget {
               ? [
                   BoxShadow(
                     color: AppColors.primaryBlue.withOpacity(0.5),
-                    blurRadius: 10,
-                    offset: const Offset(0, 5),
+                    blurRadius: isSmallScreen ? 8 : 10,
+                    offset: const Offset(0, 4),
                   ),
                 ]
               : null,
@@ -2006,9 +2338,9 @@ class GradientButton extends StatelessWidget {
           child: Text(
             text,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white,
-              fontSize: 20,
+              fontSize: isSmallScreen ? 16 : 20,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -2024,19 +2356,24 @@ class FixedInfoBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isSmallScreen = context.isSmallScreen;
+    
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
+      padding: EdgeInsets.symmetric(
+        vertical: isSmallScreen ? 14.0 : 16.0,
+        horizontal: isSmallScreen ? 16.0 : 20.0,
+      ),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
         border: Border.all(color: AppColors.primaryBlue.withOpacity(0.2)),
       ),
       child: Text(
         value,
         style: TextStyle(
           color: AppColors.darkText.withOpacity(0.7),
-          fontSize: 16,
+          fontSize: isSmallScreen ? 14 : 16,
         ),
       ),
     );
@@ -2050,18 +2387,24 @@ class InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isSmallScreen = context.isSmallScreen;
+    
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: EdgeInsets.all(isSmallScreen ? 10 : 12),
+      margin: EdgeInsets.symmetric(vertical: isSmallScreen ? 6 : 8),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(isSmallScreen ? 6 : 8),
         border: Border.all(color: color, width: 1),
       ),
       child: Text(
         message,
-        style: TextStyle(color: color, fontWeight: FontWeight.w500),
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w500,
+          fontSize: isSmallScreen ? 13 : 14,
+        ),
       ),
     );
   }

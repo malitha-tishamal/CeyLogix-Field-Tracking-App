@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'land_owner_drawer.dart';
 
 // Reusing AppColors locally
@@ -249,6 +250,55 @@ class _LandOwnerDashboardState extends State<LandOwnerDashboard> {
       _multiCropFactories = multiFacts;
       _isLoadingFactories = false;
     });
+  }
+
+  // Make phone call using url_launcher
+  Future<void> _makePhoneCall(String phoneNumber) async {
+    if (phoneNumber.isEmpty || phoneNumber == 'N/A') {
+      _showSnackBar('Phone number not available');
+      return;
+    }
+
+    // Clean phone number
+    final String tel = 'tel:${phoneNumber.replaceAll(RegExp(r'[-\s]'), '')}';
+    
+    try {
+      if (await canLaunchUrl(Uri.parse(tel))) {
+        await launchUrl(Uri.parse(tel));
+      } else {
+        _showPhoneAppErrorDialog(phoneNumber);
+      }
+    } catch (e) {
+      debugPrint('Could not launch phone app: $e');
+      _showPhoneAppErrorDialog(phoneNumber);
+    }
+  }
+
+  void _showPhoneAppErrorDialog(String phoneNumber) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cannot Make Call'),
+        content: Text(
+          'Your device does not have a phone app installed.\n\nPhone number: $phoneNumber',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   @override
@@ -679,7 +729,7 @@ Widget _buildFactoryStatsCards() {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 🌟 First row: 3 cards
+        // First row: 3 cards
         Row(
           children: [
             _buildStatCard(
@@ -708,9 +758,9 @@ Widget _buildFactoryStatsCards() {
           ],
         ),
 
-        const SizedBox(height: 12), // ⭐ break / new row
+        const SizedBox(height: 12),
 
-        // 🌟 Second row: Multi-Crop
+        // Second row: Multi-Crop
         Row(
           children: [
             _buildStatCard(
@@ -1010,10 +1060,10 @@ Widget _buildFactoryStatsCards() {
                                   ),
                                 ),
                                 child: Icon(
-                                  icon,
-                                  color: Colors.white,
-                                  size: 30,
-                                ),
+                                      icon,
+                                      color: Colors.white,
+                                      size: 30,
+                                    ),
                               ),
                       ),
                     ),
@@ -1495,16 +1545,15 @@ Widget _buildFactoryStatsCards() {
     );
   }
 
-  void _makePhoneCall(String phoneNumber) {
-    debugPrint('Calling: $phoneNumber');
-  }
-
   void _showFactoryDetailsModal(Map<String, dynamic> factory) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => FactoryDetailsModal(factory: factory),
+      builder: (context) => FactoryDetailsModal(
+        factory: factory,
+        makePhoneCall: _makePhoneCall,
+      ),
     );
   }
 
@@ -1532,8 +1581,13 @@ Widget _buildFactoryStatsCards() {
 
 class FactoryDetailsModal extends StatelessWidget {
   final Map<String, dynamic> factory;
+  final Function(String) makePhoneCall;
 
-  const FactoryDetailsModal({super.key, required this.factory});
+  const FactoryDetailsModal({
+    super.key,
+    required this.factory,
+    required this.makePhoneCall,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1729,7 +1783,7 @@ class FactoryDetailsModal extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
                   
-                  // 🆕 Factory Photos Section
+                  // Factory Photos Section
                   if (factoryPhotos.isNotEmpty)
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1840,7 +1894,7 @@ class FactoryDetailsModal extends StatelessWidget {
                     children: [
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: () {},
+                          onPressed: () => makePhoneCall(contactNumber),
                           icon: Icon(Icons.phone, color: mainColor),
                           label: Text(
                             'Call Factory',
@@ -2113,7 +2167,7 @@ class LandSizeDetailsModal extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
                   
-                  // 🆕 Land Photos Section
+                  // Land Photos Section
                   if (landPhotos.isNotEmpty)
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

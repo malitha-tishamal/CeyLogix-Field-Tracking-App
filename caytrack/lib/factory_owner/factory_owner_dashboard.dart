@@ -135,9 +135,8 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
         
         // Check if this factory is in the land's factoryIds array
         if (factoryIds.contains(factoryId)) {
-          // Fetch land owner details
+          // Fetch land owner details with ALL owner information
           String? ownerUid = landData['owner'] ?? landDoc.id;
-          String ownerName = 'Unknown Owner';
           
           if (ownerUid != null && ownerUid.isNotEmpty) {
             try {
@@ -148,18 +147,60 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
               
               if (userDoc.exists) {
                 final userData = userDoc.data() as Map<String, dynamic>;
-                ownerName = userData['name'] ?? 'Unknown Owner';
+                
+                associatedLands.add({
+                  'id': landDoc.id,
+                  ...landData,
+                  'ownerName': userData['name'] ?? 'Unknown Owner',
+                  'ownerEmail': userData['email'] ?? '',
+                  'ownerMobile': userData['mobile'] ?? '',
+                  'ownerNic': userData['nic'] ?? '',
+                  'ownerProfileImageUrl': userData['profileImageUrl'] ?? '',
+                  'ownerRegistrationDate': userData['registrationDate'],
+                  'ownerStatus': userData['status'] ?? 'N/A',
+                });
+              } else {
+                // If user document doesn't exist
+                associatedLands.add({
+                  'id': landDoc.id,
+                  ...landData,
+                  'ownerName': 'Unknown Owner',
+                  'ownerEmail': '',
+                  'ownerMobile': '',
+                  'ownerNic': '',
+                  'ownerProfileImageUrl': '',
+                  'ownerRegistrationDate': null,
+                  'ownerStatus': 'N/A',
+                });
               }
             } catch (e) {
               debugPrint("Error fetching owner info for $ownerUid: $e");
+              associatedLands.add({
+                'id': landDoc.id,
+                ...landData,
+                'ownerName': 'Error Loading Owner',
+                'ownerEmail': '',
+                'ownerMobile': '',
+                'ownerNic': '',
+                'ownerProfileImageUrl': '',
+                'ownerRegistrationDate': null,
+                'ownerStatus': 'N/A',
+              });
             }
+          } else {
+            // If ownerUid is null or empty
+            associatedLands.add({
+              'id': landDoc.id,
+              ...landData,
+              'ownerName': 'Unknown Owner',
+              'ownerEmail': '',
+              'ownerMobile': '',
+              'ownerNic': '',
+              'ownerProfileImageUrl': '',
+              'ownerRegistrationDate': null,
+              'ownerStatus': 'N/A',
+            });
           }
-          
-          associatedLands.add({
-            'id': landDoc.id,
-            ...landData,
-            'ownerName': ownerName,
-          });
         }
       }
 
@@ -218,7 +259,7 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => LandDetailsModal(land: land),
+      builder: (context) => FactoryOwnerLandDetailsModal(land: land),
     );
   }
 
@@ -274,6 +315,11 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isSmallScreen = screenWidth < 360;
+    final isLargeScreen = screenWidth > 400;
+    
     void handleDrawerNavigate(String routeName) {
       Navigator.pop(context);
     }
@@ -289,44 +335,51 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
         onNavigate: handleDrawerNavigate,
       ),
 
-      body: Column(
-        children: [
-          _buildDashboardHeader(context),
-          
-          Expanded(
-            child: Column(
-              children: [
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildSectionTitle('Associated Lands', Icons.landscape_rounded),
-                        const SizedBox(height: 10),
-                        _buildAssociatedLandsSection(),
-                        const SizedBox(height: 30),
-                        const SizedBox(height: 50),
-                      ],
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildDashboardHeader(context, screenWidth),
+            
+            Expanded(
+              child: Column(
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: screenWidth * 0.04,
+                        vertical: screenHeight * 0.02,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildSectionTitle('Associated Lands', Icons.landscape_rounded, screenWidth),
+                          SizedBox(height: screenHeight * 0.01),
+                          _buildAssociatedLandsSection(screenWidth, screenHeight),
+                          SizedBox(height: screenHeight * 0.04),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                
-                Container(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Text(
-                    'Developed By Malitha Tishamal',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: AppColors.darkText.withOpacity(0.7),
-                      fontSize: 12,
+                  
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: screenWidth * 0.04,
+                      vertical: screenHeight * 0.015,
+                    ),
+                    child: Text(
+                      'Developed By Malitha Tishamal',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.darkText.withOpacity(0.7),
+                        fontSize: screenWidth * 0.03,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -336,9 +389,16 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
   // -----------------------------------------------------------------
 
   /// 🌟 HEADER - Custom Header Widget matching FactoryDetails style
-  Widget _buildDashboardHeader(BuildContext context) {
+  Widget _buildDashboardHeader(BuildContext context, double screenWidth) {
+    final isSmallScreen = screenWidth < 360;
+    
     return Container(
-      padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + (isSmallScreen ? 8 : 12),
+        left: screenWidth * 0.05,
+        right: screenWidth * 0.05,
+        bottom: isSmallScreen ? 16 : 20,
+      ),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [Color(0xFF869AEC), AppColors.headerGradientEnd], 
@@ -364,7 +424,11 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
-                icon: const Icon(Icons.menu, color: AppColors.headerTextDark, size: 28),
+                icon: Icon(
+                  Icons.menu,
+                  color: AppColors.headerTextDark,
+                  size: isSmallScreen ? 24 : 28,
+                ),
                 onPressed: () {
                   _scaffoldKey.currentState?.openDrawer();
                 },
@@ -372,13 +436,13 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
             ],
           ),
           
-          const SizedBox(height: 10),
+          SizedBox(height: isSmallScreen ? 8 : 10),
           
           Row(
             children: [
               Container(
-                width: 70,
-                height: 70,
+                width: isSmallScreen ? 60 : 70,
+                height: isSmallScreen ? 60 : 70,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: _profileImageUrl == null 
@@ -388,7 +452,7 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
                         end: Alignment.bottomRight,
                       )
                     : null,
-                  border: Border.all(color: Colors.white, width: 3),
+                  border: Border.all(color: Colors.white, width: isSmallScreen ? 2 : 3),
                   boxShadow: [
                     BoxShadow(
                       color: AppColors.primaryBlue.withOpacity(0.4),
@@ -404,41 +468,53 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
                     : null,
                 ),
                 child: _profileImageUrl == null
-                    ? const Icon(Icons.person, size: 40, color: Colors.white)
+                    ? Icon(
+                        Icons.person,
+                        size: isSmallScreen ? 32 : 40,
+                        color: Colors.white,
+                      )
                     : null,
               ),
               
-              const SizedBox(width: 15),
+              SizedBox(width: isSmallScreen ? 12 : 15),
               
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _loggedInUserName, 
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.headerTextDark,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _loggedInUserName,
+                      style: TextStyle(
+                        fontSize: isSmallScreen ? 16 : 20,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.headerTextDark,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  Text(
-                    'Factory Name: $_factoryName \n($_userRole)', 
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.headerTextDark.withOpacity(0.7),
+                    SizedBox(height: isSmallScreen ? 2 : 4),
+                    Text(
+                      'Factory Name: $_factoryName\n($_userRole)',
+                      style: TextStyle(
+                        fontSize: isSmallScreen ? 11 : 14,
+                        color: AppColors.headerTextDark.withOpacity(0.7),
+                        height: 1.3,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
           
-          const SizedBox(height: 25), 
+          SizedBox(height: isSmallScreen ? 15 : 20),
           
           Text(
             'Operational Overview (ID: $_factoryID)',
-            style: const TextStyle(
-              fontSize: 16,
+            style: TextStyle(
+              fontSize: isSmallScreen ? 14 : 16,
               fontWeight: FontWeight.w600,
               color: AppColors.headerTextDark,
             ),
@@ -450,25 +526,31 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
 
   // --- Dashboard Content Widgets ---
 
-  Widget _buildSectionTitle(String title, IconData icon) {
+  Widget _buildSectionTitle(String title, IconData icon, double screenWidth) {
+    final isSmallScreen = screenWidth < 360;
+    
     return Padding(
       padding: const EdgeInsets.only(bottom: 4.0),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(6),
+            padding: EdgeInsets.all(isSmallScreen ? 5 : 6),
             decoration: BoxDecoration(
               color: AppColors.primaryBlue.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, color: AppColors.primaryBlue, size: 20),
+            child: Icon(
+              icon,
+              color: AppColors.primaryBlue,
+              size: isSmallScreen ? 18 : 20,
+            ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: isSmallScreen ? 6 : 8),
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 18, 
-              fontWeight: FontWeight.w700, 
+            style: TextStyle(
+              fontSize: isSmallScreen ? 16 : 18,
+              fontWeight: FontWeight.w700,
               color: AppColors.darkText,
             ),
           ),
@@ -477,82 +559,76 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
     );
   }
 
-  Widget _buildAssociatedLandsSection() {
+  Widget _buildAssociatedLandsSection(double screenWidth, double screenHeight) {
+    final isSmallScreen = screenWidth < 360;
+    final isMediumScreen = screenWidth < 400;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (_allAssociatedLands.isNotEmpty)
           Container(
-            margin: const EdgeInsets.only(bottom: 12),
+            margin: EdgeInsets.only(bottom: screenHeight * 0.015),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  // 🌟 First row: 3 cards
-                  Row(
-                    children: [
-                      _buildLandStatCard(
-                        title: 'Total Lands',
-                        value: _allAssociatedLands.length.toString(),
-                        icon: Icons.landscape,
-                        color: AppColors.primaryBlue,
-                        iconColor: Colors.white,
-                        onTap: _navigateToAllLands,
-                      ),
-                      const SizedBox(width: 12),
-                      _buildLandStatCard(
-                        title: 'Tea',
-                        value: _teaLands.length.toString(),
-                        icon: Icons.agriculture,
-                        color: AppColors.successGreen,
-                        iconColor: Colors.white,
-                        onTap: () => _navigateToCategoryDetails(
-                          categoryTitle: 'Tea Lands',
-                          lands: _teaLands,
-                          categoryType: 'Tea',
-                          icon: Icons.agriculture,
-                          color: AppColors.successGreen,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      _buildLandStatCard(
-                        title: 'Cinnamon',
-                        value: _cinnamonLands.length.toString(),
-                        icon: Icons.spa,
-                        color: AppColors.warningOrange,
-                        iconColor: Colors.white,
-                        onTap: () => _navigateToCategoryDetails(
-                          categoryTitle: 'Cinnamon Lands',
-                          lands: _cinnamonLands,
-                          categoryType: 'Cinnamon',
-                          icon: Icons.spa,
-                          color: AppColors.warningOrange,
-                        ),
-                      ),
-                    ],
+                  _buildLandStatCard(
+                    title: 'Total Lands',
+                    value: _allAssociatedLands.length.toString(),
+                    icon: Icons.landscape,
+                    color: AppColors.primaryBlue,
+                    iconColor: Colors.white,
+                    onTap: _navigateToAllLands,
+                    screenWidth: screenWidth,
                   ),
-
-                  const SizedBox(height: 12), // ⭐ break / new row
-
-                  // 🌟 Second row: Multi-Crop
-                  Row(
-                    children: [
-                      _buildLandStatCard(
-                        title: 'Multi-Crop',
-                        value: _multiCropLands.length.toString(),
-                        icon: Icons.all_inclusive,
-                        color: AppColors.accentTeal,
-                        iconColor: Colors.white,
-                        onTap: () => _navigateToCategoryDetails(
-                          categoryTitle: 'Multi-Crop Lands',
-                          lands: _multiCropLands,
-                          categoryType: 'Both',
-                          icon: Icons.all_inclusive,
-                          color: AppColors.accentTeal,
-                        ),
-                      ),
-                    ],
+                  SizedBox(width: screenWidth * 0.03),
+                  _buildLandStatCard(
+                    title: 'Tea',
+                    value: _teaLands.length.toString(),
+                    icon: Icons.agriculture,
+                    color: AppColors.successGreen,
+                    iconColor: Colors.white,
+                    onTap: () => _navigateToCategoryDetails(
+                      categoryTitle: 'Tea Lands',
+                      lands: _teaLands,
+                      categoryType: 'Tea',
+                      icon: Icons.agriculture,
+                      color: AppColors.successGreen,
+                    ),
+                    screenWidth: screenWidth,
+                  ),
+                  SizedBox(width: screenWidth * 0.03),
+                  _buildLandStatCard(
+                    title: 'Cinnamon',
+                    value: _cinnamonLands.length.toString(),
+                    icon: Icons.spa,
+                    color: AppColors.warningOrange,
+                    iconColor: Colors.white,
+                    onTap: () => _navigateToCategoryDetails(
+                      categoryTitle: 'Cinnamon Lands',
+                      lands: _cinnamonLands,
+                      categoryType: 'Cinnamon',
+                      icon: Icons.spa,
+                      color: AppColors.warningOrange,
+                    ),
+                    screenWidth: screenWidth,
+                  ),
+                  SizedBox(width: screenWidth * 0.03),
+                  _buildLandStatCard(
+                    title: 'Multi-Crop',
+                    value: _multiCropLands.length.toString(),
+                    icon: Icons.all_inclusive,
+                    color: AppColors.accentTeal,
+                    iconColor: Colors.white,
+                    onTap: () => _navigateToCategoryDetails(
+                      categoryTitle: 'Multi-Crop Lands',
+                      lands: _multiCropLands,
+                      categoryType: 'Both',
+                      icon: Icons.all_inclusive,
+                      color: AppColors.accentTeal,
+                    ),
+                    screenWidth: screenWidth,
                   ),
                 ],
               ),
@@ -560,13 +636,13 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
           ),
 
         if (_isLoadingLands)
-          _buildLoadingLands()
+          _buildLoadingLands(screenWidth, screenHeight)
         else if (_errorMessage != null)
-          _buildErrorLands()
+          _buildErrorLands(screenWidth)
         else if (_allAssociatedLands.isEmpty)
-          _buildNoLandsCard()
+          _buildNoLandsCard(screenWidth)
         else
-          _buildLandsByCategory(),
+          _buildLandsByCategory(screenWidth, screenHeight),
       ],
     );
   }
@@ -578,12 +654,16 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
     required Color color,
     required Color iconColor,
     required VoidCallback onTap,
+    required double screenWidth,
   }) {
+    final isSmallScreen = screenWidth < 360;
+    final cardWidth = screenWidth * 0.22;
+    
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 100,
-        padding: const EdgeInsets.all(12),
+        width: cardWidth,
+        padding: EdgeInsets.all(isSmallScreen ? 8 : 12),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [color, Color.lerp(color, Colors.black, 0.1)!],
@@ -602,24 +682,25 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 18, color: iconColor),
-            const SizedBox(height: 6),
+            Icon(icon, size: isSmallScreen ? 16 : 18, color: iconColor),
+            SizedBox(height: isSmallScreen ? 4 : 6),
             Text(
               value,
-              style: const TextStyle(
-                fontSize: 18,
+              style: TextStyle(
+                fontSize: isSmallScreen ? 16 : 18,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: isSmallScreen ? 2 : 4),
             Text(
               title,
               style: TextStyle(
-                fontSize: 10,
+                fontSize: isSmallScreen ? 9 : 10,
                 color: Colors.white.withOpacity(0.9),
               ),
               textAlign: TextAlign.center,
+              maxLines: 2,
             ),
           ],
         ),
@@ -627,24 +708,37 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
     );
   }
 
-  Widget _buildLandsByCategory() {
+  Widget _buildLandsByCategory(double screenWidth, double screenHeight) {
+    final isSmallScreen = screenWidth < 360;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // View All Lands Button
         Container(
-          margin: const EdgeInsets.only(bottom: 16),
+          margin: EdgeInsets.only(bottom: screenHeight * 0.02),
           child: ElevatedButton.icon(
             onPressed: _navigateToAllLands,
-            icon: const Icon(Icons.grid_view, size: 18),
-            label: const Text('View All Associated Lands'),
+            icon: Icon(
+              Icons.grid_view,
+              size: isSmallScreen ? 16 : 18,
+            ),
+            label: Text(
+              'View All Associated Lands',
+              style: TextStyle(
+                fontSize: isSmallScreen ? 13 : 14,
+              ),
+            ),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primaryBlue,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              padding: EdgeInsets.symmetric(
+                horizontal: screenWidth * 0.05,
+                vertical: isSmallScreen ? 12 : 14,
+              ),
             ),
           ),
         ),
@@ -657,6 +751,8 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
             color: AppColors.warningOrange,
             lands: _cinnamonLands,
             totalLands: _cinnamonLands.length,
+            screenWidth: screenWidth,
+            screenHeight: screenHeight,
           ),
         if (_teaLands.isNotEmpty)
           _buildLandCategorySection(
@@ -665,6 +761,8 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
             color: AppColors.successGreen,
             lands: _teaLands,
             totalLands: _teaLands.length,
+            screenWidth: screenWidth,
+            screenHeight: screenHeight,
           ),
         if (_multiCropLands.isNotEmpty)
           _buildLandCategorySection(
@@ -673,6 +771,8 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
             color: AppColors.accentTeal,
             lands: _multiCropLands,
             totalLands: _multiCropLands.length,
+            screenWidth: screenWidth,
+            screenHeight: screenHeight,
           ),
       ],
     );
@@ -684,7 +784,10 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
     required Color color,
     required List<Map<String, dynamic>> lands,
     required int totalLands,
+    required double screenWidth,
+    required double screenHeight,
   }) {
+    final isSmallScreen = screenWidth < 360;
     // ✅ Take only latest 5 lands (already sorted newest first)
     final latestLands = lands.length > 5 ? lands.sublist(0, 5) : lands;
     final hasMoreLands = lands.length > 5;
@@ -692,25 +795,29 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 16),
+        SizedBox(height: screenHeight * 0.02),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(6),
+                  padding: EdgeInsets.all(isSmallScreen ? 5 : 6),
                   decoration: BoxDecoration(
                     color: color.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(icon, size: 20, color: color),
+                  child: Icon(
+                    icon,
+                    size: isSmallScreen ? 18 : 20,
+                    color: color,
+                  ),
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: isSmallScreen ? 8 : 10),
                 Text(
                   title,
-                  style: const TextStyle(
-                    fontSize: 16,
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 14 : 16,
                     fontWeight: FontWeight.w600,
                     color: AppColors.darkText,
                   ),
@@ -718,7 +825,10 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
               ],
             ),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: EdgeInsets.symmetric(
+                horizontal: isSmallScreen ? 8 : 10,
+                vertical: isSmallScreen ? 3 : 4,
+              ),
               decoration: BoxDecoration(
                 color: color.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(15),
@@ -726,7 +836,7 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
               child: Text(
                 '$totalLands lands',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: isSmallScreen ? 10 : 12,
                   fontWeight: FontWeight.w600,
                   color: color,
                 ),
@@ -734,20 +844,26 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
             ),
           ],
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: screenHeight * 0.01),
         Column(
           children: [
             // ✅ Display only latest 5 associated lands
             ...latestLands.asMap().entries.map((entry) {
               final index = entry.key;
               final land = entry.value;
-              return _buildLandCard(land, index, color);
+              return _buildLandCard(
+                land,
+                index,
+                color,
+                screenWidth,
+                screenHeight,
+              );
             }).toList(),
             
             // ✅ Show "View All" button if there are more than 5 lands
             if (hasMoreLands)
               Container(
-                margin: const EdgeInsets.only(top: 8),
+                margin: EdgeInsets.only(top: screenHeight * 0.01),
                 child: TextButton.icon(
                   onPressed: () {
                     _navigateToCategoryDetails(
@@ -758,11 +874,15 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
                       color: color,
                     );
                   },
-                  icon: Icon(Icons.arrow_forward, size: 16, color: color),
+                  icon: Icon(
+                    Icons.arrow_forward,
+                    size: isSmallScreen ? 14 : 16,
+                    color: color,
+                  ),
                   label: Text(
                     'View All ${lands.length} Lands',
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: isSmallScreen ? 12 : 14,
                       fontWeight: FontWeight.w600,
                       color: color,
                     ),
@@ -782,7 +902,14 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
     return 'All';
   }
 
-  Widget _buildLandCard(Map<String, dynamic> land, int index, Color categoryColor) {
+  Widget _buildLandCard(
+    Map<String, dynamic> land,
+    int index,
+    Color categoryColor,
+    double screenWidth,
+    double screenHeight,
+  ) {
+    final isSmallScreen = screenWidth < 360;
     final landName = land['landName'] ?? 'Unknown Land';
     final ownerName = land['ownerName'] ?? 'N/A';
     final cropType = land['cropType'] ?? 'N/A';
@@ -799,7 +926,7 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
         _showLandDetailsModal(land);
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
+        margin: EdgeInsets.only(bottom: screenHeight * 0.012),
         child: Material(
           elevation: 2,
           borderRadius: BorderRadius.circular(12),
@@ -810,12 +937,12 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
               border: Border.all(color: mainColor.withOpacity(0.1)),
             ),
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
               child: Row(
                 children: [
                   Container(
-                    width: 50,
-                    height: 50,
+                    width: isSmallScreen ? 40 : 50,
+                    height: isSmallScreen ? 40 : 50,
                     decoration: BoxDecoration(
                       color: mainColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(10),
@@ -824,14 +951,14 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
                       child: Text(
                         '${index + 1}',
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: isSmallScreen ? 16 : 18,
                           fontWeight: FontWeight.bold,
                           color: mainColor,
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: isSmallScreen ? 10 : 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -842,16 +969,20 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
                             Expanded(
                               child: Text(
                                 landName,
-                                style: const TextStyle(
-                                  fontSize: 16,
+                                style: TextStyle(
+                                  fontSize: isSmallScreen ? 14 : 16,
                                   fontWeight: FontWeight.w600,
                                   color: AppColors.darkText,
                                 ),
+                                maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: isSmallScreen ? 6 : 8,
+                                vertical: isSmallScreen ? 1 : 2,
+                              ),
                               decoration: BoxDecoration(
                                 color: mainColor.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(15),
@@ -860,7 +991,7 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
                               child: Text(
                                 cropType,
                                 style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: isSmallScreen ? 10 : 11,
                                   fontWeight: FontWeight.w600,
                                   color: mainColor,
                                 ),
@@ -868,36 +999,47 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 4),
+                        SizedBox(height: screenHeight * 0.004),
                         Text(
                           'Owner: $ownerName',
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: isSmallScreen ? 12 : 13,
                             color: AppColors.secondaryText,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 4),
+                        SizedBox(height: screenHeight * 0.004),
                         Row(
                           children: [
-                            Icon(Icons.square_foot, size: 14, color: mainColor),
-                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.square_foot,
+                              size: isSmallScreen ? 12 : 14,
+                              color: mainColor,
+                            ),
+                            SizedBox(width: isSmallScreen ? 3 : 4),
                             Text(
                               '$landSize $landSizeUnit',
                               style: TextStyle(
-                                fontSize: 13,
+                                fontSize: isSmallScreen ? 12 : 13,
                                 color: AppColors.darkText,
                               ),
                             ),
-                            const SizedBox(width: 12),
-                            Icon(Icons.location_on, size: 14, color: mainColor),
-                            const SizedBox(width: 4),
+                            SizedBox(width: isSmallScreen ? 8 : 12),
+                            Icon(
+                              Icons.location_on,
+                              size: isSmallScreen ? 12 : 14,
+                              color: mainColor,
+                            ),
+                            SizedBox(width: isSmallScreen ? 3 : 4),
                             Expanded(
                               child: Text(
                                 district,
                                 style: TextStyle(
-                                  fontSize: 13,
+                                  fontSize: isSmallScreen ? 12 : 13,
                                   color: AppColors.darkText,
                                 ),
+                                maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
@@ -915,9 +1057,9 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
     );
   }
 
-  Widget _buildLoadingLands() {
+  Widget _buildLoadingLands(double screenWidth, double screenHeight) {
     return Container(
-      padding: const EdgeInsets.all(30),
+      padding: EdgeInsets.all(screenWidth * 0.08),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(12),
@@ -925,11 +1067,11 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
       child: Column(
         children: [
           CircularProgressIndicator(color: AppColors.primaryBlue),
-          const SizedBox(height: 16),
-          const Text(
+          SizedBox(height: screenHeight * 0.02),
+          Text(
             'Loading land data...',
             style: TextStyle(
-              fontSize: 14,
+              fontSize: screenWidth * 0.04,
               color: AppColors.darkText,
             ),
           ),
@@ -938,9 +1080,9 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
     );
   }
 
-  Widget _buildErrorLands() {
+  Widget _buildErrorLands(double screenWidth) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(screenWidth * 0.05),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(12),
@@ -948,26 +1090,36 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
       ),
       child: Column(
         children: [
-          Icon(Icons.error_outline, size: 36, color: AppColors.accentRed),
-          const SizedBox(height: 12),
+          Icon(
+            Icons.error_outline,
+            size: screenWidth * 0.09,
+            color: AppColors.accentRed,
+          ),
+          SizedBox(height: screenWidth * 0.03),
           Text(
             _errorMessage ?? 'Unable to load land data',
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 14,
+            style: TextStyle(
+              fontSize: screenWidth * 0.04,
               fontWeight: FontWeight.w600,
               color: AppColors.darkText,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: screenWidth * 0.02),
           ElevatedButton.icon(
             onPressed: _fetchAssociatedLands,
-            icon: const Icon(Icons.refresh, size: 16),
-            label: const Text('Retry'),
+            icon: Icon(Icons.refresh, size: screenWidth * 0.04),
+            label: Text(
+              'Retry',
+              style: TextStyle(fontSize: screenWidth * 0.035),
+            ),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primaryBlue,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              padding: EdgeInsets.symmetric(
+                horizontal: screenWidth * 0.05,
+                vertical: screenWidth * 0.025,
+              ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -978,9 +1130,9 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
     );
   }
 
-  Widget _buildNoLandsCard() {
+  Widget _buildNoLandsCard(double screenWidth) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(screenWidth * 0.06),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(12),
@@ -988,23 +1140,27 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
       ),
       child: Column(
         children: [
-          Icon(Icons.landscape, size: 48, color: AppColors.primaryBlue),
-          const SizedBox(height: 16),
-          const Text(
+          Icon(
+            Icons.landscape,
+            size: screenWidth * 0.12,
+            color: AppColors.primaryBlue,
+          ),
+          SizedBox(height: screenWidth * 0.04),
+          Text(
             'No Associated Lands',
             style: TextStyle(
-              fontSize: 16,
+              fontSize: screenWidth * 0.045,
               fontWeight: FontWeight.w700,
               color: AppColors.darkText,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: screenWidth * 0.02),
           Text(
             'You are not currently associated with any lands. Lands will appear here once they add your factory.',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: AppColors.secondaryText,
-              fontSize: 14,
+              fontSize: screenWidth * 0.035,
             ),
           ),
         ],
@@ -1028,16 +1184,20 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
 }
 
 // -----------------------------------------------------------------
-// --- LAND DETAILS MODAL WIDGET ---
+// --- FACTORY OWNER LAND DETAILS MODAL WIDGET ---
 // -----------------------------------------------------------------
 
-class LandDetailsModal extends StatelessWidget {
+class FactoryOwnerLandDetailsModal extends StatelessWidget {
   final Map<String, dynamic> land;
 
-  const LandDetailsModal({super.key, required this.land});
+  const FactoryOwnerLandDetailsModal({super.key, required this.land});
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isSmallScreen = screenWidth < 360;
+    
     final landName = land['landName'] ?? 'Unknown Land';
     final ownerName = land['ownerName'] ?? 'N/A';
     final cropType = land['cropType'] ?? 'N/A';
@@ -1054,6 +1214,12 @@ class LandDetailsModal extends StatelessWidget {
     final teaLandSize = land['teaLandSize'] ?? 'N/A';
     final landPhotos = List<String>.from(land['landPhotos'] ?? []);
     final ownerUid = land['owner'] ?? '';
+    final ownerEmail = land['ownerEmail'] ?? '';
+    final ownerMobile = land['ownerMobile'] ?? '';
+    final ownerNic = land['ownerNic'] ?? '';
+    final ownerProfileImageUrl = land['ownerProfileImageUrl'] ?? '';
+    final ownerRegistrationDate = land['ownerRegistrationDate'];
+    final ownerStatus = land['ownerStatus'] ?? 'N/A';
 
     final Map<String, Color> cropColors = {
       'Cinnamon': AppColors.warningOrange,
@@ -1064,7 +1230,7 @@ class LandDetailsModal extends StatelessWidget {
     final mainColor = cropColors[cropType] ?? AppColors.primaryBlue;
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.85,
+      height: screenHeight * 0.85,
       decoration: const BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.only(
@@ -1075,7 +1241,7 @@ class LandDetailsModal extends StatelessWidget {
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
@@ -1093,8 +1259,8 @@ class LandDetailsModal extends StatelessWidget {
             child: Row(
               children: [
                 Container(
-                  width: 50,
-                  height: 50,
+                  width: isSmallScreen ? 40 : 50,
+                  height: isSmallScreen ? 40 : 50,
                   decoration: BoxDecoration(
                     color: mainColor,
                     borderRadius: BorderRadius.circular(12),
@@ -1102,27 +1268,29 @@ class LandDetailsModal extends StatelessWidget {
                   child: Icon(
                     _getCropIcon(cropType),
                     color: Colors.white,
-                    size: 28,
+                    size: isSmallScreen ? 22 : 28,
                   ),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: isSmallScreen ? 12 : 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         landName,
-                        style: const TextStyle(
-                          fontSize: 20,
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 16 : 20,
                           fontWeight: FontWeight.bold,
                           color: AppColors.darkText,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: screenHeight * 0.004),
                       Text(
                         '$cropType Land',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: isSmallScreen ? 12 : 14,
                           color: mainColor,
                           fontWeight: FontWeight.w600,
                         ),
@@ -1132,46 +1300,70 @@ class LandDetailsModal extends StatelessWidget {
                 ),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close, color: AppColors.secondaryText),
+                  icon: Icon(
+                    Icons.close,
+                    color: AppColors.secondaryText,
+                    size: isSmallScreen ? 20 : 24,
+                  ),
                 ),
               ],
             ),
           ),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // OWNER DETAILS SECTION
+                  _buildOwnerDetailsSection(
+                    ownerName: ownerName,
+                    ownerProfileImageUrl: ownerProfileImageUrl,
+                    ownerMobile: ownerMobile,
+                    ownerEmail: ownerEmail,
+                    ownerNic: ownerNic,
+                    ownerStatus: ownerStatus,
+                    mainColor: mainColor,
+                    screenWidth: screenWidth,
+                    screenHeight: screenHeight,
+                  ),
+                  
+                  SizedBox(height: screenHeight * 0.02),
+                  
                   _buildDetailSection(
-                    title: 'Basic Information',
+                    title: 'Land Information',
                     icon: Icons.info_outline,
                     children: [
-                      _buildDetailRow('Land Name', landName),
-                      _buildDetailRow('Owner Name', ownerName),
-                      _buildDetailRow('Crop Type', cropType),
-                      _buildDetailRow('Total Land Size', '$landSize $landSizeUnit'),
+                      _buildDetailRow('Land Name', landName, screenWidth),
+                      _buildDetailRow('Crop Type', cropType, screenWidth),
+                      _buildDetailRow('Total Land Size', '$landSize $landSizeUnit', screenWidth),
                       if (cropType == 'Both' || cropType == 'Tea')
-                        _buildDetailRow('Tea Land Size', '$teaLandSize $landSizeUnit'),
+                        _buildDetailRow('Tea Land Size', '$teaLandSize $landSizeUnit', screenWidth),
                       if (cropType == 'Both' || cropType == 'Cinnamon')
-                        _buildDetailRow('Cinnamon Land Size', '$cinnamonLandSize $landSizeUnit'),
+                        _buildDetailRow('Cinnamon Land Size', '$cinnamonLandSize $landSizeUnit', screenWidth),
                     ],
+                    screenWidth: screenWidth,
                   ),
-                  const SizedBox(height: 24),
+                  
+                  SizedBox(height: screenHeight * 0.02),
+                  
                   _buildDetailSection(
                     title: 'Location Details',
                     icon: Icons.location_on,
                     children: [
-                      if (address.isNotEmpty) _buildDetailRow('Address', address),
-                      if (village.isNotEmpty) _buildDetailRow('Village/Town', village),
-                      if (district.isNotEmpty) _buildDetailRow('District', district),
-                      if (province.isNotEmpty) _buildDetailRow('Province', province),
-                      if (agDivision.isNotEmpty) _buildDetailRow('A/G Division', agDivision),
-                      if (gnDivision.isNotEmpty) _buildDetailRow('G/N Division', gnDivision),
-                      _buildDetailRow('Country', country),
+                      if (address.isNotEmpty) _buildDetailRow('Address', address, screenWidth),
+                      if (village.isNotEmpty) _buildDetailRow('Village/Town', village, screenWidth),
+                      if (district.isNotEmpty) _buildDetailRow('District', district, screenWidth),
+                      if (province.isNotEmpty) _buildDetailRow('Province', province, screenWidth),
+                      if (agDivision.isNotEmpty) _buildDetailRow('A/G Division', agDivision, screenWidth),
+                      if (gnDivision.isNotEmpty) _buildDetailRow('G/N Division', gnDivision, screenWidth),
+                      _buildDetailRow('Country', country, screenWidth),
                     ],
+                    screenWidth: screenWidth,
                   ),
-                  const SizedBox(height: 24),
+                  
+                  SizedBox(height: screenHeight * 0.02),
+                  
                   if (landPhotos.isNotEmpty)
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1183,10 +1375,10 @@ class LandDetailsModal extends StatelessWidget {
                             GridView.builder(
                               shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
-                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 2,
-                                crossAxisSpacing: 8,
-                                mainAxisSpacing: 8,
+                              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: isSmallScreen ? 2 : 2,
+                                crossAxisSpacing: isSmallScreen ? 6 : 8,
+                                mainAxisSpacing: isSmallScreen ? 6 : 8,
                                 childAspectRatio: 1,
                               ),
                               itemCount: landPhotos.length,
@@ -1210,7 +1402,11 @@ class LandDetailsModal extends StatelessWidget {
                                     errorBuilder: (context, error, stackTrace) {
                                       return Container(
                                         color: Colors.grey[200],
-                                        child: const Icon(Icons.broken_image, color: Colors.grey),
+                                        child: Icon(
+                                          Icons.broken_image,
+                                          color: Colors.grey,
+                                          size: screenWidth * 0.1,
+                                        ),
                                       );
                                     },
                                   ),
@@ -1218,17 +1414,19 @@ class LandDetailsModal extends StatelessWidget {
                               },
                             ),
                           ],
+                          screenWidth: screenWidth,
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: screenHeight * 0.02),
                       ],
                     ),
+                  
                   _buildDetailSection(
                     title: 'Land Identification',
                     icon: Icons.fingerprint,
                     children: [
-                      _buildDetailRow('Land ID', land['id']?.toString() ?? 'N/A'),
+                      _buildDetailRow('Land ID', land['id']?.toString() ?? 'N/A', screenWidth),
                       Container(
-                        padding: const EdgeInsets.all(12),
+                        padding: EdgeInsets.all(isSmallScreen ? 10 : 12),
                         decoration: BoxDecoration(
                           color: AppColors.background,
                           borderRadius: BorderRadius.circular(10),
@@ -1236,13 +1434,17 @@ class LandDetailsModal extends StatelessWidget {
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.shield, color: mainColor, size: 20),
-                            const SizedBox(width: 10),
+                            Icon(
+                              Icons.shield,
+                              color: mainColor,
+                              size: isSmallScreen ? 18 : 20,
+                            ),
+                            SizedBox(width: isSmallScreen ? 8 : 10),
                             Expanded(
                               child: Text(
                                 'Associated with your factory',
                                 style: TextStyle(
-                                  fontSize: 14,
+                                  fontSize: isSmallScreen ? 13 : 14,
                                   color: AppColors.darkText,
                                 ),
                               ),
@@ -1251,10 +1453,261 @@ class LandDetailsModal extends StatelessWidget {
                         ),
                       ),
                     ],
+                    screenWidth: screenWidth,
                   ),
-                  const SizedBox(height: 30),
+                  
+                  SizedBox(height: screenHeight * 0.03),
                 ],
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOwnerDetailsSection({
+    required String ownerName,
+    required String ownerProfileImageUrl,
+    required String ownerMobile,
+    required String ownerEmail,
+    required String ownerNic,
+    required String ownerStatus,
+    required Color mainColor,
+    required double screenWidth,
+    required double screenHeight,
+  }) {
+    final isSmallScreen = screenWidth < 360;
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: mainColor.withOpacity(0.1)),
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(isSmallScreen ? 5 : 6),
+                  decoration: BoxDecoration(
+                    color: mainColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.person,
+                    size: isSmallScreen ? 16 : 18,
+                    color: mainColor,
+                  ),
+                ),
+                SizedBox(width: isSmallScreen ? 8 : 10),
+                Text(
+                  'Land Owner Details',
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 14 : 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.darkText,
+                  ),
+                ),
+              ],
+            ),
+            
+            SizedBox(height: screenHeight * 0.015),
+            
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Owner Profile Picture
+                Container(
+                  width: isSmallScreen ? 60 : 70,
+                  height: isSmallScreen ? 60 : 70,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: mainColor.withOpacity(0.3), width: 2),
+                    image: ownerProfileImageUrl.isNotEmpty
+                      ? DecorationImage(
+                          image: NetworkImage(ownerProfileImageUrl),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
+                    color: ownerProfileImageUrl.isEmpty ? mainColor.withOpacity(0.1) : null,
+                  ),
+                  child: ownerProfileImageUrl.isEmpty
+                    ? Center(
+                        child: Icon(
+                          Icons.person,
+                          size: isSmallScreen ? 24 : 28,
+                          color: mainColor,
+                        ),
+                      )
+                    : null,
+                ),
+                
+                SizedBox(width: isSmallScreen ? 12 : 16),
+                
+                // Owner Details
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        ownerName,
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 15 : 17,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.darkText,
+                        ),
+                      ),
+                      
+                      SizedBox(height: screenHeight * 0.006),
+                      
+                      // Contact Number
+                      if (ownerMobile.isNotEmpty)
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.phone,
+                              size: isSmallScreen ? 14 : 16,
+                              color: mainColor,
+                            ),
+                            SizedBox(width: isSmallScreen ? 6 : 8),
+                            Expanded(
+                              child: Text(
+                                ownerMobile,
+                                style: TextStyle(
+                                  fontSize: isSmallScreen ? 13 : 14,
+                                  color: AppColors.darkText,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      
+                      SizedBox(height: screenHeight * 0.004),
+                      
+                      // Email
+                      if (ownerEmail.isNotEmpty)
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.email,
+                              size: isSmallScreen ? 14 : 16,
+                              color: mainColor,
+                            ),
+                            SizedBox(width: isSmallScreen ? 6 : 8),
+                            Expanded(
+                              child: Text(
+                                ownerEmail,
+                                style: TextStyle(
+                                  fontSize: isSmallScreen ? 12 : 13,
+                                  color: AppColors.secondaryText,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      
+                      SizedBox(height: screenHeight * 0.006),
+                      
+                      // Status Badge
+                    /*  Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isSmallScreen ? 8 : 10,
+                          vertical: isSmallScreen ? 2 : 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _getStatusColor(ownerStatus).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(15),
+                          border: Border.all(color: _getStatusColor(ownerStatus).withOpacity(0.3)),
+                        ),
+                        child: Text(
+                          ownerStatus,
+                          style: TextStyle(
+                            fontSize: isSmallScreen ? 10 : 11,
+                            fontWeight: FontWeight.w600,
+                            color: _getStatusColor(ownerStatus),
+                          ),
+                        ),
+                      ),*/
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            
+            SizedBox(height: screenHeight * 0.015),
+            
+            // Additional Owner Info
+            Container(
+              padding: EdgeInsets.all(isSmallScreen ? 10 : 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.background),
+              ),
+              child: Column(
+                children: [
+                  if (ownerNic.isNotEmpty)
+                    _buildOwnerDetailRow(
+                      label: 'NIC Number:',
+                      value: ownerNic,
+                      icon: Icons.badge,
+                      screenWidth: screenWidth,
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOwnerDetailRow({
+    required String label,
+    required String value,
+    required IconData icon,
+    required double screenWidth,
+  }) {
+    final isSmallScreen = screenWidth < 360;
+    
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: screenWidth * 0.015),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            size: isSmallScreen ? 16 : 18,
+            color: AppColors.primaryBlue,
+          ),
+          SizedBox(width: isSmallScreen ? 8 : 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 11 : 12,
+                    color: AppColors.secondaryText,
+                  ),
+                ),
+                SizedBox(height: screenWidth * 0.005),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 13 : 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.darkText,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -1266,34 +1719,41 @@ class LandDetailsModal extends StatelessWidget {
     required String title,
     required IconData icon,
     required List<Widget> children,
+    required double screenWidth,
   }) {
+    final isSmallScreen = screenWidth < 360;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(6),
+              padding: EdgeInsets.all(isSmallScreen ? 5 : 6),
               decoration: BoxDecoration(
                 color: AppColors.primaryBlue.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(icon, size: 18, color: AppColors.primaryBlue),
+              child: Icon(
+                icon,
+                size: isSmallScreen ? 16 : 18,
+                color: AppColors.primaryBlue,
+              ),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: isSmallScreen ? 8 : 10),
             Text(
               title,
-              style: const TextStyle(
-                fontSize: 16,
+              style: TextStyle(
+                fontSize: isSmallScreen ? 14 : 16,
                 fontWeight: FontWeight.w700,
                 color: AppColors.darkText,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: screenWidth * 0.03),
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
           decoration: BoxDecoration(
             color: AppColors.background,
             borderRadius: BorderRadius.circular(12),
@@ -1306,31 +1766,35 @@ class LandDetailsModal extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
+  Widget _buildDetailRow(String label, String value, double screenWidth) {
+    final isSmallScreen = screenWidth < 360;
+    
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: EdgeInsets.symmetric(vertical: screenWidth * 0.02),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 120,
+            width: screenWidth * (isSmallScreen ? 0.35 : 0.4),
             child: Text(
               '$label:',
-              style: const TextStyle(
-                fontSize: 14,
+              style: TextStyle(
+                fontSize: isSmallScreen ? 12 : 14,
                 fontWeight: FontWeight.w600,
                 color: AppColors.secondaryText,
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: screenWidth * 0.02),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
-                fontSize: 14,
+              style: TextStyle(
+                fontSize: isSmallScreen ? 12 : 14,
                 color: AppColors.darkText,
               ),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
@@ -1338,7 +1802,7 @@ class LandDetailsModal extends StatelessWidget {
     );
   }
 
-  // Helper method to get crop icon for modal
+  // Helper method to get crop icon
   IconData _getCropIcon(String cropType) {
     switch (cropType) {
       case 'Cinnamon':
@@ -1349,6 +1813,20 @@ class LandDetailsModal extends StatelessWidget {
         return Icons.all_inclusive;
       default:
         return Icons.landscape;
+    }
+  }
+
+  // Helper method to get status color
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'Verified':
+        return AppColors.successGreen;
+      case 'Pending Verification':
+        return AppColors.warningOrange;
+      case 'Rejected':
+        return AppColors.accentRed;
+      default:
+        return AppColors.secondaryText;
     }
   }
 }

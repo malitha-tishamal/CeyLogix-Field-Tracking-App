@@ -173,6 +173,10 @@ class _DeveloperInfoPageState extends State<DeveloperInfoPage> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isSmallScreen = screenWidth < 360;
+    
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: AppColors.background,
@@ -182,56 +186,67 @@ class _DeveloperInfoPageState extends State<DeveloperInfoPage> {
         },
         onNavigate: _handleDrawerNavigate,
       ),
-      body: Column(
-        children: [
-          // 🌟 FIXED HEADER - Factory Owner Dashboard Style with Firebase Data
-          _buildDashboardHeader(context),
-          
-          // 🌟 SCROLLABLE CONTENT ONLY with Footer
-          Expanded(
-            child: Column(
-              children: [
-                // Scrollable content
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        // Pass the launcher functions to the content widget
-                        DeveloperInfoContent(
-                          launchURL: _launchURL,
-                          launchEmail: _launchEmail,
-                          launchPhone: _launchPhone,
-                        ),
-                        const SizedBox(height: 20),
-                      ],
+      body: SafeArea(
+        child: Column(
+          children: [
+            // 🌟 FIXED HEADER - Factory Owner Dashboard Style with Firebase Data
+            _buildDashboardHeader(context, screenWidth, screenHeight),
+            
+            // 🌟 SCROLLABLE CONTENT ONLY with Footer
+            Expanded(
+              child: Column(
+                children: [
+                  // Scrollable content
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          // Pass the launcher functions to the content widget
+                          DeveloperInfoContent(
+                            launchURL: _launchURL,
+                            launchEmail: _launchEmail,
+                            launchPhone: _launchPhone,
+                            screenWidth: screenWidth,
+                            screenHeight: screenHeight,
+                          ),
+                          SizedBox(height: screenHeight * 0.02),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                
-                // Footer (Fixed at bottom of content area)
-                Container(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Text(
-                    'Developed by Malitha Tishamal',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: AppColors.darkText.withOpacity(0.7),
-                      fontSize: 12,
+                  
+                  // Footer (Fixed at bottom of content area)
+                  Container(
+                    padding: EdgeInsets.all(screenWidth * 0.04),
+                    child: Text(
+                      'Developed by Malitha Tishamal',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.darkText.withOpacity(0.7),
+                        fontSize: screenWidth * 0.03,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   // 🌟 FIXED HEADER - Factory Owner Dashboard Style with Firebase Data
-  Widget _buildDashboardHeader(BuildContext context) {
+  Widget _buildDashboardHeader(BuildContext context, double screenWidth, double screenHeight) {
+    final isSmallScreen = screenWidth < 360;
+    
     return Container(
-      padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + (isSmallScreen ? 8 : 10),
+        left: screenWidth * 0.05,
+        right: screenWidth * 0.05,
+        bottom: isSmallScreen ? 16 : 20,
+      ),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
@@ -257,7 +272,11 @@ class _DeveloperInfoPageState extends State<DeveloperInfoPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
-                icon: const Icon(Icons.menu, color: AppColors.headerTextDark, size: 28),
+                icon: Icon(
+                  Icons.menu,
+                  color: AppColors.headerTextDark,
+                  size: isSmallScreen ? 24 : 28,
+                ),
                 onPressed: () {
                   _scaffoldKey.currentState?.openDrawer();
                 },
@@ -265,14 +284,14 @@ class _DeveloperInfoPageState extends State<DeveloperInfoPage> {
             ],
           ),
           
-          const SizedBox(height: 10),
+          SizedBox(height: screenHeight * 0.01),
           
           Row(
             children: [
               // Profile Picture with Firebase image
               Container(
-                width: 70,
-                height: 70,
+                width: isSmallScreen ? 60 : 70,
+                height: isSmallScreen ? 60 : 70,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: _profileImageUrl == null 
@@ -282,11 +301,14 @@ class _DeveloperInfoPageState extends State<DeveloperInfoPage> {
                         end: Alignment.bottomRight,
                       )
                     : null,
-                  border: Border.all(color: Colors.white, width: 3),
+                  border: Border.all(
+                    color: Colors.white,
+                    width: isSmallScreen ? 2.5 : 3.0,
+                  ),
                   boxShadow: [
                     BoxShadow(
                       color: AppColors.primaryBlue.withOpacity(0.4),
-                      blurRadius: 10,
+                      blurRadius: 10.0,
                       offset: const Offset(0, 3),
                     ),
                   ],
@@ -298,11 +320,15 @@ class _DeveloperInfoPageState extends State<DeveloperInfoPage> {
                     : null,
                 ),
                 child: _profileImageUrl == null
-                    ? const Icon(Icons.person, size: 40, color: Colors.white)
+                    ? Icon(
+                        Icons.person,
+                        size: isSmallScreen ? 32.0 : 40.0,
+                        color: Colors.white,
+                      )
                     : null,
               ),
               
-              const SizedBox(width: 15),
+              SizedBox(width: screenWidth * 0.04),
               
               // User Info Display from Firebase
               Expanded(
@@ -310,21 +336,22 @@ class _DeveloperInfoPageState extends State<DeveloperInfoPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                     _loggedInUserName, 
-                      style: const TextStyle(
-                        fontSize: 20,
+                      _loggedInUserName, 
+                      style: TextStyle(
+                        fontSize: isSmallScreen ? 16.0 : 20.0,
                         fontWeight: FontWeight.bold,
                         color: AppColors.headerTextDark,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    // 2. Logged-in User Name and Role
+                    SizedBox(height: screenHeight * 0.004),
                     Text(
-                      'Factory Name: $_factoryName \n($_userRole)', 
+                      'Factory Name: $_factoryName\n($_userRole)',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: isSmallScreen ? 11.0 : 14.0,
                         color: AppColors.headerTextDark.withOpacity(0.7),
+                        height: 1.3,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -335,13 +362,13 @@ class _DeveloperInfoPageState extends State<DeveloperInfoPage> {
             ],
           ),
           
-          const SizedBox(height: 25), 
+          SizedBox(height: screenHeight * 0.02),
           
           // Page Title
           Text(
             'Developer About Me',
-            style: const TextStyle(
-              fontSize: 16,
+            style: TextStyle(
+              fontSize: isSmallScreen ? 14.0 : 16.0,
               fontWeight: FontWeight.w600,
               color: AppColors.headerTextDark,
             ),
@@ -359,27 +386,35 @@ class DeveloperInfoContent extends StatelessWidget {
   final Function(String url) launchURL;
   final VoidCallback launchEmail;
   final Function(String phoneNumber) launchPhone;
+  final double screenWidth;
+  final double screenHeight;
 
   const DeveloperInfoContent({
     super.key,
     required this.launchURL,
     required this.launchEmail,
     required this.launchPhone,
+    required this.screenWidth,
+    required this.screenHeight,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isSmallScreen = screenWidth < 360;
     const String profileImageUrl = 'assets/developer/developer_photo.png';
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 30.0),
+      padding: EdgeInsets.symmetric(
+        horizontal: screenWidth * 0.05,
+        vertical: screenHeight * 0.03,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // Developer Image with improved styling
           Container(
-            width: 220,
-            height: 220,
+            width: screenWidth * 0.5,
+            height: screenWidth * 0.5,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: const LinearGradient(
@@ -387,12 +422,15 @@ class DeveloperInfoContent extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              border: Border.all(color: Colors.white, width: 4),
+              border: Border.all(
+                color: Colors.white,
+                width: isSmallScreen ? 3.0 : 4.0,
+              ),
               boxShadow: [
                 BoxShadow(
                   color: AppColors.primaryBlue.withOpacity(0.4),
-                  blurRadius: 20,
-                  spreadRadius: 2,
+                  blurRadius: 20.0,
+                  spreadRadius: 2.0,
                   offset: const Offset(0, 8),
                 ),
               ],
@@ -412,104 +450,143 @@ class DeveloperInfoContent extends StatelessWidget {
                           end: Alignment.bottomRight,
                         ),
                       ),
-                      child: const Icon(Icons.person, size: 60, color: Colors.white),
+                      child: Icon(
+                        Icons.person,
+                        size: screenWidth * 0.15,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
                 Container(
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white.withOpacity(0.3), width: 2),
+                    border: Border.all(color: Colors.white.withOpacity(0.3), width: 2.0),
                   ),
                 ),
               ],
             ),
           ),
 
-          const SizedBox(height: 30),
+          SizedBox(height: screenHeight * 0.03),
 
           // Developer Name and Title with improved typography
-          const Text(
+          Text(
             'Malitha Tishamal',
             style: TextStyle(
-              fontSize: 28,
+              fontSize: isSmallScreen ? 22.0 : 28.0,
               fontWeight: FontWeight.w900,
               color: AppColors.darkText,
               letterSpacing: -0.5,
             ),
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: screenHeight * 0.008),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            padding: EdgeInsets.symmetric(
+              horizontal: screenWidth * 0.04,
+              vertical: screenHeight * 0.006,
+            ),
             decoration: BoxDecoration(
               color: AppColors.primaryBlue.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(20.0),
               border: Border.all(color: AppColors.primaryBlue.withOpacity(0.2)),
             ),
             child: Text(
               'Full Stack Developer',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: isSmallScreen ? 14.0 : 16.0,
                 fontWeight: FontWeight.w600,
                 color: AppColors.primaryBlue,
               ),
             ),
           ),
 
-          const SizedBox(height: 30),
+          SizedBox(height: screenHeight * 0.04),
 
           // --- 🌟 UPDATED Social Media Section with Font Awesome Icons ---
-          _buildSectionHeader(title: "Connect with me", icon: Icons.share_rounded),
-          const SizedBox(height: 20),
-          _buildSocialMediaButtons(),
+          _buildSectionHeader(
+            title: "Connect with me",
+            icon: Icons.share_rounded,
+            screenWidth: screenWidth,
+            isSmallScreen: isSmallScreen,
+          ),
+          SizedBox(height: screenHeight * 0.02),
+          _buildSocialMediaButtons(isSmallScreen),
 
-          const SizedBox(height: 40),
+          SizedBox(height: screenHeight * 0.04),
 
           // --- 💡 Contact Details Section ---
-          _buildSectionHeader(title: "Contact Details", icon: Icons.contact_mail_rounded),
-          const SizedBox(height: 20),
-          _buildContactDetailsCard(),
+          _buildSectionHeader(
+            title: "Contact Details",
+            icon: Icons.contact_mail_rounded,
+            screenWidth: screenWidth,
+            isSmallScreen: isSmallScreen,
+          ),
+          SizedBox(height: screenHeight * 0.02),
+          _buildContactDetailsCard(isSmallScreen),
 
-          const SizedBox(height: 40),
+          SizedBox(height: screenHeight * 0.04),
 
           // --- 💡 My Skills Section ---
-          _buildSectionHeader(title: "Technical Skills", icon: Icons.code_rounded),
-          const SizedBox(height: 20),
-          _buildSkillsChips(),
+          _buildSectionHeader(
+            title: "Technical Skills",
+            icon: Icons.code_rounded,
+            screenWidth: screenWidth,
+            isSmallScreen: isSmallScreen,
+          ),
+          SizedBox(height: screenHeight * 0.02),
+          _buildSkillsChips(isSmallScreen),
 
-          const SizedBox(height: 40),
+          SizedBox(height: screenHeight * 0.04),
         ],
       ),
     );
   }
 
-  Widget _buildSectionHeader({required String title, required IconData icon}) {
+  Widget _buildSectionHeader({
+    required String title,
+    required IconData icon,
+    required double screenWidth,
+    required bool isSmallScreen,
+  }) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: EdgeInsets.symmetric(
+        horizontal: screenWidth * 0.03,
+        vertical: screenHeight * 0.01,
+      ),
       decoration: BoxDecoration(
         color: AppColors.primaryBlue.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.0),
         border: Border.all(color: AppColors.primaryBlue.withOpacity(0.1)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.all(6),
+            padding: EdgeInsets.all(isSmallScreen ? 5.0 : 6.0),
             decoration: BoxDecoration(
               color: AppColors.primaryBlue,
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: Colors.white, size: 18),
+            child: Icon(
+              icon,
+              color: Colors.white,
+              size: isSmallScreen ? 16.0 : 18.0,
+            ),
           ),
-          const SizedBox(width: 12),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppColors.darkText,
+          SizedBox(width: screenWidth * 0.03),
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: isSmallScreen ? 16.0 : 18.0,
+                fontWeight: FontWeight.bold,
+                color: AppColors.darkText,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
@@ -518,7 +595,7 @@ class DeveloperInfoContent extends StatelessWidget {
   }
 
   // --- 🌟 UPDATED Social Media Widgets: Font Awesome Icons and Links ---
-  Widget _buildSocialMediaButtons() {
+  Widget _buildSocialMediaButtons(bool isSmallScreen) {
     final List<SocialMediaItem> socialItems = [
       SocialMediaItem(
         icon: FontAwesomeIcons.facebookF,
@@ -559,14 +636,14 @@ class DeveloperInfoContent extends StatelessWidget {
     ];
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(isSmallScreen ? 16.0 : 20.0),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.0),
         boxShadow: [
           BoxShadow(
             color: AppColors.primaryBlue.withOpacity(0.1),
-            blurRadius: 15,
+            blurRadius: 15.0,
             offset: const Offset(0, 5),
           ),
         ],
@@ -574,20 +651,22 @@ class DeveloperInfoContent extends StatelessWidget {
       ),
       child: Column(
         children: [
-          const Text(
+          Text(
             'Follow me on social media',
             style: TextStyle(
-              fontSize: 14,
+              fontSize: isSmallScreen ? 13.0 : 14.0,
               color: AppColors.darkText,
               fontWeight: FontWeight.w500,
             ),
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: screenHeight * 0.016),
           Wrap(
-            spacing: 20,
-            runSpacing: 20,
+            spacing: isSmallScreen ? 12.0 : 20.0,
+            runSpacing: isSmallScreen ? 16.0 : 20.0,
+            alignment: WrapAlignment.center,
             children: socialItems.map((item) {
-              return _buildSocialMediaButton(item);
+              return _buildSocialMediaButton(item, isSmallScreen);
             }).toList(),
           ),
         ],
@@ -595,69 +674,75 @@ class DeveloperInfoContent extends StatelessWidget {
     );
   }
 
-  Widget _buildSocialMediaButton(SocialMediaItem item) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Tooltip(
-          message: 'Open ${item.label}',
-          child: GestureDetector(
-            onTap: () => launchURL(item.url),
-            child: Container(
-              width: 70,
-              height: 70,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [item.color.withOpacity(0.9), item.color],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: item.color.withOpacity(0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
+  Widget _buildSocialMediaButton(SocialMediaItem item, bool isSmallScreen) {
+    final double buttonSize = (isSmallScreen ? screenWidth * 0.18 : 70.0);
+    final double iconSize = (isSmallScreen ? screenWidth * 0.08 : 40.0);
+    
+    return SizedBox(
+      width: buttonSize + 20.0,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Tooltip(
+            message: 'Open ${item.label}',
+            child: GestureDetector(
+              onTap: () => launchURL(item.url),
+              child: Container(
+                width: buttonSize,
+                height: buttonSize,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [item.color.withOpacity(0.9), item.color],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                ],
-              ),
-              child: Center(
-                child: FaIcon(
-                  item.icon,
-                  color: Colors.white,
-                  size: 40,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: item.color.withOpacity(0.3),
+                      blurRadius: 12.0,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: FaIcon(
+                    item.icon,
+                    color: Colors.white,
+                    size: iconSize,
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-
-        const SizedBox(height: 10),
-
-        Text(
-          item.label,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            color: AppColors.darkText.withOpacity(0.7),
+          SizedBox(height: screenHeight * 0.01),
+          Text(
+            item.label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: isSmallScreen ? 11.0 : 12.0,
+              fontWeight: FontWeight.w500,
+              color: AppColors.darkText.withOpacity(0.7),
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
   // --- Contact Details Widgets: Clickable Email/Phone ---
-  Widget _buildContactDetailsCard() {
+  Widget _buildContactDetailsCard(bool isSmallScreen) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(isSmallScreen ? 16.0 : 20.0),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.0),
         boxShadow: [
           BoxShadow(
             color: AppColors.primaryBlue.withOpacity(0.1),
-            blurRadius: 15,
+            blurRadius: 15.0,
             offset: const Offset(0, 5),
           ),
         ],
@@ -671,14 +756,18 @@ class DeveloperInfoContent extends StatelessWidget {
             value: 'malithatishamal@gmail.com',
             color: const Color(0xFFEA4335),
             onTap: launchEmail,
+            isSmallScreen: isSmallScreen,
           ),
+          SizedBox(height: screenHeight * 0.012),
           _buildContactItem(
             icon: Icons.call_rounded,
             label: 'Mobile Number',
             value: '+94 78 553 0992',
             color: AppColors.secondaryColor,
             onTap: () => launchPhone('+94785530992'),
+            isSmallScreen: isSmallScreen,
           ),
+          SizedBox(height: screenHeight * 0.012),
           _buildContactItem(
             icon: Icons.location_on_rounded,
             label: 'Location',
@@ -686,6 +775,7 @@ class DeveloperInfoContent extends StatelessWidget {
             color: AppColors.primaryBlue,
             isLast: true,
             onTap: () => launchURL('https://maps.app.goo.gl/Matara'),
+            isSmallScreen: isSmallScreen,
           ),
         ],
       ),
@@ -699,120 +789,129 @@ class DeveloperInfoContent extends StatelessWidget {
     required Color color,
     required VoidCallback onTap,
     bool isLast = false,
+    required bool isSmallScreen,
   }) {
-    return Column(
-      children: [
-        InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: color.withOpacity(0.1)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.15),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, color: color, size: 22),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        label,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.darkText.withOpacity(0.6),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        value,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.darkText,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    color: color,
-                    size: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12.0),
+      child: Container(
+        padding: EdgeInsets.all(isSmallScreen ? 14.0 : 16.0),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(12.0),
+          border: Border.all(color: color.withOpacity(0.1)),
         ),
-        if (!isLast) const SizedBox(height: 12),
-      ],
+        child: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(isSmallScreen ? 8.0 : 10.0),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                color: color,
+                size: isSmallScreen ? 20.0 : 22.0,
+              ),
+            ),
+            SizedBox(width: screenWidth * 0.04),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: isSmallScreen ? 12.0 : 13.0,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.darkText.withOpacity(0.6),
+                    ),
+                  ),
+                  SizedBox(height: screenHeight * 0.004),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: isSmallScreen ? 14.0 : 16.0,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.darkText,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: EdgeInsets.all(isSmallScreen ? 5.0 : 6.0),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.arrow_forward_ios_rounded,
+                color: color,
+                size: isSmallScreen ? 12.0 : 14.0,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   // --- Skills Widgets with improved design ---
-  Widget _buildSkillsChips() {
+  Widget _buildSkillsChips(bool isSmallScreen) {
     final List<String> skills = [
       'Flutter', 'Dart', 'Firebase', 'Firestore', 'Authentication',
-      'REST APIs', 'Provider/Riverpod', 'State Management', 'UI/UX Design',
-      'Git & GitHub', 'CI/CD', 'Java (Backend)', 'SQL',
+      'REST APIs', 'Provider', 'State Management', 'UI/UX Design',
+      'Git & GitHub', 'CI/CD', 'Java', 'SQL',
     ];
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(isSmallScreen ? 16.0 : 20.0),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.0),
         boxShadow: [
           BoxShadow(
             color: AppColors.primaryBlue.withOpacity(0.1),
-            blurRadius: 15,
+            blurRadius: 15.0,
             offset: const Offset(0, 5),
           ),
         ],
         border: Border.all(color: AppColors.accentPurple.withOpacity(0.1)),
       ),
       child: Wrap(
-        spacing: 12,
-        runSpacing: 12,
-        children: skills.map((skill) => _buildSkillChip(skill)).toList(),
+        spacing: isSmallScreen ? 8.0 : 12.0,
+        runSpacing: isSmallScreen ? 10.0 : 12.0,
+        alignment: WrapAlignment.center,
+        children: skills.map((skill) => _buildSkillChip(skill, isSmallScreen)).toList(),
       ),
     );
   }
 
-  Widget _buildSkillChip(String skill) {
+  Widget _buildSkillChip(String skill, bool isSmallScreen) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: EdgeInsets.symmetric(
+        horizontal: (isSmallScreen ? screenWidth * 0.035 : 16.0).toDouble(),
+        vertical: (isSmallScreen ? screenHeight * 0.008 : 10.0).toDouble(),
+      ),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppColors.primaryBlue.withOpacity(0.1), AppColors.accentPurple.withOpacity(0.1)],
+          colors: [
+            AppColors.primaryBlue.withOpacity(0.1),
+            AppColors.accentPurple.withOpacity(0.1),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(25),
-        border: Border.all(color: AppColors.primaryBlue.withOpacity(0.2), width: 1),
+        borderRadius: BorderRadius.circular(25.0),
+        border: Border.all(color: AppColors.primaryBlue.withOpacity(0.2), width: 1.0),
         boxShadow: [
           BoxShadow(
             color: AppColors.primaryBlue.withOpacity(0.05),
-            blurRadius: 8,
+            blurRadius: 8.0,
             offset: const Offset(0, 2),
           ),
         ],
@@ -823,16 +922,18 @@ class DeveloperInfoContent extends StatelessWidget {
           Icon(
             Icons.check_circle_rounded,
             color: AppColors.primaryBlue,
-            size: 16,
+            size: isSmallScreen ? 14.0 : 16.0,
           ),
-          const SizedBox(width: 6),
+          SizedBox(width: screenWidth * 0.015),
           Text(
             skill,
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.primaryBlue,
-              fontSize: 14,
+              fontSize: isSmallScreen ? 13.0 : 14.0,
               fontWeight: FontWeight.w600,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),

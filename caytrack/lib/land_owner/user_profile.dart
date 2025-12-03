@@ -43,10 +43,28 @@ class _UserDetailsState extends State<UserDetails> {
   String _landID = 'L-ID';
   String? _profileImageUrl;
 
+  // Responsive variables
+  late bool _isPortrait;
+  late double _screenWidth;
+  late double _screenHeight;
+
   @override
   void initState() {
     super.initState();
     _fetchHeaderData();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _updateScreenDimensions();
+  }
+
+  void _updateScreenDimensions() {
+    final mediaQuery = MediaQuery.of(context);
+    _screenWidth = mediaQuery.size.width;
+    _screenHeight = mediaQuery.size.height;
+    _isPortrait = mediaQuery.orientation == Orientation.portrait;
   }
 
   // --- DATA FETCHING FUNCTION (Same as DeveloperInfoPage) ---
@@ -58,7 +76,7 @@ class _UserDetailsState extends State<UserDetails> {
     
     final String uid = user.uid;
     setState(() {
-      _landID = uid.substring(0, 8); 
+      _landID = uid.length >= 8 ? uid.substring(0, 8) : uid.padRight(8, '0'); 
     });
 
     try {
@@ -101,6 +119,10 @@ class _UserDetailsState extends State<UserDetails> {
 
   @override
   Widget build(BuildContext context) {
+    _updateScreenDimensions();
+    final isSmallScreen = _screenWidth < 360;
+    final isMediumScreen = _screenWidth >= 360 && _screenWidth < 400;
+    
     if (currentUser == null) {
       return const Scaffold(body: Center(child: Text("Error: User not logged in.")));
     }
@@ -117,8 +139,8 @@ class _UserDetailsState extends State<UserDetails> {
       ),
       body: Column(
         children: [
-          // 🌟 FIXED HEADER - Same as DeveloperInfoPage
-          _buildDashboardHeader(context),
+          // 🌟 FIXED HEADER - Responsive
+          _buildDashboardHeader(context, isSmallScreen, isMediumScreen),
           
           // 🌟 SCROLLABLE CONTENT ONLY with Footer
           Expanded(
@@ -127,8 +149,12 @@ class _UserDetailsState extends State<UserDetails> {
                 // Scrollable content
                 Expanded(
                   child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
                     child: UserProfileContentOnly(
                       userUID: currentUser!.uid,
+                      screenWidth: _screenWidth,
+                      screenHeight: _screenHeight,
+                      isPortrait: _isPortrait,
                       onProfileUpdated: _fetchHeaderData,
                     ),
                   ),
@@ -136,13 +162,13 @@ class _UserDetailsState extends State<UserDetails> {
                 
                 // Footer (Fixed at bottom of content area)
                 Container(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
                   child: Text(
                     'Developed by Malitha Tishamal',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: AppColors.darkText.withOpacity(0.7),
-                      fontSize: 12,
+                      fontSize: isSmallScreen ? 11.0 : 12.0,
                     ),
                   ),
                 ),
@@ -154,10 +180,23 @@ class _UserDetailsState extends State<UserDetails> {
     );
   }
 
-  // 🌟 FIXED HEADER - Factory Owner Dashboard Style with Firebase Data
-  Widget _buildDashboardHeader(BuildContext context) {
+  // 🌟 FIXED HEADER - Responsive version
+  Widget _buildDashboardHeader(BuildContext context, bool isSmallScreen, bool isMediumScreen) {
+    final topPadding = MediaQuery.of(context).padding.top + 10;
+    final horizontalPadding = isSmallScreen ? 16.0 : 20.0;
+    final profileSize = isSmallScreen ? 60.0 : 70.0;
+    final menuIconSize = isSmallScreen ? 24.0 : 28.0;
+    final nameFontSize = isSmallScreen ? 16.0 : 20.0;
+    final landFontSize = isSmallScreen ? 14.0 : 16.0;
+    final titleFontSize = isSmallScreen ? 14.0 : 16.0;
+
     return Container(
-      padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
+      padding: EdgeInsets.only(
+        top: topPadding,
+        left: horizontalPadding,
+        right: horizontalPadding,
+        bottom: isSmallScreen ? 16.0 : 20.0,
+      ),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [Color(0xFF869AEC), AppColors.headerGradientEnd],
@@ -165,14 +204,14 @@ class _UserDetailsState extends State<UserDetails> {
           end: Alignment.bottomCenter,
         ),
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(30),
-          bottomRight: Radius.circular(30),
+          bottomLeft: Radius.circular(20),
+          bottomRight: Radius.circular(20),
         ),
         boxShadow: [
           BoxShadow(
             color: Color(0x10000000),
-            blurRadius: 15,
-            offset: Offset(0, 5),
+            blurRadius: 10,
+            offset: Offset(0, 3),
           ),
         ],
       ),
@@ -183,22 +222,27 @@ class _UserDetailsState extends State<UserDetails> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
-                icon: const Icon(Icons.menu, color: AppColors.headerTextDark, size: 28),
+                icon: Icon(Icons.menu, color: AppColors.headerTextDark, size: menuIconSize),
                 onPressed: () {
                   _scaffoldKey.currentState?.openDrawer();
                 },
+                padding: EdgeInsets.zero,
+                constraints: BoxConstraints(
+                  minWidth: menuIconSize + 16,
+                  minHeight: menuIconSize + 16,
+                ),
               ),
             ],
           ),
           
-          const SizedBox(height: 10),
+          SizedBox(height: isSmallScreen ? 8.0 : 10.0),
           
           Row(
             children: [
               // Profile Picture with Firebase image
               Container(
-                width: 70,
-                height: 70,
+                width: profileSize,
+                height: profileSize,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: _profileImageUrl == null 
@@ -208,11 +252,14 @@ class _UserDetailsState extends State<UserDetails> {
                         end: Alignment.bottomRight,
                       )
                     : null,
-                  border: Border.all(color: Colors.white, width: 3),
+                  border: Border.all(
+                    color: Colors.white, 
+                    width: isSmallScreen ? 2.0 : 3.0
+                  ),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.primaryBlue.withOpacity(0.4),
-                      blurRadius: 10,
+                      color: AppColors.primaryBlue.withOpacity(0.3),
+                      blurRadius: isSmallScreen ? 8.0 : 10.0,
                       offset: const Offset(0, 3),
                     ),
                   ],
@@ -224,11 +271,15 @@ class _UserDetailsState extends State<UserDetails> {
                     : null,
                 ),
                 child: _profileImageUrl == null
-                    ? const Icon(Icons.person, size: 40, color: Colors.white)
+                    ? Icon(
+                        Icons.person, 
+                        size: isSmallScreen ? 32.0 : 40.0, 
+                        color: Colors.white
+                      )
                     : null,
               ),
               
-              const SizedBox(width: 15),
+              SizedBox(width: isSmallScreen ? 12.0 : 15.0),
               
               // User Info Display from Firebase
               Expanded(
@@ -238,8 +289,8 @@ class _UserDetailsState extends State<UserDetails> {
                     // 1. Land Owner Name
                     Text(
                       _loggedInUserName,
-                      style: const TextStyle(
-                        fontSize: 20,
+                      style: TextStyle(
+                        fontSize: nameFontSize,
                         fontWeight: FontWeight.bold,
                         color: AppColors.headerTextDark,
                       ),
@@ -250,7 +301,7 @@ class _UserDetailsState extends State<UserDetails> {
                     Text(
                       'Land Name: $_landName \n($_userRole)', 
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: landFontSize,
                         color: AppColors.headerTextDark.withOpacity(0.7),
                       ),
                       maxLines: 2,
@@ -262,13 +313,13 @@ class _UserDetailsState extends State<UserDetails> {
             ],
           ),
           
-          const SizedBox(height: 25), 
+          SizedBox(height: isSmallScreen ? 20.0 : 25.0), 
           
           // Page Title
           Text(
             'Manage User Details',
-            style: const TextStyle(
-              fontSize: 16,
+            style: TextStyle(
+              fontSize: titleFontSize,
               fontWeight: FontWeight.w600,
               color: AppColors.headerTextDark,
             ),
@@ -285,10 +336,16 @@ class _UserDetailsState extends State<UserDetails> {
 
 class UserProfileContentOnly extends StatefulWidget {
   final String userUID;
+  final double screenWidth;
+  final double screenHeight;
+  final bool isPortrait;
   final VoidCallback? onProfileUpdated;
   
   const UserProfileContentOnly({
     required this.userUID, 
+    required this.screenWidth,
+    required this.screenHeight,
+    required this.isPortrait,
     this.onProfileUpdated,
     super.key
   });
@@ -304,8 +361,8 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
   final ImagePicker _imagePicker = ImagePicker();
 
   // Cloudinary Configuration
-  final String _cloudName = "dqeptzlsb"; // Your cloud name
-  final String _uploadPreset = "flutter_ceytrack_upload"; // Your upload preset
+  final String _cloudName = "dqeptzlsb";
+  final String _uploadPreset = "flutter_ceytrack_upload";
 
   // Text Controllers for Editable User Fields
   late TextEditingController _ownerNameController;
@@ -316,7 +373,7 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
   String? _profileImageUrl;
   XFile? _pickedImageFile;
   bool _uploadingImage = false;
-  int? _pickedImageFileSize; // Store file size separately
+  int? _pickedImageFileSize;
   
   // Stored Fixed/Read-only Fields
   String _fetchedEmail = 'N/A';
@@ -363,7 +420,7 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
         _fetchedEmail = userData?['email'] ?? currentUser?.email ?? 'N/A';
         _fetchedRole = userData?['role'] ?? 'Land owner';
         
-        setState(() {}); // Rebuild to display initial data
+        setState(() {});
       }
     } else if (mounted) {
       // Fallback for new user or missing doc
@@ -402,86 +459,99 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
   }
 
   void _openImageOptions() {
+    final isSmallScreen = widget.screenWidth < 360;
+    final isMediumScreen = widget.screenWidth >= 360 && widget.screenWidth < 400;
+    
     showModalBottomSheet(
       context: context,
       builder: (ctx) {
         return SafeArea(
-          child: Wrap(
-            children: [
-              // Show current selection info if any
-              if (_pickedImageFile != null)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryBlue.withOpacity(0.05),
-                    border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Current Selection:',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.darkText,
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _pickedImageFile!.name,
-                        style: TextStyle(
-                          color: AppColors.darkText.withOpacity(0.7),
-                          fontSize: 13,
-                        ),
-                      ),
-                      if (_pickedImageFileSize != null)
+          child: Container(
+            padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Show current selection info if any
+                if (_pickedImageFile != null)
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryBlue.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(isSmallScreen ? 8.0 : 10.0),
+                      border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Text(
-                          '${(_pickedImageFileSize! / 1024).toStringAsFixed(1)} KB',
+                          'Current Selection:',
                           style: TextStyle(
-                            color: AppColors.darkText.withOpacity(0.5),
-                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.darkText,
+                            fontSize: isSmallScreen ? 13.0 : 14.0,
                           ),
                         ),
-                    ],
+                        SizedBox(height: isSmallScreen ? 3.0 : 4.0),
+                        Text(
+                          _pickedImageFile!.name,
+                          style: TextStyle(
+                            color: AppColors.darkText.withOpacity(0.7),
+                            fontSize: isSmallScreen ? 12.0 : 13.0,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (_pickedImageFileSize != null)
+                          Text(
+                            '${(_pickedImageFileSize! / 1024).toStringAsFixed(1)} KB',
+                            style: TextStyle(
+                              color: AppColors.darkText.withOpacity(0.5),
+                              fontSize: isSmallScreen ? 11.0 : 12.0,
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
-                ),
-              
-              ListTile(
-                leading: const Icon(Icons.photo_camera, color: AppColors.primaryBlue),
-                title: const Text('Take Photo'),
-                subtitle: const Text('Capture a new photo with camera'),
-                onTap: () {
-                  Navigator.of(ctx).pop();
-                  _pickImage(ImageSource.camera);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.photo_library, color: AppColors.primaryBlue),
-                title: const Text('Choose from Gallery'),
-                subtitle: const Text('Select from your device gallery'),
-                onTap: () {
-                  Navigator.of(ctx).pop();
-                  _pickImage(ImageSource.gallery);
-                },
-              ),
-              if (_profileImageUrl != null || _pickedImageFile != null)
+                
                 ListTile(
-                  leading: const Icon(Icons.delete_outline, color: Colors.red),
-                  title: const Text('Remove Current Photo', style: TextStyle(color: Colors.red)),
-                  subtitle: const Text('Remove profile picture', style: TextStyle(color: Colors.red)),
+                  leading: Icon(Icons.photo_camera, color: AppColors.primaryBlue, size: isSmallScreen ? 22.0 : 24.0),
+                  title: Text('Take Photo', style: TextStyle(fontSize: isSmallScreen ? 14.0 : 16.0)),
+                  subtitle: Text('Capture a new photo with camera', style: TextStyle(fontSize: isSmallScreen ? 12.0 : 13.0)),
                   onTap: () {
                     Navigator.of(ctx).pop();
-                    _removeProfileImage();
+                    _pickImage(ImageSource.camera);
                   },
                 ),
-              ListTile(
-                leading: const Icon(Icons.close, color: AppColors.primaryBlue),
-                title: const Text('Cancel'),
-                onTap: () => Navigator.of(ctx).pop(),
-              ),
-            ],
+                ListTile(
+                  leading: Icon(Icons.photo_library, color: AppColors.primaryBlue, size: isSmallScreen ? 22.0 : 24.0),
+                  title: Text('Choose from Gallery', style: TextStyle(fontSize: isSmallScreen ? 14.0 : 16.0)),
+                  subtitle: Text('Select from your device gallery', style: TextStyle(fontSize: isSmallScreen ? 12.0 : 13.0)),
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    _pickImage(ImageSource.gallery);
+                  },
+                ),
+                if (_profileImageUrl != null || _pickedImageFile != null)
+                  ListTile(
+                    leading: Icon(Icons.delete_outline, color: Colors.red, size: isSmallScreen ? 22.0 : 24.0),
+                    title: Text('Remove Current Photo', style: TextStyle(color: Colors.red, fontSize: isSmallScreen ? 14.0 : 16.0)),
+                    subtitle: Text('Remove profile picture', style: TextStyle(color: Colors.red, fontSize: isSmallScreen ? 12.0 : 13.0)),
+                    onTap: () {
+                      Navigator.of(ctx).pop();
+                      _removeProfileImage();
+                    },
+                  ),
+                SizedBox(height: isSmallScreen ? 8.0 : 12.0),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    child: Text('Cancel', style: TextStyle(fontSize: isSmallScreen ? 14.0 : 16.0)),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -531,7 +601,7 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
         ..files.add(http.MultipartFile.fromBytes(
           'file',
           bytes,
-          filename: imageFile.name, // Use original filename
+          filename: imageFile.name,
         ));
 
       // Send request with timeout
@@ -657,20 +727,29 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
 
   // --- Profile Image Widget ---
   Widget _buildProfileImageSection() {
+    final isSmallScreen = widget.screenWidth < 360;
+    final isMediumScreen = widget.screenWidth >= 360 && widget.screenWidth < 400;
+    final profileSize = isSmallScreen ? 100.0 : 120.0;
+    final cameraIconSize = isSmallScreen ? 16.0 : 18.0;
+    final cameraButtonSize = isSmallScreen ? 32.0 : 40.0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildInputLabel('Profile Picture'),
-        const SizedBox(height: 8),
+        _buildInputLabel('Profile Picture', isSmallScreen, isMediumScreen),
+        SizedBox(height: isSmallScreen ? 6.0 : 8.0),
         Center(
           child: Stack(
             children: [
               Container(
-                width: 120,
-                height: 120,
+                width: profileSize,
+                height: profileSize,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.primaryBlue.withOpacity(0.3), width: 3),
+                  border: Border.all(
+                    color: AppColors.primaryBlue.withOpacity(0.3), 
+                    width: isSmallScreen ? 2.0 : 3.0
+                  ),
                 ),
                 child: _uploadingImage
                     ? Container(
@@ -678,18 +757,23 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
                           shape: BoxShape.circle,
                           color: Colors.grey,
                         ),
-                        child: const Center(
+                        child: Center(
                           child: CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryBlue),
+                            valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryBlue),
+                            strokeWidth: isSmallScreen ? 2.0 : 3.0,
                           ),
                         ),
                       )
                     : CircleAvatar(
-                        radius: 56,
+                        radius: profileSize / 2,
                         backgroundColor: Colors.grey[200],
                         backgroundImage: _getProfileImage(),
                         child: _getProfileImage() == null
-                            ? const Icon(Icons.person, size: 50, color: AppColors.primaryBlue)
+                            ? Icon(
+                                Icons.person, 
+                                size: profileSize * 0.4, 
+                                color: AppColors.primaryBlue
+                              )
                             : null,
                       ),
               ),
@@ -697,15 +781,18 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
                 bottom: 0,
                 right: 0,
                 child: Container(
-                  width: 40,
-                  height: 40,
+                  width: cameraButtonSize,
+                  height: cameraButtonSize,
                   decoration: BoxDecoration(
                     color: AppColors.primaryBlue,
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 3),
+                    border: Border.all(
+                      color: Colors.white, 
+                      width: isSmallScreen ? 2.0 : 3.0
+                    ),
                   ),
                   child: IconButton(
-                    icon: const Icon(Icons.camera_alt, size: 18, color: Colors.white),
+                    icon: Icon(Icons.camera_alt, size: cameraIconSize, color: Colors.white),
                     onPressed: _openImageOptions,
                     padding: EdgeInsets.zero,
                   ),
@@ -719,11 +806,11 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
         if (_pickedImageFile != null)
           Container(
             width: double.infinity,
-            margin: const EdgeInsets.only(top: 12),
-            padding: const EdgeInsets.all(12),
+            margin: EdgeInsets.only(top: isSmallScreen ? 8.0 : 12.0),
+            padding: EdgeInsets.all(isSmallScreen ? 10.0 : 12.0),
             decoration: BoxDecoration(
               color: AppColors.primaryBlue.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(isSmallScreen ? 6.0 : 8.0),
               border: Border.all(color: AppColors.primaryBlue.withOpacity(0.3)),
             ),
             child: Column(
@@ -731,33 +818,34 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.image, size: 16, color: AppColors.primaryBlue),
-                    const SizedBox(width: 8),
+                    Icon(Icons.image, size: isSmallScreen ? 14.0 : 16.0, color: AppColors.primaryBlue),
+                    SizedBox(width: isSmallScreen ? 6.0 : 8.0),
                     Text(
                       'Selected Image:',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: isSmallScreen ? 13.0 : 14.0,
                         fontWeight: FontWeight.w600,
                         color: AppColors.darkText,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: isSmallScreen ? 3.0 : 4.0),
                 Text(
                   _pickedImageFile!.name,
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: isSmallScreen ? 12.0 : 13.0,
                     color: AppColors.darkText.withOpacity(0.8),
                   ),
                   overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: isSmallScreen ? 3.0 : 4.0),
                 if (_pickedImageFileSize != null)
                   Text(
                     'Size: ${(_pickedImageFileSize! / 1024).toStringAsFixed(1)} KB',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: isSmallScreen ? 11.0 : 12.0,
                       color: AppColors.darkText.withOpacity(0.6),
                     ),
                   ),
@@ -767,31 +855,33 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
         else if (_profileImageUrl != null)
           Container(
             width: double.infinity,
-            margin: const EdgeInsets.only(top: 12),
-            padding: const EdgeInsets.all(12),
+            margin: EdgeInsets.only(top: isSmallScreen ? 8.0 : 12.0),
+            padding: EdgeInsets.all(isSmallScreen ? 10.0 : 12.0),
             decoration: BoxDecoration(
               color: AppColors.secondaryColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(isSmallScreen ? 6.0 : 8.0),
               border: Border.all(color: AppColors.secondaryColor.withOpacity(0.3)),
             ),
             child: Row(
               children: [
-                Icon(Icons.cloud_done, size: 16, color: AppColors.secondaryColor),
-                const SizedBox(width: 8),
+                Icon(Icons.cloud_done, size: isSmallScreen ? 14.0 : 16.0, color: AppColors.secondaryColor),
+                SizedBox(width: isSmallScreen ? 6.0 : 8.0),
                 Expanded(
                   child: Text(
                     'Current image stored in Cloudinary',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: isSmallScreen ? 12.0 : 13.0,
                       color: AppColors.darkText.withOpacity(0.8),
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
             ),
           ),
         
-        const SizedBox(height: 16),
+        SizedBox(height: isSmallScreen ? 12.0 : 16.0),
       ],
     );
   }
@@ -808,16 +898,23 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
 
   @override
   Widget build(BuildContext context) {
+    final isSmallScreen = widget.screenWidth < 360;
+    final isMediumScreen = widget.screenWidth >= 360 && widget.screenWidth < 400;
+    
     // Show loading while fetching initial user data
     if (_ownerNameController.text.isEmpty && !_isSaving && currentUser?.email != null && _fetchedEmail == 'N/A') {
-      return const Center(child: Padding(
-        padding: EdgeInsets.only(top: 100.0),
-        child: CircularProgressIndicator(color: AppColors.primaryBlue),
-      ));
+      return Center(
+        child: Padding(
+          padding: EdgeInsets.only(top: widget.screenHeight * 0.2),
+          child: CircularProgressIndicator(color: AppColors.primaryBlue),
+        ),
+      );
     }
 
     return Padding(
-      padding: const EdgeInsets.all(20.0),
+      padding: EdgeInsets.all(isSmallScreen ? 12.0 : 
+                            isMediumScreen ? 16.0 : 
+                            20.0),
       child: Form(
         key: _formKey,
         child: Column(
@@ -827,9 +924,11 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
               InfoCard(
                 message: _statusMessage!,
                 color: _statusMessage!.toLowerCase().contains('success') ? AppColors.secondaryColor : Colors.red,
+                isSmallScreen: isSmallScreen,
+                isMediumScreen: isMediumScreen,
               ),
 
-            const SizedBox(height: 16),
+            SizedBox(height: isSmallScreen ? 12.0 : 16.0),
             
             // Profile Picture Section
             _buildProfileImageSection(),
@@ -838,46 +937,76 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
             // --- EDITABLE USER FIELDS (Registration Data) ---
             // -----------------------------------------------------------------
             
-            _buildInputLabel('Full Name'),
-            _buildTextField(_ownerNameController, 'Enter your full name', (value) {
-              if (value == null || value.isEmpty) return 'Name is required.';
-              return null;
-            }),
+            _buildInputLabel('Full Name', isSmallScreen, isMediumScreen),
+            _buildTextField(
+              _ownerNameController, 
+              'Enter your full name', 
+              (value) {
+                if (value == null || value.isEmpty) return 'Name is required.';
+                return null;
+              },
+              isSmallScreen,
+              isMediumScreen
+            ),
 
-            _buildInputLabel('Contact Number (Mobile)'),
-            _buildTextField(_contactNumberController, 'e.g., 0712345678', (value) {
-              if (value == null || value.isEmpty) return 'Mobile number is required.';
-              if (value.length != 10) return 'Mobile number must be 10 digits.';
-              return null;
-            }, keyboardType: TextInputType.phone),
+            _buildInputLabel('Contact Number (Mobile)', isSmallScreen, isMediumScreen),
+            _buildTextField(
+              _contactNumberController, 
+              'e.g., 0712345678', 
+              (value) {
+                if (value == null || value.isEmpty) return 'Mobile number is required.';
+                if (value.length != 10) return 'Mobile number must be 10 digits.';
+                return null;
+              },
+              isSmallScreen,
+              isMediumScreen,
+              keyboardType: TextInputType.phone
+            ),
             
-            _buildInputLabel('NIC Number'),
-            _buildTextField(_nicController, 'Enter your NIC', (value) {
-              if (value == null || value.isEmpty) return 'NIC is required.';
-              if (value.length < 10) return 'Enter a valid NIC (10 or 12 digits).';
-              return null;
-            }, keyboardType: TextInputType.text),
+            _buildInputLabel('NIC Number', isSmallScreen, isMediumScreen),
+            _buildTextField(
+              _nicController, 
+              'Enter your NIC', 
+              (value) {
+                if (value == null || value.isEmpty) return 'NIC is required.';
+                if (value.length < 10) return 'Enter a valid NIC (10 or 12 digits).';
+                return null;
+              },
+              isSmallScreen,
+              isMediumScreen,
+              keyboardType: TextInputType.text
+            ),
             
             // -----------------------------------------------------------------
             // --- FIXED (READ-ONLY) FIELDS ---
             // -----------------------------------------------------------------
             
-            _buildInputLabel('Email Address (Fixed)'),
-            FixedInfoBox(value: _fetchedEmail),
+            _buildInputLabel('Email Address (Fixed)', isSmallScreen, isMediumScreen),
+            FixedInfoBox(
+              value: _fetchedEmail,
+              isSmallScreen: isSmallScreen,
+              isMediumScreen: isMediumScreen
+            ),
 
-            _buildInputLabel('User Role (Fixed)'),
-            FixedInfoBox(value: _fetchedRole),
+            _buildInputLabel('User Role (Fixed)', isSmallScreen, isMediumScreen),
+            FixedInfoBox(
+              value: _fetchedRole,
+              isSmallScreen: isSmallScreen,
+              isMediumScreen: isMediumScreen
+            ),
 
-            const SizedBox(height: 30),
+            SizedBox(height: isSmallScreen ? 20.0 : 30.0),
 
             // Update Button
             GradientButton(
               text: _isSaving ? 'Updating...' : 'Update Profile Details',
               onPressed: (_isSaving || _uploadingImage) ? null : _updateUserData, 
               isEnabled: !_isSaving && !_uploadingImage,
+              isSmallScreen: isSmallScreen,
+              isMediumScreen: isMediumScreen,
             ),
             
-            const SizedBox(height: 50),
+            SizedBox(height: isSmallScreen ? 30.0 : 50.0),
           ],
         ),
       ),
@@ -886,15 +1015,21 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
 
   // --- Helper Widgets ---
 
-  Widget _buildInputLabel(String text) {
+  Widget _buildInputLabel(String text, bool isSmallScreen, bool isMediumScreen) {
+    final fontSize = isSmallScreen ? 14.0 : 
+                    isMediumScreen ? 15.0 : 
+                    16.0;
+    final padding = isSmallScreen ? const EdgeInsets.only(top: 12.0, bottom: 6.0) : 
+                   const EdgeInsets.only(top: 16.0, bottom: 8.0);
+
     return Padding(
-      padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
+      padding: padding,
       child: Text(
         text,
-        style: const TextStyle(
+        style: TextStyle(
           color: AppColors.darkText,
           fontWeight: FontWeight.w600,
-          fontSize: 16,
+          fontSize: fontSize,
         ),
       ),
     );
@@ -904,21 +1039,28 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
     TextEditingController controller, 
     String hintText, 
     String? Function(String?)? validator,
+    bool isSmallScreen,
+    bool isMediumScreen,
     {TextInputType keyboardType = TextInputType.text} 
   ) {
+    final fontSize = isSmallScreen ? 14.0 : 16.0;
+    final padding = isSmallScreen ? const EdgeInsets.symmetric(vertical: 14.0, horizontal: 16.0) : 
+                   const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0);
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(isSmallScreen ? 10.0 : 12.0),
         border: Border.all(color: AppColors.primaryBlue.withOpacity(0.2)),
       ),
       child: TextFormField(
         controller: controller,
         keyboardType: keyboardType,
-        style: const TextStyle(color: AppColors.darkText),
+        style: TextStyle(color: AppColors.darkText, fontSize: fontSize),
         decoration: InputDecoration(
           hintText: hintText,
-          contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
+          hintStyle: TextStyle(fontSize: isSmallScreen ? 13.0 : 14.0),
+          contentPadding: padding,
           border: InputBorder.none,
         ),
         validator: validator,
@@ -935,21 +1077,36 @@ class GradientButton extends StatelessWidget {
   final String text;
   final VoidCallback? onPressed;
   final bool isEnabled;
+  final bool isSmallScreen;
+  final bool isMediumScreen;
 
-  const GradientButton({required this.text, required this.onPressed, this.isEnabled = true, super.key});
+  const GradientButton({
+    required this.text,
+    required this.onPressed,
+    required this.isEnabled,
+    required this.isSmallScreen,
+    required this.isMediumScreen,
+    super.key
+  });
 
   @override
   Widget build(BuildContext context) {
+    final fontSize = isSmallScreen ? 16.0 : 
+                    isMediumScreen ? 18.0 : 
+                    20.0;
+    final padding = isSmallScreen ? const EdgeInsets.symmetric(vertical: 14.0) : 
+                   const EdgeInsets.symmetric(vertical: 16.0);
+
     return InkWell(
       onTap: isEnabled ? onPressed : null,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(isSmallScreen ? 10.0 : 12.0),
       child: Opacity(
         opacity: isEnabled ? 1.0 : 0.6,
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 16.0),
+          padding: padding,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(isSmallScreen ? 10.0 : 12.0),
             gradient: isEnabled
               ? const LinearGradient(
                   colors: [AppColors.primaryBlue, Color(0xFF457AED)],
@@ -965,8 +1122,8 @@ class GradientButton extends StatelessWidget {
               ? [
                   BoxShadow(
                     color: AppColors.primaryBlue.withOpacity(0.5),
-                    blurRadius: 10,
-                    offset: const Offset(0, 5),
+                    blurRadius: isSmallScreen ? 8.0 : 10.0,
+                    offset: const Offset(0, 4),
                   ),
                 ]
               : null,
@@ -974,9 +1131,9 @@ class GradientButton extends StatelessWidget {
           child: Text(
             text,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white,
-              fontSize: 20,
+              fontSize: fontSize,
               fontWeight: FontWeight.w600,
               fontFamily: 'Inter',
             ),
@@ -989,25 +1146,39 @@ class GradientButton extends StatelessWidget {
 
 class FixedInfoBox extends StatelessWidget {
   final String value;
-  const FixedInfoBox({required this.value, super.key});
+  final bool isSmallScreen;
+  final bool isMediumScreen;
+
+  const FixedInfoBox({
+    required this.value,
+    required this.isSmallScreen,
+    required this.isMediumScreen,
+    super.key
+  });
 
   @override
   Widget build(BuildContext context) {
+    final fontSize = isSmallScreen ? 14.0 : 16.0;
+    final padding = isSmallScreen ? const EdgeInsets.symmetric(vertical: 14.0, horizontal: 16.0) : 
+                   const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0);
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
+      padding: padding,
       decoration: BoxDecoration(
         color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(isSmallScreen ? 10.0 : 12.0),
         border: Border.all(color: AppColors.primaryBlue.withOpacity(0.1)),
       ),
       child: Text(
         value,
         style: TextStyle(
           color: AppColors.darkText.withOpacity(0.7),
-          fontSize: 16,
+          fontSize: fontSize,
           fontWeight: FontWeight.w500,
         ),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }
@@ -1016,22 +1187,43 @@ class FixedInfoBox extends StatelessWidget {
 class InfoCard extends StatelessWidget {
   final String message;
   final Color color;
-  const InfoCard({required this.message, required this.color, super.key});
+  final bool isSmallScreen;
+  final bool isMediumScreen;
+
+  const InfoCard({
+    required this.message,
+    required this.color,
+    required this.isSmallScreen,
+    required this.isMediumScreen,
+    super.key
+  });
 
   @override
   Widget build(BuildContext context) {
+    final fontSize = isSmallScreen ? 12.0 : 
+                    isMediumScreen ? 13.0 : 
+                    14.0;
+    final padding = isSmallScreen ? const EdgeInsets.all(10.0) : 
+                   const EdgeInsets.all(12.0);
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: padding,
+      margin: EdgeInsets.symmetric(vertical: isSmallScreen ? 6.0 : 8.0),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(isSmallScreen ? 6.0 : 8.0),
         border: Border.all(color: color, width: 1),
       ),
       child: Text(
         message,
-        style: TextStyle(color: color, fontWeight: FontWeight.w500),
+        style: TextStyle(
+          color: color, 
+          fontWeight: FontWeight.w500,
+          fontSize: fontSize,
+        ),
+        maxLines: 3,
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }

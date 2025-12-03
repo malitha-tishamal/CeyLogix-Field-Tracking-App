@@ -91,8 +91,19 @@ class _UserDetailsState extends State<UserDetails> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isSmallScreen = screenWidth < 360;
+    
     if (currentUser == null) {
-      return const Scaffold(body: Center(child: Text("Error: User not logged in.")));
+      return Scaffold(
+        body: Center(
+          child: Text(
+            "Error: User not logged in.",
+            style: TextStyle(fontSize: screenWidth * 0.04),
+          ),
+        ),
+      );
     }
 
     return Scaffold(
@@ -105,49 +116,60 @@ class _UserDetailsState extends State<UserDetails> {
         },
         onNavigate: _handleDrawerNavigate,
       ),
-      body: Column(
-        children: [
-          // 🌟 FIXED HEADER - Matching Developer Info Page Style with Firebase Data
-          _buildDashboardHeader(context),
-          
-          // 🌟 SCROLLABLE CONTENT ONLY with Footer
-          Expanded(
-            child: Column(
-              children: [
-                // Scrollable content
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: UserProfileContentOnly(
-                      userUID: currentUser!.uid,
-                      onProfileUpdated: _fetchHeaderData,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // 🌟 FIXED HEADER - Matching Developer Info Page Style with Firebase Data
+            _buildDashboardHeader(context, screenWidth, screenHeight),
+            
+            // 🌟 SCROLLABLE CONTENT ONLY with Footer
+            Expanded(
+              child: Column(
+                children: [
+                  // Scrollable content
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: UserProfileContentOnly(
+                        userUID: currentUser!.uid,
+                        onProfileUpdated: _fetchHeaderData,
+                        screenWidth: screenWidth,
+                        screenHeight: screenHeight,
+                      ),
                     ),
                   ),
-                ),
-                
-                // Footer (Fixed at bottom of content area)
-                Container(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Text(
-                    'Developed by Malitha Tishamal',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: AppColors.darkText.withOpacity(0.7),
-                      fontSize: 12,
+                  
+                  // Footer (Fixed at bottom of content area)
+                  Container(
+                    padding: EdgeInsets.all(screenWidth * 0.04),
+                    child: Text(
+                      'Developed by Malitha Tishamal',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.darkText.withOpacity(0.7),
+                        fontSize: screenWidth * 0.03,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   // 🌟 FIXED HEADER - Matching Developer Info Page Style with Firebase Data
-  Widget _buildDashboardHeader(BuildContext context) {
+  Widget _buildDashboardHeader(BuildContext context, double screenWidth, double screenHeight) {
+    final isSmallScreen = screenWidth < 360;
+    
     return Container(
-      padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + (isSmallScreen ? 8 : 10),
+        left: screenWidth * 0.05,
+        right: screenWidth * 0.05,
+        bottom: isSmallScreen ? 16 : 20,
+      ),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
@@ -173,7 +195,11 @@ class _UserDetailsState extends State<UserDetails> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
-                icon: const Icon(Icons.menu, color: AppColors.headerTextDark, size: 28),
+                icon: Icon(
+                  Icons.menu,
+                  color: AppColors.headerTextDark,
+                  size: isSmallScreen ? 24 : 28,
+                ),
                 onPressed: () {
                   _scaffoldKey.currentState?.openDrawer();
                 },
@@ -181,14 +207,14 @@ class _UserDetailsState extends State<UserDetails> {
             ],
           ),
           
-          const SizedBox(height: 10),
+          SizedBox(height: screenHeight * 0.01),
           
           Row(
             children: [
               // Profile Picture with Firebase image
               Container(
-                width: 70,
-                height: 70,
+                width: isSmallScreen ? 60 : 70,
+                height: isSmallScreen ? 60 : 70,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: _profileImageUrl == null 
@@ -198,11 +224,14 @@ class _UserDetailsState extends State<UserDetails> {
                         end: Alignment.bottomRight,
                       )
                     : null,
-                  border: Border.all(color: Colors.white, width: 3),
+                  border: Border.all(
+                    color: Colors.white,
+                    width: isSmallScreen ? 2.5 : 3.0,
+                  ),
                   boxShadow: [
                     BoxShadow(
                       color: AppColors.primaryBlue.withOpacity(0.4),
-                      blurRadius: 10,
+                      blurRadius: 10.0,
                       offset: const Offset(0, 3),
                     ),
                   ],
@@ -214,11 +243,15 @@ class _UserDetailsState extends State<UserDetails> {
                     : null,
                 ),
                 child: _profileImageUrl == null
-                    ? const Icon(Icons.person, size: 40, color: Colors.white)
+                    ? Icon(
+                        Icons.person,
+                        size: isSmallScreen ? 32 : 40,
+                        color: Colors.white,
+                      )
                     : null,
               ),
               
-              const SizedBox(width: 15),
+              SizedBox(width: screenWidth * 0.04),
               
               // User Info Display from Firebase
               Expanded(
@@ -227,20 +260,21 @@ class _UserDetailsState extends State<UserDetails> {
                   children: [
                     Text(
                       _loggedInUserName,
-                      style: const TextStyle(
-                        fontSize: 20,
+                      style: TextStyle(
+                        fontSize: isSmallScreen ? 18 : 20,
                         fontWeight: FontWeight.bold,
                         color: AppColors.headerTextDark,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    // 2. Factory Name and User Role
+                    SizedBox(height: screenHeight * 0.004),
                     Text(
                       'Factory Name: $_factoryName \n($_userRole)',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: isSmallScreen ? 12 : 14,
                         color: AppColors.headerTextDark.withOpacity(0.7),
+                        height: 1.3,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -251,13 +285,13 @@ class _UserDetailsState extends State<UserDetails> {
             ],
           ),
           
-          const SizedBox(height: 25),
+          SizedBox(height: screenHeight * 0.02),
           
           // Page Title
           Text(
             'Manage User Details',
-            style: const TextStyle(
-              fontSize: 16,
+            style: TextStyle(
+              fontSize: isSmallScreen ? 14 : 16,
               fontWeight: FontWeight.w600,
               color: AppColors.headerTextDark,
             ),
@@ -275,10 +309,14 @@ class _UserDetailsState extends State<UserDetails> {
 class UserProfileContentOnly extends StatefulWidget {
   final String userUID;
   final VoidCallback? onProfileUpdated;
+  final double screenWidth;
+  final double screenHeight;
   
   const UserProfileContentOnly({
     required this.userUID, 
     this.onProfileUpdated,
+    required this.screenWidth,
+    required this.screenHeight,
     super.key
   });
 
@@ -293,8 +331,8 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
   final ImagePicker _imagePicker = ImagePicker();
 
   // Cloudinary Configuration
-  final String _cloudName = "dqeptzlsb"; // Your cloud name
-  final String _uploadPreset = "flutter_ceytrack_upload"; // Your upload preset
+  final String _cloudName = "dqeptzlsb";
+  final String _uploadPreset = "flutter_ceytrack_upload";
 
   // Text Controllers for Editable User Fields
   late TextEditingController _ownerNameController;
@@ -305,7 +343,7 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
   String? _profileImageUrl;
   XFile? _pickedImageFile;
   bool _uploadingImage = false;
-  int? _pickedImageFileSize; // Store file size separately
+  int? _pickedImageFileSize;
   
   // Stored Fixed/Read-only Fields
   String _fetchedEmail = 'N/A';
@@ -391,6 +429,8 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
   }
 
   void _openImageOptions() {
+    final isSmallScreen = widget.screenWidth < 360;
+    
     showModalBottomSheet(
       context: context,
       builder: (ctx) {
@@ -401,7 +441,7 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
               if (_pickedImageFile != null)
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
                   decoration: BoxDecoration(
                     color: AppColors.primaryBlue.withOpacity(0.05),
                     border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
@@ -414,23 +454,25 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
                           color: AppColors.darkText,
-                          fontSize: 14,
+                          fontSize: isSmallScreen ? 13 : 14,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: widget.screenHeight * 0.004),
                       Text(
                         _pickedImageFile!.name,
                         style: TextStyle(
                           color: AppColors.darkText.withOpacity(0.7),
-                          fontSize: 13,
+                          fontSize: isSmallScreen ? 12 : 13,
                         ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       if (_pickedImageFileSize != null)
                         Text(
                           '${(_pickedImageFileSize! / 1024).toStringAsFixed(1)} KB',
                           style: TextStyle(
                             color: AppColors.darkText.withOpacity(0.5),
-                            fontSize: 12,
+                            fontSize: isSmallScreen ? 11 : 12,
                           ),
                         ),
                     ],
@@ -438,18 +480,38 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
                 ),
               
               ListTile(
-                leading: const Icon(Icons.photo_camera, color: AppColors.primaryBlue),
-                title: const Text('Take Photo'),
-                subtitle: const Text('Capture a new photo with camera'),
+                leading: Icon(
+                  Icons.photo_camera,
+                  color: AppColors.primaryBlue,
+                  size: isSmallScreen ? 20 : 24,
+                ),
+                title: Text(
+                  'Take Photo',
+                  style: TextStyle(fontSize: isSmallScreen ? 14 : 16),
+                ),
+                subtitle: Text(
+                  'Capture a new photo with camera',
+                  style: TextStyle(fontSize: isSmallScreen ? 12 : 14),
+                ),
                 onTap: () {
                   Navigator.of(ctx).pop();
                   _pickImage(ImageSource.camera);
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.photo_library, color: AppColors.primaryBlue),
-                title: const Text('Choose from Gallery'),
-                subtitle: const Text('Select from your device gallery'),
+                leading: Icon(
+                  Icons.photo_library,
+                  color: AppColors.primaryBlue,
+                  size: isSmallScreen ? 20 : 24,
+                ),
+                title: Text(
+                  'Choose from Gallery',
+                  style: TextStyle(fontSize: isSmallScreen ? 14 : 16),
+                ),
+                subtitle: Text(
+                  'Select from your device gallery',
+                  style: TextStyle(fontSize: isSmallScreen ? 12 : 14),
+                ),
                 onTap: () {
                   Navigator.of(ctx).pop();
                   _pickImage(ImageSource.gallery);
@@ -457,17 +519,40 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
               ),
               if (_profileImageUrl != null || _pickedImageFile != null)
                 ListTile(
-                  leading: const Icon(Icons.delete_outline, color: Colors.red),
-                  title: const Text('Remove Current Photo', style: TextStyle(color: Colors.red)),
-                  subtitle: const Text('Remove profile picture', style: TextStyle(color: Colors.red)),
+                  leading: Icon(
+                    Icons.delete_outline,
+                    color: Colors.red,
+                    size: isSmallScreen ? 20 : 24,
+                  ),
+                  title: Text(
+                    'Remove Current Photo',
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontSize: isSmallScreen ? 14 : 16,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Remove profile picture',
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontSize: isSmallScreen ? 12 : 14,
+                    ),
+                  ),
                   onTap: () {
                     Navigator.of(ctx).pop();
                     _removeProfileImage();
                   },
                 ),
               ListTile(
-                leading: const Icon(Icons.close, color: AppColors.primaryBlue),
-                title: const Text('Cancel'),
+                leading: Icon(
+                  Icons.close,
+                  color: AppColors.primaryBlue,
+                  size: isSmallScreen ? 20 : 24,
+                ),
+                title: Text(
+                  'Cancel',
+                  style: TextStyle(fontSize: isSmallScreen ? 14 : 16),
+                ),
                 onTap: () => Navigator.of(ctx).pop(),
               ),
             ],
@@ -520,7 +605,7 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
         ..files.add(http.MultipartFile.fromBytes(
           'file',
           bytes,
-          filename: imageFile.name, // Use original filename
+          filename: imageFile.name,
         ));
 
       // Send request with timeout
@@ -589,7 +674,7 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
             _isSaving = false;
             _uploadingImage = false;
           });
-          return; // Stop the save process if image upload fails
+          return;
         }
         
         setState(() {
@@ -646,20 +731,27 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
 
   // --- Profile Image Widget ---
   Widget _buildProfileImageSection() {
+    final isSmallScreen = widget.screenWidth < 360;
+    final profileImageSize = isSmallScreen ? widget.screenWidth * 0.25 : 120.0;
+    final cameraButtonSize = isSmallScreen ? widget.screenWidth * 0.1 : 40.0;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildInputLabel('Profile Picture'),
-        const SizedBox(height: 8),
+        _buildInputLabel('Profile Picture', isSmallScreen),
+        SizedBox(height: widget.screenHeight * 0.008),
         Center(
           child: Stack(
             children: [
               Container(
-                width: 120,
-                height: 120,
+                width: profileImageSize,
+                height: profileImageSize,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.primaryBlue.withOpacity(0.3), width: 3),
+                  border: Border.all(
+                    color: AppColors.primaryBlue.withOpacity(0.3),
+                    width: isSmallScreen ? 2.5 : 3.0,
+                  ),
                 ),
                 child: _uploadingImage
                     ? Container(
@@ -667,18 +759,22 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
                           shape: BoxShape.circle,
                           color: Colors.grey,
                         ),
-                        child: const Center(
+                        child: Center(
                           child: CircularProgressIndicator(
                             valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryBlue),
                           ),
                         ),
                       )
                     : CircleAvatar(
-                        radius: 56,
+                        radius: profileImageSize / 2 - 4,
                         backgroundColor: Colors.grey[200],
                         backgroundImage: _getProfileImage(),
                         child: _getProfileImage() == null
-                            ? const Icon(Icons.person, size: 50, color: AppColors.primaryBlue)
+                            ? Icon(
+                                Icons.person,
+                                size: profileImageSize * 0.4,
+                                color: AppColors.primaryBlue,
+                              )
                             : null,
                       ),
               ),
@@ -686,15 +782,22 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
                 bottom: 0,
                 right: 0,
                 child: Container(
-                  width: 40,
-                  height: 40,
+                  width: cameraButtonSize,
+                  height: cameraButtonSize,
                   decoration: BoxDecoration(
                     color: AppColors.primaryBlue,
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 3),
+                    border: Border.all(
+                      color: Colors.white,
+                      width: isSmallScreen ? 2.0 : 3.0,
+                    ),
                   ),
                   child: IconButton(
-                    icon: const Icon(Icons.camera_alt, size: 18, color: Colors.white),
+                    icon: Icon(
+                      Icons.camera_alt,
+                      size: cameraButtonSize * 0.4,
+                      color: Colors.white,
+                    ),
                     onPressed: _openImageOptions,
                     padding: EdgeInsets.zero,
                   ),
@@ -708,8 +811,8 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
         if (_pickedImageFile != null)
           Container(
             width: double.infinity,
-            margin: const EdgeInsets.only(top: 12),
-            padding: const EdgeInsets.all(12),
+            margin: EdgeInsets.only(top: widget.screenHeight * 0.012),
+            padding: EdgeInsets.all(isSmallScreen ? 10 : 12),
             decoration: BoxDecoration(
               color: AppColors.primaryBlue.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
@@ -720,33 +823,37 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.image, size: 16, color: AppColors.primaryBlue),
-                    const SizedBox(width: 8),
+                    Icon(
+                      Icons.image,
+                      size: isSmallScreen ? 14 : 16,
+                      color: AppColors.primaryBlue,
+                    ),
+                    SizedBox(width: widget.screenWidth * 0.02),
                     Text(
                       'Selected Image:',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: isSmallScreen ? 13 : 14,
                         fontWeight: FontWeight.w600,
                         color: AppColors.darkText,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: widget.screenHeight * 0.004),
                 Text(
                   _pickedImageFile!.name,
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: isSmallScreen ? 12 : 13,
                     color: AppColors.darkText.withOpacity(0.8),
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: widget.screenHeight * 0.004),
                 if (_pickedImageFileSize != null)
                   Text(
                     'Size: ${(_pickedImageFileSize! / 1024).toStringAsFixed(1)} KB',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: isSmallScreen ? 11 : 12,
                       color: AppColors.darkText.withOpacity(0.6),
                     ),
                   ),
@@ -756,8 +863,8 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
         else if (_profileImageUrl != null)
           Container(
             width: double.infinity,
-            margin: const EdgeInsets.only(top: 12),
-            padding: const EdgeInsets.all(12),
+            margin: EdgeInsets.only(top: widget.screenHeight * 0.012),
+            padding: EdgeInsets.all(isSmallScreen ? 10 : 12),
             decoration: BoxDecoration(
               color: AppColors.secondaryColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
@@ -765,13 +872,17 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
             ),
             child: Row(
               children: [
-                Icon(Icons.cloud_done, size: 16, color: AppColors.secondaryColor),
-                const SizedBox(width: 8),
+                Icon(
+                  Icons.cloud_done,
+                  size: isSmallScreen ? 14 : 16,
+                  color: AppColors.secondaryColor,
+                ),
+                SizedBox(width: widget.screenWidth * 0.02),
                 Expanded(
                   child: Text(
                     'Current image stored in Cloudinary',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: isSmallScreen ? 12 : 13,
                       color: AppColors.darkText.withOpacity(0.8),
                     ),
                   ),
@@ -780,7 +891,7 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
             ),
           ),
         
-        const SizedBox(height: 16),
+        SizedBox(height: widget.screenHeight * 0.016),
       ],
     );
   }
@@ -797,16 +908,32 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
 
   @override
   Widget build(BuildContext context) {
+    final isSmallScreen = widget.screenWidth < 360;
+    
     // Show loading while fetching initial user data
     if (_ownerNameController.text.isEmpty && !_isSaving && currentUser?.email != null && _fetchedEmail == 'N/A') {
-      return const Center(child: Padding(
-        padding: EdgeInsets.only(top: 100.0),
-        child: CircularProgressIndicator(color: AppColors.primaryBlue),
-      ));
+      return Center(
+        child: Padding(
+          padding: EdgeInsets.only(top: widget.screenHeight * 0.1),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: AppColors.primaryBlue),
+              SizedBox(height: widget.screenHeight * 0.02),
+              Text(
+                'Loading user data...',
+                style: TextStyle(
+                  fontSize: widget.screenWidth * 0.04,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     return Padding(
-      padding: const EdgeInsets.all(20.0),
+      padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
       child: Form(
         key: _formKey,
         child: Column(
@@ -816,9 +943,10 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
               InfoCard(
                 message: _statusMessage!,
                 color: _statusMessage!.toLowerCase().contains('success') ? AppColors.secondaryColor : Colors.red,
+                screenWidth: widget.screenWidth,
               ),
 
-            const SizedBox(height: 16),
+            SizedBox(height: widget.screenHeight * 0.016),
             
             // Profile Picture Section
             _buildProfileImageSection(),
@@ -827,37 +955,54 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
             // --- EDITABLE USER FIELDS (Registration Data) ---
             // -----------------------------------------------------------------
             
-            _buildInputLabel('Full Name'),
-            _buildTextField(_ownerNameController, 'Enter your full name', (value) {
-              if (value == null || value.isEmpty) return 'Name is required.';
-              return null;
-            }),
+            _buildInputLabel('Full Name', isSmallScreen),
+            _buildTextField(
+              _ownerNameController, 
+              'Enter your full name', 
+              (value) {
+                if (value == null || value.isEmpty) return 'Name is required.';
+                return null;
+              },
+              isSmallScreen,
+            ),
 
-            _buildInputLabel('Contact Number (Mobile)'),
-            _buildTextField(_contactNumberController, 'e.g., 0712345678', (value) {
-              if (value == null || value.isEmpty) return 'Mobile number is required.';
-              if (value.length != 10) return 'Mobile number must be 10 digits.';
-              return null;
-            }, keyboardType: TextInputType.phone),
+            _buildInputLabel('Contact Number (Mobile)', isSmallScreen),
+            _buildTextField(
+              _contactNumberController, 
+              'e.g., 0712345678', 
+              (value) {
+                if (value == null || value.isEmpty) return 'Mobile number is required.';
+                if (value.length != 10) return 'Mobile number must be 10 digits.';
+                return null;
+              }, 
+              isSmallScreen,
+              keyboardType: TextInputType.phone,
+            ),
             
-            _buildInputLabel('NIC Number'),
-            _buildTextField(_nicController, 'Enter your NIC', (value) {
-              if (value == null || value.isEmpty) return 'NIC is required.';
-              if (value.length < 10) return 'Enter a valid NIC (10 or 12 digits).';
-              return null;
-            }, keyboardType: TextInputType.text),
+            _buildInputLabel('NIC Number', isSmallScreen),
+            _buildTextField(
+              _nicController, 
+              'Enter your NIC', 
+              (value) {
+                if (value == null || value.isEmpty) return 'NIC is required.';
+                if (value.length < 10) return 'Enter a valid NIC (10 or 12 digits).';
+                return null;
+              }, 
+              isSmallScreen,
+              keyboardType: TextInputType.text,
+            ),
             
             // -----------------------------------------------------------------
             // --- FIXED (READ-ONLY) FIELDS ---
             // -----------------------------------------------------------------
             
-            _buildInputLabel('Email Address (Fixed)'),
-            FixedInfoBox(value: _fetchedEmail),
+            _buildInputLabel('Email Address (Fixed)', isSmallScreen),
+            FixedInfoBox(value: _fetchedEmail, screenWidth: widget.screenWidth),
 
-            _buildInputLabel('User Role (Fixed)'),
-            FixedInfoBox(value: _fetchedRole),
+            _buildInputLabel('User Role (Fixed)', isSmallScreen),
+            FixedInfoBox(value: _fetchedRole, screenWidth: widget.screenWidth),
 
-            const SizedBox(height: 30),
+            SizedBox(height: widget.screenHeight * 0.03),
 
             // Update Button
             GradientButton(
@@ -866,7 +1011,7 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
               isEnabled: !_isSaving && !_uploadingImage,
             ),
             
-            const SizedBox(height: 50),
+            SizedBox(height: widget.screenHeight * 0.05),
           ],
         ),
       ),
@@ -875,15 +1020,18 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
 
   // --- Helper Widgets ---
 
-  Widget _buildInputLabel(String text) {
+  Widget _buildInputLabel(String text, bool isSmallScreen) {
     return Padding(
-      padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
+      padding: EdgeInsets.only(
+        top: widget.screenHeight * 0.016,
+        bottom: widget.screenHeight * 0.008,
+      ),
       child: Text(
         text,
-        style: const TextStyle(
+        style: TextStyle(
           color: AppColors.darkText,
           fontWeight: FontWeight.w600,
-          fontSize: 16,
+          fontSize: isSmallScreen ? 14 : 16,
         ),
       ),
     );
@@ -893,6 +1041,7 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
     TextEditingController controller, 
     String hintText, 
     String? Function(String?)? validator,
+    bool isSmallScreen,
     {TextInputType keyboardType = TextInputType.text} 
   ) {
     return Container(
@@ -904,10 +1053,16 @@ class _UserProfileContentOnlyState extends State<UserProfileContentOnly> {
       child: TextFormField(
         controller: controller,
         keyboardType: keyboardType,
-        style: const TextStyle(color: AppColors.darkText),
+        style: TextStyle(
+          color: AppColors.darkText,
+          fontSize: isSmallScreen ? 14 : 16,
+        ),
         decoration: InputDecoration(
           hintText: hintText,
-          contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
+          contentPadding: EdgeInsets.symmetric(
+            vertical: widget.screenHeight * 0.016,
+            horizontal: widget.screenWidth * 0.04,
+          ),
           border: InputBorder.none,
         ),
         validator: validator,
@@ -929,6 +1084,9 @@ class GradientButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+    
     return InkWell(
       onTap: isEnabled ? onPressed : null,
       borderRadius: BorderRadius.circular(12),
@@ -936,7 +1094,9 @@ class GradientButton extends StatelessWidget {
         opacity: isEnabled ? 1.0 : 0.6,
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 16.0),
+          padding: EdgeInsets.symmetric(
+            vertical: isSmallScreen ? 14.0 : 16.0,
+          ),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             gradient: isEnabled
@@ -963,9 +1123,9 @@ class GradientButton extends StatelessWidget {
           child: Text(
             text,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white,
-              fontSize: 20,
+              fontSize: isSmallScreen ? 18 : 20,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -977,13 +1137,20 @@ class GradientButton extends StatelessWidget {
 
 class FixedInfoBox extends StatelessWidget {
   final String value;
-  const FixedInfoBox({required this.value, super.key});
+  final double screenWidth;
+  
+  const FixedInfoBox({required this.value, required this.screenWidth, super.key});
 
   @override
   Widget build(BuildContext context) {
+    final isSmallScreen = screenWidth < 360;
+    
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
+      padding: EdgeInsets.symmetric(
+        vertical: screenWidth * 0.04,
+        horizontal: screenWidth * 0.05,
+      ),
       decoration: BoxDecoration(
         color: Colors.grey[100],
         borderRadius: BorderRadius.circular(12),
@@ -993,7 +1160,7 @@ class FixedInfoBox extends StatelessWidget {
         value,
         style: TextStyle(
           color: AppColors.darkText.withOpacity(0.7),
-          fontSize: 16,
+          fontSize: isSmallScreen ? 14 : 16,
           fontWeight: FontWeight.w500,
         ),
       ),
@@ -1004,14 +1171,18 @@ class FixedInfoBox extends StatelessWidget {
 class InfoCard extends StatelessWidget {
   final String message;
   final Color color;
-  const InfoCard({required this.message, required this.color, super.key});
+  final double screenWidth;
+  
+  const InfoCard({required this.message, required this.color, required this.screenWidth, super.key});
 
   @override
   Widget build(BuildContext context) {
+    final isSmallScreen = screenWidth < 360;
+    
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: EdgeInsets.all(isSmallScreen ? 10 : 12),
+      margin: EdgeInsets.symmetric(vertical: screenWidth * 0.02),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(8),
@@ -1019,7 +1190,11 @@ class InfoCard extends StatelessWidget {
       ),
       child: Text(
         message,
-        style: TextStyle(color: color, fontWeight: FontWeight.w500),
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w500,
+          fontSize: isSmallScreen ? 13 : 14,
+        ),
       ),
     );
   }

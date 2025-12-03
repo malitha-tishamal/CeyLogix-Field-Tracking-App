@@ -108,6 +108,10 @@ class _FactoryDetailsState extends State<FactoryDetails> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isSmallScreen = screenWidth < 360;
+    
     if (currentUser == null) {
       return const Scaffold(body: Center(child: Text("Error: User not logged in.")));
     }
@@ -126,44 +130,46 @@ class _FactoryDetailsState extends State<FactoryDetails> {
         },
         onNavigate: handleDrawerNavigate,
       ),
-      body: Stack(
-        children: [
-          SafeArea(
-            child: Column(
-              children: [
-                _buildProfileHeader(context),
-                Expanded(
-                  child: FactoryOwnerProfileContent(
-                    key: ValueKey(currentUser!.uid),
-                    factoryOwnerUID: currentUser!.uid,
-                    onProfileUpdated: _fetchUserInfo,
-                    onDataUpdated: _showSuccessAndRefresh,
-                    factoryLogoUrl: _factoryLogoUrl,
-                    onLogoUpdated: (String? newLogoUrl) {
-                      setState(() {
-                        _factoryLogoUrl = newLogoUrl;
-                      });
-                    },
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildProfileHeader(context, screenWidth, screenHeight),
+            Expanded(
+              child: Column(
+                children: [
+                  Expanded(
+                    child: FactoryOwnerProfileContent(
+                      key: ValueKey(currentUser!.uid),
+                      factoryOwnerUID: currentUser!.uid,
+                      onProfileUpdated: _fetchUserInfo,
+                      onDataUpdated: _showSuccessAndRefresh,
+                      factoryLogoUrl: _factoryLogoUrl,
+                      onLogoUpdated: (String? newLogoUrl) {
+                        setState(() {
+                          _factoryLogoUrl = newLogoUrl;
+                        });
+                      },
+                      screenWidth: screenWidth,
+                      screenHeight: screenHeight,
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Text(
-                'Developed By Malitha Tishamal',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppColors.darkText.withOpacity(0.7),
-                  fontSize: 12,
-                ),
+                  
+                  Container(
+                    padding: EdgeInsets.all(screenWidth * 0.04),
+                    child: Text(
+                      'Developed By Malitha Tishamal',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.darkText.withOpacity(0.7),
+                        fontSize: screenWidth * 0.03,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -181,9 +187,16 @@ class _FactoryDetailsState extends State<FactoryDetails> {
     _fetchFactoryInfo();
   }
   
-  Widget _buildProfileHeader(BuildContext context) {
+  Widget _buildProfileHeader(BuildContext context, double screenWidth, double screenHeight) {
+    final isSmallScreen = screenWidth < 360;
+    
     return Container(
-      padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + (isSmallScreen ? 8 : 10),
+        left: screenWidth * 0.05,
+        right: screenWidth * 0.05,
+        bottom: isSmallScreen ? 16 : 20,
+      ),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
@@ -209,7 +222,11 @@ class _FactoryDetailsState extends State<FactoryDetails> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
-                icon: const Icon(Icons.menu, color: AppColors.headerTextDark, size: 28),
+                icon: Icon(
+                  Icons.menu,
+                  color: AppColors.headerTextDark,
+                  size: isSmallScreen ? 24 : 28,
+                ),
                 onPressed: () {
                   _scaffoldKey.currentState?.openDrawer();
                 },
@@ -217,7 +234,7 @@ class _FactoryDetailsState extends State<FactoryDetails> {
             ],
           ),
           
-          const SizedBox(height: 10),
+          SizedBox(height: screenHeight * 0.01),
           
           Row(
             children: [
@@ -225,8 +242,8 @@ class _FactoryDetailsState extends State<FactoryDetails> {
               Stack(
                 children: [
                   Container(
-                    width: 70,
-                    height: 70,
+                    width: isSmallScreen ? 60 : 70,
+                    height: isSmallScreen ? 60 : 70,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: _factoryLogoUrl == null 
@@ -236,11 +253,14 @@ class _FactoryDetailsState extends State<FactoryDetails> {
                             end: Alignment.bottomRight,
                           )
                         : null,
-                      border: Border.all(color: Colors.white, width: 3),
+                      border: Border.all(
+                        color: Colors.white,
+                        width: isSmallScreen ? 2.5 : 3.0,
+                      ),
                       boxShadow: [
                         BoxShadow(
                           color: AppColors.primaryBlue.withOpacity(0.4),
-                          blurRadius: 10,
+                          blurRadius: 10.0,
                           offset: const Offset(0, 3),
                         ),
                       ],
@@ -252,7 +272,11 @@ class _FactoryDetailsState extends State<FactoryDetails> {
                         : null,
                     ),
                     child: _factoryLogoUrl == null
-                      ? const Icon(Icons.factory, size: 40, color: Colors.white)
+                      ? Icon(
+                          Icons.factory,
+                          size: isSmallScreen ? 32 : 40,
+                          color: Colors.white,
+                        )
                       : null,
                   ),
                   // Badge indicating factory logo
@@ -261,18 +285,22 @@ class _FactoryDetailsState extends State<FactoryDetails> {
                       top: 0,
                       right: 0,
                       child: Container(
-                        padding: const EdgeInsets.all(4),
+                        padding: EdgeInsets.all(isSmallScreen ? 3 : 4),
                         decoration: const BoxDecoration(
                           shape: BoxShape.circle,
                           color: AppColors.secondaryColor,
                         ),
-                        child: const Icon(Icons.business, size: 12, color: Colors.white),
+                        child: Icon(
+                          Icons.business,
+                          size: isSmallScreen ? 10 : 12,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                 ],
               ),
               
-              const SizedBox(width: 15),
+              SizedBox(width: screenWidth * 0.04),
               
               Expanded(
                 child: Column(
@@ -280,32 +308,33 @@ class _FactoryDetailsState extends State<FactoryDetails> {
                   children: [
                     Text(
                       _factoryName,
-                      style: const TextStyle(
-                        fontSize: 20,
+                      style: TextStyle(
+                        fontSize: isSmallScreen ? 18 : 20,
                         fontWeight: FontWeight.bold,
                         color: AppColors.headerTextDark,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    SizedBox(height: screenHeight * 0.002),
                     Text(
                       _factoryLocation.isNotEmpty 
                         ? _factoryLocation 
                         : 'Factory Location',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: isSmallScreen ? 12 : 14,
                         color: AppColors.headerTextDark.withOpacity(0.7),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: screenHeight * 0.004),
                     Row(
                       children: [
                         Text(
                           'Owner: $_userName',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: isSmallScreen ? 11 : 12,
                             color: AppColors.headerTextDark.withOpacity(0.6),
                           ),
                         ),
@@ -317,12 +346,12 @@ class _FactoryDetailsState extends State<FactoryDetails> {
             ],
           ),
           
-          const SizedBox(height: 25),
+          SizedBox(height: screenHeight * 0.02),
           
-          const Text(
+          Text(
             'Manage Factory Details',
             style: TextStyle(
-              fontSize: 16,
+              fontSize: isSmallScreen ? 14 : 16,
               fontWeight: FontWeight.w600,
               color: AppColors.headerTextDark,
             ),
@@ -339,6 +368,8 @@ class FactoryOwnerProfileContent extends StatefulWidget {
   final VoidCallback? onDataUpdated;
   final String? factoryLogoUrl;
   final Function(String?)? onLogoUpdated;
+  final double screenWidth;
+  final double screenHeight;
   
   const FactoryOwnerProfileContent({
     required this.factoryOwnerUID, 
@@ -346,6 +377,8 @@ class FactoryOwnerProfileContent extends StatefulWidget {
     this.onDataUpdated,
     this.factoryLogoUrl,
     this.onLogoUpdated,
+    required this.screenWidth,
+    required this.screenHeight,
     super.key,
   });
 
@@ -724,11 +757,13 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
 
   // Factory Logo Widget
   Widget _buildFactoryLogoSection() {
+    final isSmallScreen = widget.screenWidth < 360;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildInputLabel('Factory Logo'),
-        const SizedBox(height: 8),
+        _buildInputLabel('Factory Logo', isSmallScreen),
+        SizedBox(height: widget.screenHeight * 0.008),
         
         Container(
           decoration: BoxDecoration(
@@ -737,60 +772,84 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
             border: Border.all(color: AppColors.accentColor.withOpacity(0.3)),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
             child: Column(
               children: [
                 // Logo Preview
                 Container(
-                  width: 120,
-                  height: 120,
+                  width: isSmallScreen ? widget.screenWidth * 0.3 : 120,
+                  height: isSmallScreen ? widget.screenWidth * 0.3 : 120,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: AppColors.primaryBlue.withOpacity(0.3)),
                   ),
-                  child: _buildLogoPreview(),
+                  child: _buildLogoPreview(isSmallScreen),
                 ),
                 
-                const SizedBox(height: 16),
+                SizedBox(height: widget.screenHeight * 0.016),
                 
                 // Upload/Remove Buttons
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                Wrap(
+                  spacing: isSmallScreen ? 8 : 12,
+                  runSpacing: isSmallScreen ? 8 : 12,
+                  alignment: WrapAlignment.center,
                   children: [
                     ElevatedButton.icon(
                       onPressed: _pickFactoryLogo,
-                      icon: const Icon(Icons.camera, size: 16),
-                      label: const Text('Select Logo'),
+                      icon: Icon(
+                        Icons.camera,
+                        size: isSmallScreen ? 14 : 16,
+                      ),
+                      label: Text(
+                        'Select Logo',
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 13 : 14,
+                        ),
+                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primaryBlue,
                         foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isSmallScreen ? 12 : 16,
+                          vertical: isSmallScreen ? 10 : 12,
+                        ),
                       ),
                     ),
-                    
-                    const SizedBox(width: 12),
                     
                     if (_uploadedLogoUrl != null || _selectedLogoFile != null)
                       ElevatedButton.icon(
                         onPressed: _uploadedLogoUrl != null 
                           ? _removeUploadedLogo
                           : _removeSelectedLogo,
-                        icon: const Icon(Icons.delete, size: 16),
-                        label: Text(_uploadedLogoUrl != null ? 'Remove' : 'Cancel'),
+                        icon: Icon(
+                          Icons.delete,
+                          size: isSmallScreen ? 14 : 16,
+                        ),
+                        label: Text(
+                          _uploadedLogoUrl != null ? 'Remove' : 'Cancel',
+                          style: TextStyle(
+                            fontSize: isSmallScreen ? 13 : 14,
+                          ),
+                        ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.red,
                           foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isSmallScreen ? 12 : 16,
+                            vertical: isSmallScreen ? 10 : 12,
+                          ),
                         ),
                       ),
                   ],
                 ),
                 
-                const SizedBox(height: 8),
+                SizedBox(height: widget.screenHeight * 0.008),
                 
                 Text(
                   'Upload a square logo for your factory (Max 5MB)',
                   style: TextStyle(
                     color: Colors.grey[600],
-                    fontSize: 12,
+                    fontSize: isSmallScreen ? 11 : 12,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -799,12 +858,12 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
           ),
         ),
         
-        const SizedBox(height: 20),
+        SizedBox(height: widget.screenHeight * 0.02),
       ],
     );
   }
 
-  Widget _buildLogoPreview() {
+  Widget _buildLogoPreview(bool isSmallScreen) {
     if (_selectedLogoFile != null) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(12),
@@ -833,7 +892,11 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
           errorBuilder: (context, error, stackTrace) {
             return Container(
               color: Colors.grey[200],
-              child: const Icon(Icons.broken_image, color: Colors.grey),
+              child: Icon(
+                Icons.broken_image,
+                color: Colors.grey,
+                size: isSmallScreen ? 30 : 40,
+              ),
             );
           },
         ),
@@ -841,16 +904,20 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
     } else {
       return Container(
         color: Colors.grey[100],
-        child: const Column(
+        child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.business, size: 40, color: Colors.grey),
-            SizedBox(height: 8),
+            Icon(
+              Icons.business,
+              size: isSmallScreen ? 30 : 40,
+              color: Colors.grey,
+            ),
+            SizedBox(height: widget.screenHeight * 0.008),
             Text(
               'No Logo',
               style: TextStyle(
                 color: Colors.grey,
-                fontSize: 12,
+                fontSize: isSmallScreen ? 11 : 12,
               ),
             ),
           ],
@@ -861,29 +928,31 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
 
   // Factory Photos Gallery Widget
   Widget _buildFactoryPhotosGallery() {
+    final isSmallScreen = widget.screenWidth < 360;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildInputLabel('Factory Photos (Max 5)'),
-        const SizedBox(height: 8),
+        _buildInputLabel('Factory Photos (Max 5)', isSmallScreen),
+        SizedBox(height: widget.screenHeight * 0.008),
         
         if (_uploadedFactoryPhotoUrls.isNotEmpty) ...[
-          const Text(
+          Text(
             'Currently Uploaded Photos:',
             style: TextStyle(
-              fontSize: 14,
+              fontSize: isSmallScreen ? 13 : 14,
               fontWeight: FontWeight.w600,
               color: AppColors.darkText,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: widget.screenHeight * 0.008),
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: isSmallScreen ? 2 : 3,
+              crossAxisSpacing: isSmallScreen ? 6 : 8,
+              mainAxisSpacing: isSmallScreen ? 6 : 8,
               childAspectRatio: 1,
             ),
             itemCount: _uploadedFactoryPhotoUrls.length,
@@ -914,7 +983,11 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
                         errorBuilder: (context, error, stackTrace) {
                           return Container(
                             color: Colors.grey[200],
-                            child: const Icon(Icons.broken_image, color: Colors.grey),
+                            child: Icon(
+                              Icons.broken_image,
+                              color: Colors.grey,
+                              size: isSmallScreen ? 24 : 30,
+                            ),
                           );
                         },
                       ),
@@ -926,14 +999,14 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
                     child: GestureDetector(
                       onTap: () => _removeUploadedPhoto(index),
                       child: Container(
-                        padding: const EdgeInsets.all(4),
+                        padding: EdgeInsets.all(isSmallScreen ? 3 : 4),
                         decoration: const BoxDecoration(
                           color: Colors.red,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.close,
-                          size: 16,
+                          size: isSmallScreen ? 12 : 16,
                           color: Colors.white,
                         ),
                       ),
@@ -943,16 +1016,19 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
                     bottom: 4,
                     left: 4,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isSmallScreen ? 4 : 6,
+                        vertical: isSmallScreen ? 1 : 2,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.black.withOpacity(0.6),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
                         '${index + 1}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
-                          fontSize: 10,
+                          fontSize: isSmallScreen ? 9 : 10,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -962,26 +1038,26 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
               );
             },
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: widget.screenHeight * 0.016),
         ],
         
         if (_selectedFactoryPhotos.isNotEmpty) ...[
-          const Text(
+          Text(
             'New Photos to Upload:',
             style: TextStyle(
-              fontSize: 14,
+              fontSize: isSmallScreen ? 13 : 14,
               fontWeight: FontWeight.w600,
               color: AppColors.darkText,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: widget.screenHeight * 0.008),
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: isSmallScreen ? 2 : 3,
+              crossAxisSpacing: isSmallScreen ? 6 : 8,
+              mainAxisSpacing: isSmallScreen ? 6 : 8,
               childAspectRatio: 1,
             ),
             itemCount: _selectedFactoryPhotos.length,
@@ -1007,14 +1083,14 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
                     child: GestureDetector(
                       onTap: () => _removeSelectedPhoto(index),
                       child: Container(
-                        padding: const EdgeInsets.all(4),
+                        padding: EdgeInsets.all(isSmallScreen ? 3 : 4),
                         decoration: const BoxDecoration(
                           color: Colors.red,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.close,
-                          size: 16,
+                          size: isSmallScreen ? 12 : 16,
                           color: Colors.white,
                         ),
                       ),
@@ -1024,16 +1100,19 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
                     bottom: 4,
                     left: 4,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isSmallScreen ? 4 : 6,
+                        vertical: isSmallScreen ? 1 : 2,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.black.withOpacity(0.6),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
                         '${index + 1}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
-                          fontSize: 10,
+                          fontSize: isSmallScreen ? 9 : 10,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -1043,12 +1122,12 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
               );
             },
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: widget.screenHeight * 0.016),
         ],
         
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
           decoration: BoxDecoration(
             color: AppColors.cardBackground,
             borderRadius: BorderRadius.circular(12),
@@ -1062,12 +1141,12 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
             children: [
               Icon(
                 Icons.photo_camera,
-                size: 40,
+                size: isSmallScreen ? 30 : 40,
                 color: _selectedFactoryPhotos.length >= _maxPhotos 
                   ? Colors.grey 
                   : AppColors.primaryBlue,
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: widget.screenHeight * 0.008),
               Text(
                 _selectedFactoryPhotos.length >= _maxPhotos
                   ? 'Maximum $_maxPhotos photos reached'
@@ -1077,18 +1156,20 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
                     ? Colors.grey 
                     : AppColors.darkText,
                   fontWeight: FontWeight.w500,
+                  fontSize: isSmallScreen ? 13 : 14,
                 ),
+                textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: widget.screenHeight * 0.004),
               Text(
                 'Tap to select photos of your factory',
                 style: TextStyle(
                   color: Colors.grey[600],
-                  fontSize: 12,
+                  fontSize: isSmallScreen ? 11 : 12,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: widget.screenHeight * 0.012),
               ElevatedButton(
                 onPressed: _selectedFactoryPhotos.length >= _maxPhotos ? null : _pickFactoryPhotos,
                 style: ElevatedButton.styleFrom(
@@ -1096,15 +1177,23 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
                     ? Colors.grey 
                     : AppColors.primaryBlue,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isSmallScreen ? 20 : 24,
+                    vertical: isSmallScreen ? 10 : 12,
+                  ),
                 ),
-                child: const Text('Select Photos'),
+                child: Text(
+                  'Select Photos',
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 13 : 14,
+                  ),
+                ),
               ),
             ],
           ),
         ),
         
-        const SizedBox(height: 16),
+        SizedBox(height: widget.screenHeight * 0.016),
       ],
     );
   }
@@ -1247,14 +1336,21 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
 
   @override
   Widget build(BuildContext context) {
+    final isSmallScreen = widget.screenWidth < 360;
+    
     if (_isLoading) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             CircularProgressIndicator(color: AppColors.primaryBlue),
-            SizedBox(height: 16),
-            Text('Loading factory details...'),
+            SizedBox(height: widget.screenHeight * 0.02),
+            Text(
+              'Loading factory details...',
+              style: TextStyle(
+                fontSize: widget.screenWidth * 0.04,
+              ),
+            ),
           ],
         ),
       );
@@ -1263,17 +1359,32 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
     return Column(
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: EdgeInsets.symmetric(
+            horizontal: widget.screenWidth * 0.04,
+            vertical: widget.screenHeight * 0.01,
+          ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               ElevatedButton.icon(
                 onPressed: _refreshData,
-                icon: const Icon(Icons.refresh, size: 16),
-                label: const Text('Refresh'),
+                icon: Icon(
+                  Icons.refresh,
+                  size: isSmallScreen ? 14 : 16,
+                ),
+                label: Text(
+                  'Refresh',
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 13 : 14,
+                  ),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryBlue,
                   foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isSmallScreen ? 12 : 16,
+                    vertical: isSmallScreen ? 10 : 12,
+                  ),
                 ),
               ),
             ],
@@ -1282,7 +1393,7 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
         
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20.0),
+            padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
             child: Form(
               key: _formKey,
               child: Column(
@@ -1296,7 +1407,7 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
                           : Colors.red,
                     ),
 
-                  const SizedBox(height: 16),
+                  SizedBox(height: widget.screenHeight * 0.016),
                   
                   // Factory Logo Section
                   _buildFactoryLogoSection(),
@@ -1305,46 +1416,63 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
                   _buildFactoryPhotosGallery(),
                   
                   // Factory Information Form
-                  _buildInputLabel('Factory Name'),
-                  _buildTextField(_factoryNameController, 'Sunshine Tea Factory'),
+                  _buildInputLabel('Factory Name', isSmallScreen),
+                  _buildTextField(
+                    _factoryNameController, 
+                    'Sunshine Tea Factory',
+                    TextInputType.text,
+                    isSmallScreen,
+                  ),
                                  
-                  _buildInputLabel('Contact Number'),
-                  _buildTextField(_contactNumberController, '0771234567', TextInputType.phone),
+                  _buildInputLabel('Contact Number', isSmallScreen),
+                  _buildTextField(
+                    _contactNumberController, 
+                    '0771234567', 
+                    TextInputType.phone,
+                    isSmallScreen,
+                  ),
 
-                  _buildInputLabel('Address Line'),
-                  _buildTextField(_addressController, 'e.g., Kandy Road'),
+                  _buildInputLabel('Address Line', isSmallScreen),
+                  _buildTextField(
+                    _addressController, 
+                    'e.g., Kandy Road',
+                    TextInputType.text,
+                    isSmallScreen,
+                  ),
 
-                  _buildInputLabel('Crop Type Handled'),
-                  _buildCropTypeDropdown(),
+                  _buildInputLabel('Crop Type Handled', isSmallScreen),
+                  _buildCropTypeDropdown(isSmallScreen),
                   
-                  _buildInputLabel('Country (Fixed)'),
+                  _buildInputLabel('Country (Fixed)', isSmallScreen),
                   const FixedInfoBox(value: 'Sri Lanka'),
                   
-                  _buildInputLabel('Province'),
-                  _buildProvinceDropdown(),
+                  _buildInputLabel('Province', isSmallScreen),
+                  _buildProvinceDropdown(isSmallScreen),
                   
                   if (_selectedProvince != null) ...[
-                    _buildInputLabel('District'),
-                    _buildDistrictDropdown(),
+                    _buildInputLabel('District', isSmallScreen),
+                    _buildDistrictDropdown(isSmallScreen),
                   ],
                   
-                  _buildInputLabel('A/G Division'),
+                  _buildInputLabel('A/G Division', isSmallScreen),
                   _buildTextField(
                     _agDivisionController, 
                     'Enter A/G Division (e.g., Kandy Divisional Secretariat)',
                     TextInputType.text,
+                    isSmallScreen,
                     false
                   ),
                   
-                  _buildInputLabel('G/N Division'),
+                  _buildInputLabel('G/N Division', isSmallScreen),
                   _buildTextField(
                     _gnDivisionController, 
                     'Enter G/N Division (e.g., Kandy Town)',
                     TextInputType.text,
+                    isSmallScreen,
                     false
                   ),
                   
-                  const SizedBox(height: 30),
+                  SizedBox(height: widget.screenHeight * 0.03),
 
                   GradientButton(
                     text: _isSaving 
@@ -1356,7 +1484,7 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
                     isEnabled: !_isSaving && !_uploadingPhotos && !_uploadingLogo,
                   ),
                   
-                  const SizedBox(height: 50),
+                  SizedBox(height: widget.screenHeight * 0.05),
                 ],
               ),
             ),
@@ -1366,15 +1494,18 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
     );
   }
 
-  Widget _buildInputLabel(String text) {
+  Widget _buildInputLabel(String text, bool isSmallScreen) {
     return Padding(
-      padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
+      padding: EdgeInsets.only(
+        top: widget.screenHeight * 0.016,
+        bottom: widget.screenHeight * 0.008,
+      ),
       child: Text(
         text,
-        style: const TextStyle(
+        style: TextStyle(
           color: AppColors.darkText,
           fontWeight: FontWeight.w600,
-          fontSize: 16,
+          fontSize: isSmallScreen ? 14 : 16,
         ),
       ),
     );
@@ -1383,8 +1514,9 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
   Widget _buildTextField(
     TextEditingController controller, 
     String hintText, 
-    [TextInputType keyboardType = TextInputType.text,
-    bool isRequired = true]
+    TextInputType keyboardType,
+    bool isSmallScreen,
+    [bool isRequired = true]
   ) {
     return Container(
       decoration: BoxDecoration(
@@ -1395,10 +1527,16 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
       child: TextFormField(
         controller: controller,
         keyboardType: keyboardType,
-        style: const TextStyle(color: AppColors.darkText),
+        style: TextStyle(
+          color: AppColors.darkText,
+          fontSize: isSmallScreen ? 14 : 16,
+        ),
         decoration: InputDecoration(
           hintText: hintText,
-          contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
+          contentPadding: EdgeInsets.symmetric(
+            vertical: widget.screenHeight * 0.016,
+            horizontal: widget.screenWidth * 0.04,
+          ),
           border: InputBorder.none,
         ),
         validator: isRequired ? (value) {
@@ -1411,7 +1549,7 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
     );
   }
 
-  Widget _buildCropTypeDropdown() {
+  Widget _buildCropTypeDropdown(bool isSmallScreen) {
     return _buildDropdown<String>(
       value: _selectedCropType,
       hint: 'Select Crop Type (Tea, Cinnamon, or Both)',
@@ -1421,10 +1559,11 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
           _selectedCropType = newValue;
         });
       },
+      isSmallScreen: isSmallScreen,
     );
   }
 
-  Widget _buildProvinceDropdown() {
+  Widget _buildProvinceDropdown(bool isSmallScreen) {
     return _buildDropdown<String>(
       value: _selectedProvince,
       hint: 'Select Province',
@@ -1435,10 +1574,11 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
           _selectedDistrict = null;
         });
       },
+      isSmallScreen: isSmallScreen,
     );
   }
 
-  Widget _buildDistrictDropdown() {
+  Widget _buildDistrictDropdown(bool isSmallScreen) {
     return _buildDropdown<String>(
       value: _selectedDistrict,
       hint: 'Select District',
@@ -1448,6 +1588,7 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
           _selectedDistrict = newValue;
         });
       },
+      isSmallScreen: isSmallScreen,
     );
   }
 
@@ -1456,9 +1597,12 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
     required String hint,
     required List<T> items,
     required void Function(T?) onChanged,
+    required bool isSmallScreen,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      padding: EdgeInsets.symmetric(
+        horizontal: widget.screenWidth * 0.04,
+      ),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(12),
@@ -1467,14 +1611,32 @@ class _FactoryOwnerProfileContentState extends State<FactoryOwnerProfileContent>
       child: DropdownButtonHideUnderline(
         child: DropdownButton<T>(
           value: value,
-          hint: Text(hint, style: TextStyle(color: AppColors.darkText.withOpacity(0.5))),
+          hint: Text(
+            hint, 
+            style: TextStyle(
+              color: AppColors.darkText.withOpacity(0.5),
+              fontSize: isSmallScreen ? 14 : 16,
+            ),
+          ),
           isExpanded: true,
-          icon: const Icon(Icons.arrow_drop_down, color: AppColors.primaryBlue),
-          style: const TextStyle(color: AppColors.darkText, fontSize: 16),
+          icon: Icon(
+            Icons.arrow_drop_down,
+            color: AppColors.primaryBlue,
+            size: isSmallScreen ? 24 : 28,
+          ),
+          style: TextStyle(
+            color: AppColors.darkText,
+            fontSize: isSmallScreen ? 14 : 16,
+          ),
           items: items.map<DropdownMenuItem<T>>((T item) {
             return DropdownMenuItem<T>(
               value: item,
-              child: Text(item.toString()),
+              child: Text(
+                item.toString(),
+                style: TextStyle(
+                  fontSize: isSmallScreen ? 14 : 16,
+                ),
+              ),
             );
           }).toList(),
           onChanged: onChanged,
@@ -1507,6 +1669,9 @@ class GradientButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+    
     return InkWell(
       onTap: isEnabled ? onPressed : null,
       borderRadius: BorderRadius.circular(12),
@@ -1514,7 +1679,9 @@ class GradientButton extends StatelessWidget {
         opacity: isEnabled ? 1.0 : 0.6,
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 16.0),
+          padding: EdgeInsets.symmetric(
+            vertical: isSmallScreen ? 14.0 : 16.0,
+          ),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             gradient: isEnabled
@@ -1541,9 +1708,9 @@ class GradientButton extends StatelessWidget {
           child: Text(
             text,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white,
-              fontSize: 20,
+              fontSize: isSmallScreen ? 18 : 20,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -1559,9 +1726,15 @@ class FixedInfoBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+    
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
+      padding: EdgeInsets.symmetric(
+        vertical: screenWidth * 0.04,
+        horizontal: screenWidth * 0.05,
+      ),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(12),
@@ -1571,7 +1744,7 @@ class FixedInfoBox extends StatelessWidget {
         value,
         style: TextStyle(
           color: AppColors.darkText.withOpacity(0.7),
-          fontSize: 16,
+          fontSize: isSmallScreen ? 14 : 16,
         ),
       ),
     );
@@ -1585,10 +1758,13 @@ class InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+    
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: EdgeInsets.all(isSmallScreen ? 10 : 12),
+      margin: EdgeInsets.symmetric(vertical: screenWidth * 0.02),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(8),
@@ -1596,7 +1772,11 @@ class InfoCard extends StatelessWidget {
       ),
       child: Text(
         message,
-        style: TextStyle(color: color, fontWeight: FontWeight.w500),
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w500,
+          fontSize: isSmallScreen ? 13 : 14,
+        ),
       ),
     );
   }

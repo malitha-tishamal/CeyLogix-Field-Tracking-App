@@ -8,7 +8,7 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher_string.dart';
-import 'land_owner_drawer.dart'; // Make sure to import your drawer
+import 'land_owner_drawer.dart';
 
 class LocationSelectionPage extends StatefulWidget {
   final Function(Map<String, dynamic>) onLocationSelected;
@@ -65,7 +65,7 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
   String _landID = 'L-ID';
   String? _profileImageUrl;
 
-  // Custom colors matching LandOwnerDashboard
+  // Custom colors
   static const Color _headerGradientStart = Color(0xFF869AEC);
   static const Color _headerGradientEnd = Color(0xFFF7FAFF);
   static const Color _headerTextDark = Color(0xFF333333);
@@ -73,9 +73,15 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
   static const Color _accentRed = Color(0xFFE53935);
   static const Color _accentTeal = Color(0xFF00BFA5);
   static const Color _secondaryColor = Color(0xFF6AD96A);
+  static const Color _backgroundColor = Color(0xFFEEEBFF);
 
   // Scaffold key for drawer
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  // Responsive variables
+  late bool _isPortrait;
+  late double _screenWidth;
+  late double _screenHeight;
 
   @override
   void initState() {
@@ -85,40 +91,34 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
     _initializeFormData();
     _fetchExistingLocation();
     _getCurrentLocation();
-    _fetchHeaderData(); // Fetch header data
+    _fetchHeaderData();
   }
 
-  // Drawer navigation handler
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _updateScreenDimensions();
+  }
+
+  void _updateScreenDimensions() {
+    final mediaQuery = MediaQuery.of(context);
+    _screenWidth = mediaQuery.size.width;
+    _screenHeight = mediaQuery.size.height;
+    _isPortrait = mediaQuery.orientation == Orientation.portrait;
+  }
+
   void _handleDrawerNavigate(String routeName) {
-    Navigator.pop(context); // Close drawer
-    
-    // Handle navigation based on route name
-    if (routeName == 'dashboard') {
-      Navigator.pop(context); // Go back to dashboard
-    } else if (routeName == 'profile') {
-      // Navigate to profile page
-      // Navigator.push(context, MaterialPageRoute(builder: (context) => ProfilePage()));
-    } else if (routeName == 'logout') {
-      _handleLogout();
-    }
-    // Add more routes as needed
+    Navigator.pop(context);
   }
 
   void _handleLogout() async {
     try {
       await _auth.signOut();
-      // Navigate to login screen
-      // Navigator.pushAndRemoveUntil(
-      //   context,
-      //   MaterialPageRoute(builder: (context) => LoginPage()),
-      //   (route) => false,
-      // );
     } catch (e) {
       print('Logout error: $e');
     }
   }
 
-  // Fetch header data similar to LandOwnerDashboard
   void _fetchHeaderData() async {
     final user = _auth.currentUser;
     if (user == null) {
@@ -131,7 +131,6 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
     });
 
     try {
-      // 1. Fetch User Name and Role from 'users' collection
       final userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
       if (userDoc.exists) {
         final userData = userDoc.data();
@@ -141,7 +140,6 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
         });
       }
       
-      // 2. Fetch Land Name from 'lands' collection
       final landDoc = await FirebaseFirestore.instance.collection('lands').doc(uid).get();
       if (landDoc.exists) {
         setState(() {
@@ -184,7 +182,6 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
         
         _populateFieldsFromData(data);
         
-        // Force UI update with static data from Firebase
         if (!mounted) return;
         setState(() {
           _isLoading = false;
@@ -214,7 +211,6 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
           : data['longitude'] as double;
       
       _selectedLocation = LatLng(lat, lng);
-      // Fixed: Use latitudeString/longitudeString from Firebase for static display
       _latitude = data['latitudeString'] ?? lat.toStringAsFixed(6);
       _longitude = data['longitudeString'] ?? lng.toStringAsFixed(6);
       
@@ -536,168 +532,190 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
     }
   }
 
-  // Fixed: Proper static data display from Firebase
-  // Fixed: Proper static data display from Firebase
-Widget _buildExistingLocationDisplay() {
-  final User? user = _auth.currentUser;
-  if (user == null) return const SizedBox.shrink();
-  
-  final Map<String, dynamic>? savedData = _fetchedExistingData ?? widget.existingData;
-  
-  if (savedData == null || savedData.isEmpty) {
-    return const SizedBox.shrink();
-  }
+  Widget _buildExistingLocationDisplay() {
+    final User? user = _auth.currentUser;
+    if (user == null) return const SizedBox.shrink();
+    
+    final Map<String, dynamic>? savedData = _fetchedExistingData ?? widget.existingData;
+    
+    if (savedData == null || savedData.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
-  // Fixed: Use the stored string values directly for static display
-  final displayLat = savedData['latitudeString'] ?? savedData['latitude']?.toStringAsFixed(6) ?? '--';
-  final displayLng = savedData['longitudeString'] ?? savedData['longitude']?.toStringAsFixed(6) ?? '--';
-  final displayAddress = savedData['address'] ?? 'Address not available';
-  
-  double? savedLat;
-  double? savedLng;
-  
-  try {
-    savedLat = (savedData['latitude'] as num?)?.toDouble();
-    savedLng = (savedData['longitude'] as num?)?.toDouble();
-  } catch (e) {
-    print('Error parsing saved coordinates: $e');
-  }
+    final displayLat = savedData['latitudeString'] ?? savedData['latitude']?.toStringAsFixed(6) ?? '--';
+    final displayLng = savedData['longitudeString'] ?? savedData['longitude']?.toStringAsFixed(6) ?? '--';
+    final displayAddress = savedData['address'] ?? 'Address not available';
+    
+    double? savedLat;
+    double? savedLng;
+    
+    try {
+      savedLat = (savedData['latitude'] as num?)?.toDouble();
+      savedLng = (savedData['longitude'] as num?)?.toDouble();
+    } catch (e) {
+      print('Error parsing saved coordinates: $e');
+    }
 
-  final openMapUrl = 'https://www.google.com/maps/search/?api=1&query=$displayLat,$displayLng';
+    final openMapUrl = 'https://www.google.com/maps/search/?api=1&query=$displayLat,$displayLng';
 
-  return Card(
-    // CHANGED: Background color to light grey
-    color: Colors.grey[100], // Changed from _primaryBlue.withOpacity(0.05) to grey[100]
-    elevation: 3,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(12),
-      // CHANGED: Border color to grey
-      side: BorderSide(color: Colors.grey[300]!, width: 1), // Changed from _primaryBlue.withOpacity(0.2)
-    ),
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.location_history,
-                // CHANGED: Icon color to grey
-                color: Colors.grey[700], // Changed from _primaryBlue to grey[700]
-                size: 24,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Previously Saved Location',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  // CHANGED: Text color to grey
-                  color: Colors.grey[800], // Changed from _primaryBlue to grey[800]
-                ),
-              ),
-            ],
-          ),
-          // CHANGED: Divider color to light grey
-          const Divider(color: Color(0xFFE0E0E0)), // Changed from Color.fromARGB(255, 234, 186, 186)
-          _buildDetailRow('Saved Address', displayAddress),
-          _buildDetailRow('Latitude', displayLat),
-          _buildDetailRow('Longitude', displayLng),
-          _buildDetailRow('Updated At', 
-              (savedData['updatedAt'] is Timestamp) 
-                  ? (savedData['updatedAt'] as Timestamp).toDate().toString().split('.')[0] 
-                  : 'N/A'),
-          
-          const SizedBox(height: 12),
-          
-          if (savedLat != null && savedLng != null)
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      _mapController.move(LatLng(savedLat!, savedLng!), _zoomLevel);
-                    },
-                    // CHANGED: Button icon and text color to grey
-                    icon: Icon(Icons.travel_explore, size: 18, color: Colors.grey[700]),
-                    label: Text('View on Map', style: TextStyle(fontSize: 14, color: Colors.grey[700])),
-                    style: ElevatedButton.styleFrom(
-                      // CHANGED: Button background to light grey
-                      backgroundColor: Colors.grey[200], // Changed from _primaryBlue.withOpacity(0.1)
-                      foregroundColor: Colors.grey[700], // Changed from _primaryBlue
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () async {
-                      if (await canLaunchUrlString(openMapUrl)) {
-                        await launchUrlString(openMapUrl);
-                      }
-                    },
-                    icon: Icon(Icons.open_in_new, size: 18, color: Colors.white),
-                    label: Text('Open in Maps', style: TextStyle(fontSize: 14, color: Colors.white)),
-                    style: ElevatedButton.styleFrom(
-                      // CHANGED: Button background to grey
-                      backgroundColor: Colors.grey[600], // Changed from _primaryBlue
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          
-          const SizedBox(height: 16),
-          
-          Text(
-            'You can update a new location by selecting a point on the map below.',
-            style: TextStyle(
-              fontStyle: FontStyle.italic,
-              // CHANGED: Text color to grey
-              color: const Color.fromARGB(255, 113, 121, 212), // Changed from Colors.blueGrey
-              fontSize: 13,
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-}
+    final isSmallScreen = _screenWidth < 360;
+    final isMediumScreen = _screenWidth >= 360 && _screenWidth < 400;
 
-  Widget _buildLocationTypeSelection() {
     return Card(
+      color: Colors.grey[100],
       elevation: 3,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(isSmallScreen ? 10.0 : 12.0),
+        side: BorderSide(color: Colors.grey[300]!, width: 1),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Select Location Method',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: _primaryBlue,
-              ),
-            ),
-            const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(child: _buildLocationTypeCard('Auto Location', 'Use your current location automatically', Icons.my_location, 'auto')),
-                const SizedBox(width: 12),
-                Expanded(child: _buildLocationTypeCard('Manual Location', 'Select location manually on map or enter coordinates', Icons.edit_location_alt, 'manual')),
+                Icon(
+                  Icons.location_history,
+                  color: Colors.grey[700],
+                  size: isSmallScreen ? 20.0 : 24.0,
+                ),
+                SizedBox(width: isSmallScreen ? 6.0 : 8.0),
+                Expanded(
+                  child: Text(
+                    'Previously Saved Location',
+                    style: TextStyle(
+                      fontSize: isSmallScreen ? 14.0 : 16.0,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[800],
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
+            ),
+            const Divider(color: Color(0xFFE0E0E0)),
+            _buildDetailRow('Saved Address', displayAddress, isSmallScreen),
+            _buildDetailRow('Latitude', displayLat, isSmallScreen),
+            _buildDetailRow('Longitude', displayLng, isSmallScreen),
+            _buildDetailRow('Updated At', 
+                (savedData['updatedAt'] is Timestamp) 
+                    ? (savedData['updatedAt'] as Timestamp).toDate().toString().split('.')[0] 
+                    : 'N/A',
+                isSmallScreen),
+            
+            SizedBox(height: isSmallScreen ? 8.0 : 12.0),
+            
+            if (savedLat != null && savedLng != null)
+              Column(
+                children: [
+                  if (isSmallScreen)
+                    Column(
+                      children: [
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              _mapController.move(LatLng(savedLat!, savedLng!), _zoomLevel);
+                            },
+                            icon: Icon(Icons.travel_explore, size: 16, color: Colors.grey[700]),
+                            label: Text('View on Map', style: TextStyle(fontSize: 13, color: Colors.grey[700])),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.grey[200],
+                              foregroundColor: Colors.grey[700],
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () async {
+                              if (await canLaunchUrlString(openMapUrl)) {
+                                await launchUrlString(openMapUrl);
+                              }
+                            },
+                            icon: Icon(Icons.open_in_new, size: 16, color: Colors.white),
+                            label: Text('Open in Maps', style: TextStyle(fontSize: 13, color: Colors.white)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.grey[600],
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                  else
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              _mapController.move(LatLng(savedLat!, savedLng!), _zoomLevel);
+                            },
+                            icon: Icon(Icons.travel_explore, size: isMediumScreen ? 16 : 18, color: Colors.grey[700]),
+                            label: Text(
+                              'View on Map', 
+                              style: TextStyle(
+                                fontSize: isMediumScreen ? 13 : 14, 
+                                color: Colors.grey[700]
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.grey[200],
+                              foregroundColor: Colors.grey[700],
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: isSmallScreen ? 6.0 : 8.0),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () async {
+                              if (await canLaunchUrlString(openMapUrl)) {
+                                await launchUrlString(openMapUrl);
+                              }
+                            },
+                            icon: Icon(Icons.open_in_new, size: isMediumScreen ? 16 : 18, color: Colors.white),
+                            label: Text(
+                              'Open in Maps', 
+                              style: TextStyle(
+                                fontSize: isMediumScreen ? 13 : 14, 
+                                color: Colors.white
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.grey[600],
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+            
+            SizedBox(height: isSmallScreen ? 12.0 : 16.0),
+            
+            Text(
+              'You can update a new location by selecting a point on the map below.',
+              style: TextStyle(
+                fontStyle: FontStyle.italic,
+                color: const Color.fromARGB(255, 113, 121, 212),
+                fontSize: isSmallScreen ? 12.0 : 13.0,
+              ),
             ),
           ],
         ),
@@ -705,8 +723,89 @@ Widget _buildExistingLocationDisplay() {
     );
   }
 
-  Widget _buildLocationTypeCard(String title, String description, IconData icon, String type) {
+  Widget _buildLocationTypeSelection() {
+    final isSmallScreen = _screenWidth < 360;
+    final isMediumScreen = _screenWidth >= 360 && _screenWidth < 400;
+
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(isSmallScreen ? 10.0 : 12.0),
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Select Location Method',
+              style: TextStyle(
+                fontSize: isSmallScreen ? 14.0 : 16.0,
+                fontWeight: FontWeight.bold,
+                color: _primaryBlue,
+              ),
+            ),
+            SizedBox(height: isSmallScreen ? 8.0 : 12.0),
+            if (isSmallScreen)
+              Column(
+                children: [
+                  _buildLocationTypeCard(
+                    'Auto Location', 
+                    'Use current location', 
+                    Icons.my_location, 
+                    'auto',
+                    isSmallScreen,
+                    isMediumScreen
+                  ),
+                  SizedBox(height: 8),
+                  _buildLocationTypeCard(
+                    'Manual Location', 
+                    'Select on map or enter coordinates', 
+                    Icons.edit_location_alt, 
+                    'manual',
+                    isSmallScreen,
+                    isMediumScreen
+                  ),
+                ],
+              )
+            else
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildLocationTypeCard(
+                      'Auto Location', 
+                      'Use your current location automatically', 
+                      Icons.my_location, 
+                      'auto',
+                      isSmallScreen,
+                      isMediumScreen
+                    ),
+                  ),
+                  SizedBox(width: isMediumScreen ? 8.0 : 12.0),
+                  Expanded(
+                    child: _buildLocationTypeCard(
+                      'Manual Location', 
+                      'Select location manually on map or enter coordinates', 
+                      Icons.edit_location_alt, 
+                      'manual',
+                      isSmallScreen,
+                      isMediumScreen
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLocationTypeCard(String title, String description, IconData icon, String type, bool isSmallScreen, bool isMediumScreen) {
     final bool isSelected = _selectedLocationType == type;
+    final titleFontSize = isSmallScreen ? 12.0 : isMediumScreen ? 13.0 : 14.0;
+    final descFontSize = isSmallScreen ? 10.0 : isMediumScreen ? 11.0 : 12.0;
+    final iconSize = isSmallScreen ? 24.0 : isMediumScreen ? 28.0 : 32.0;
+    final padding = isSmallScreen ? 12.0 : 16.0;
     
     return GestureDetector(
       onTap: () {
@@ -720,38 +819,44 @@ Widget _buildExistingLocationDisplay() {
         });
       },
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(padding),
         decoration: BoxDecoration(
           color: isSelected ? _primaryBlue.withOpacity(0.15) : Colors.grey[50],
           border: Border.all(
             color: isSelected ? _primaryBlue : Colors.grey[300]!,
             width: 2,
           ),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(isSmallScreen ? 10.0 : 12.0),
         ),
         child: Column(
           children: [
             Icon(
               icon,
               color: isSelected ? _primaryBlue : Colors.grey,
-              size: 32,
+              size: iconSize,
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: isSmallScreen ? 6.0 : 8.0),
             Text(
               title,
               style: TextStyle(
                 fontWeight: FontWeight.bold,
+                fontSize: titleFontSize,
                 color: isSelected ? _primaryBlue : Colors.grey[700],
               ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: isSmallScreen ? 3.0 : 4.0),
             Text(
               description,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: descFontSize,
                 color: isSelected ? _primaryBlue : Colors.grey[600],
               ),
               textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -760,104 +865,182 @@ Widget _buildExistingLocationDisplay() {
   }
 
   Widget _buildManualLocationInput() {
+    final isSmallScreen = _screenWidth < 360;
+    final isMediumScreen = _screenWidth >= 360 && _screenWidth < 400;
+
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(isSmallScreen ? 10.0 : 12.0),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Enter Coordinates Manually',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: isSmallScreen ? 14.0 : 16.0,
                 fontWeight: FontWeight.bold,
                 color: _primaryBlue,
               ),
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
+            SizedBox(height: isSmallScreen ? 8.0 : 12.0),
+            if (isSmallScreen)
+              Column(
+                children: [
+                  TextField(
                     controller: _manualLatController,
                     decoration: InputDecoration(
                       labelText: 'Latitude',
-                      labelStyle: TextStyle(color: _primaryBlue),
+                      labelStyle: TextStyle(color: _primaryBlue, fontSize: 13),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide(color: _primaryBlue),
                       ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(color: _primaryBlue, width: 2),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12, 
+                        vertical: isSmallScreen ? 10 : 12
                       ),
                     ),
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
+                  SizedBox(height: 8),
+                  TextField(
                     controller: _manualLngController,
                     decoration: InputDecoration(
                       labelText: 'Longitude',
-                      labelStyle: TextStyle(color: _primaryBlue),
+                      labelStyle: TextStyle(color: _primaryBlue, fontSize: 13),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide(color: _primaryBlue),
                       ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(color: _primaryBlue, width: 2),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12, 
+                        vertical: isSmallScreen ? 10 : 12
                       ),
                     ),
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   ),
-                ),
-                const SizedBox(width: 12),
-                ElevatedButton(
-                  onPressed: _useManualCoordinates,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _primaryBlue,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                  SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _useManualCoordinates,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _primaryBlue,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 16, 
+                          vertical: isSmallScreen ? 12 : 15
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: Text(
+                        'Update Location',
+                        style: TextStyle(fontSize: isSmallScreen ? 13 : 14),
+                      ),
                     ),
                   ),
-                  child: const Text('Go'),
-                ),
-              ],
-            ),
+                ],
+              )
+            else
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _manualLatController,
+                      decoration: InputDecoration(
+                        labelText: 'Latitude',
+                        labelStyle: TextStyle(color: _primaryBlue),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: _primaryBlue),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    ),
+                  ),
+                  SizedBox(width: isMediumScreen ? 8.0 : 12.0),
+                  Expanded(
+                    child: TextField(
+                      controller: _manualLngController,
+                      decoration: InputDecoration(
+                        labelText: 'Longitude',
+                        labelStyle: TextStyle(color: _primaryBlue),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: _primaryBlue),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    ),
+                  ),
+                  SizedBox(width: isMediumScreen ? 8.0 : 12.0),
+                  ElevatedButton(
+                    onPressed: _useManualCoordinates,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _primaryBlue,
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isMediumScreen ? 16 : 20, 
+                        vertical: isMediumScreen ? 14 : 15
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      'Go',
+                      style: TextStyle(fontSize: isMediumScreen ? 14 : 15),
+                    ),
+                  ),
+                ],
+              ),
           ],
         ),
       ),
     );
   }
 
-  // Header Widget (same as LandOwnerDashboard)
   Widget _buildDashboardHeader(BuildContext context) {
+    final isSmallScreen = _screenWidth < 360;
+    final isMediumScreen = _screenWidth >= 360 && _screenWidth < 400;
+    final topPadding = MediaQuery.of(context).padding.top + 10;
+    final horizontalPadding = isSmallScreen ? 16.0 : 20.0;
+    final profileSize = isSmallScreen ? 60.0 : 70.0;
+    final menuIconSize = isSmallScreen ? 24.0 : 28.0;
+    final nameFontSize = isSmallScreen ? 16.0 : 20.0;
+    final landFontSize = isSmallScreen ? 14.0 : 16.0;
+    final titleFontSize = isSmallScreen ? 14.0 : 16.0;
+
     return Container(
-      padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
+      padding: EdgeInsets.only(
+        top: topPadding,
+        left: horizontalPadding,
+        right: horizontalPadding,
+        bottom: isSmallScreen ? 16.0 : 20.0,
+      ),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [_headerGradientStart, _headerGradientEnd], 
+          colors: [_headerGradientStart, _headerGradientEnd],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         ),
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(30), 
-          bottomRight: Radius.circular(30),
+          bottomLeft: Radius.circular(20),
+          bottomRight: Radius.circular(20),
         ),
         boxShadow: [
           BoxShadow(
-            color: Color(0x10000000), 
-            blurRadius: 15,
-            offset: Offset(0, 5),
+            color: Color(0x10000000),
+            blurRadius: 10,
+            offset: Offset(0, 3),
           ),
         ],
       ),
@@ -868,24 +1051,26 @@ Widget _buildExistingLocationDisplay() {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
-                icon: const Icon(Icons.menu, color: _headerTextDark, size: 28),
+                icon: Icon(Icons.menu, color: _headerTextDark, size: menuIconSize),
                 onPressed: () {
                   _scaffoldKey.currentState?.openDrawer();
                 },
+                padding: EdgeInsets.zero,
+                constraints: BoxConstraints(
+                  minWidth: menuIconSize + 16,
+                  minHeight: menuIconSize + 16,
+                ),
               ),
-              
-             
             ],
           ),
           
-          const SizedBox(height: 10),
+          SizedBox(height: isSmallScreen ? 8.0 : 10.0),
           
           Row(
             children: [
-              // Profile Picture
               Container(
-                width: 70,
-                height: 70,
+                width: profileSize,
+                height: profileSize,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: _profileImageUrl == null 
@@ -895,11 +1080,14 @@ Widget _buildExistingLocationDisplay() {
                         end: Alignment.bottomRight,
                       )
                     : null,
-                  border: Border.all(color: Colors.white, width: 3),
+                  border: Border.all(
+                    color: Colors.white, 
+                    width: isSmallScreen ? 2.0 : 3.0
+                  ),
                   boxShadow: [
                     BoxShadow(
-                      color: _primaryBlue.withOpacity(0.4),
-                      blurRadius: 10,
+                      color: _primaryBlue.withOpacity(0.3),
+                      blurRadius: isSmallScreen ? 8.0 : 10.0,
                       offset: const Offset(0, 3),
                     ),
                   ],
@@ -911,45 +1099,51 @@ Widget _buildExistingLocationDisplay() {
                     : null,
                 ),
                 child: _profileImageUrl == null
-                    ? const Icon(Icons.person, size: 40, color: Colors.white)
+                    ? Icon(
+                        Icons.person, 
+                        size: isSmallScreen ? 32.0 : 40.0, 
+                        color: Colors.white
+                      )
                     : null,
               ),
               
-              const SizedBox(width: 15),
+              SizedBox(width: isSmallScreen ? 12.0 : 15.0),
               
-              // User Info Display
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-
-                  Text(
-                    _loggedInUserName, 
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: _headerTextDark,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _loggedInUserName, 
+                      style: TextStyle(
+                        fontSize: nameFontSize,
+                        fontWeight: FontWeight.bold,
+                        color: _headerTextDark,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  // 2. Logged-in User Name and Role
-                  Text(
-                    'Land Name: $_landName \n($_userRole)', 
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: _headerTextDark.withOpacity(0.7),
+                    Text(
+                      'Land Name: $_landName \n($_userRole)', 
+                      style: TextStyle(
+                        fontSize: landFontSize,
+                        color: _headerTextDark.withOpacity(0.7),
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
           
-          const SizedBox(height: 25), 
+          SizedBox(height: isSmallScreen ? 20.0 : 25.0), 
           
-          // Page specific title
           Text(
             'Select or Update Land Location',
-            style: const TextStyle(
-              fontSize: 16,
+            style: TextStyle(
+              fontSize: titleFontSize,
               fontWeight: FontWeight.w600,
               color: _headerTextDark,
             ),
@@ -959,250 +1153,174 @@ Widget _buildExistingLocationDisplay() {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      key: _scaffoldKey,
-      backgroundColor: Colors.grey[50],
-      // Add drawer here
-      drawer: LandOwnerDrawer(
-        onLogout: () {
-          _handleLogout();
-        },
-        onNavigate: _handleDrawerNavigate,
+  Widget _buildMapCard() {
+    final isSmallScreen = _screenWidth < 360;
+    final isMediumScreen = _screenWidth >= 360 && _screenWidth < 400;
+    final mapHeight = isSmallScreen ? _screenHeight * 0.35 : _screenHeight * 0.4;
+
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(isSmallScreen ? 10.0 : 12.0),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
+      child: Padding(
+        padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Header from LandOwnerDashboard
-                _buildDashboardHeader(context),
-                
-                // Content area with footer
-                Expanded(
-                  child: Column(
-                    children: [
-                      // Scrollable content
-                      Expanded(
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // 1. Existing Location Card (STATIC DATA FROM FIREBASE)
-                              _buildExistingLocationDisplay(),
-                              
-                              const SizedBox(height: 16),
-                              
-                              // 2. Location Type Selection
-                              _buildLocationTypeSelection(),
-                              
-                              const SizedBox(height: 16),
-                              
-                              // 3. Manual Coordinates Input
-                              if (_selectedLocationType == 'manual') ...[
-                                _buildManualLocationInput(),
-                                const SizedBox(height: 16),
-                              ],
-                              
-                              // 4. Map
-                              Card(
-                                elevation: 3,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Text(
-                                            'Map',
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                              color: _primaryBlue,
-                                            ),
-                                          ),
-                                          Row(
-                                            children: [
-                                              IconButton(
-                                                onPressed: _goToCurrentLocation,
-                                                icon: Icon(Icons.my_location, color: _primaryBlue),
-                                                tooltip: 'Go to current location',
-                                              ),
-                                              IconButton(
-                                                onPressed: () {
-                                                  if (_selectedLocation != null) {
-                                                    _mapController.move(_selectedLocation!, _zoomLevel);
-                                                  }
-                                                },
-                                                icon: Icon(Icons.center_focus_strong, color: _primaryBlue),
-                                                tooltip: 'Center on selected location',
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 12),
-                                      Container(
-                                        height: 400,
-                                        decoration: BoxDecoration(
-                                          border: Border.all(color: _primaryBlue.withOpacity(0.3)),
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: FlutterMap(
-                                          mapController: _mapController,
-                                          options: MapOptions(
-                                            center: _selectedLocation ?? const LatLng(6.9271, 79.8612),
-                                            zoom: _zoomLevel,
-                                            onTap: _onMapTap,
-                                          ),
-                                          children: [
-                                            TileLayer(
-                                              urlTemplate: _tileLayers[_selectedTileLayer]['url'],
-                                              userAgentPackageName: 'com.example.location_selector',
-                                            ),
-                                            MarkerLayer(
-                                              markers: _selectedLocation != null
-                                                  ? [
-                                                      Marker(
-                                                        point: _selectedLocation!,
-                                                        width: 40,
-                                                        height: 40,
-                                                        child: Icon(
-                                                          Icons.location_pin,
-                                                          color: _selectedLocationType == 'auto' 
-                                                              ? _secondaryColor 
-                                                              : _primaryBlue,
-                                                          size: 40,
-                                                        ),
-                                                      ),
-                                                    ]
-                                                  : [],
-                                            ),
-                                            RichAttributionWidget(
-                                              attributions: [
-                                                TextSourceAttribution(
-                                                  'OpenStreetMap contributors',
-                                                  onTap: () => launchUrlString('https://openstreetmap.org/copyright'),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              
-                              const SizedBox(height: 16),
-                              
-                              // 5. Location Details (CURRENT SELECTION - NOT STATIC)
-                              Card(
-                                elevation: 3,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Current Selection (Changes on Map Tap)',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          color: _primaryBlue,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 12),
-                                      _buildDetailRow('Location Type', _selectedLocationType == 'auto' ? 'Auto-detected' : 'Manual'),
-                                      _buildDetailRow('Address', _address.isNotEmpty ? _address : 'Not selected'),
-                                      _buildDetailRow('Latitude', _latitude.isNotEmpty ? _latitude : '--'),
-                                      _buildDetailRow('Longitude', _longitude.isNotEmpty ? _longitude : '--'),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              
-                              const SizedBox(height: 16),
-                              
-                              // 6. Save Button
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton(
-                                  onPressed: _isSaving ? null : _saveToFirebase,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: _primaryBlue,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    elevation: 4,
-                                  ),
-                                  child: _isSaving
-                                      ? const SizedBox(
-                                          height: 20,
-                                          width: 20,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                          ),
-                                        )
-                                      : Text(
-                                          (widget.existingData != null || _fetchedExistingData != null)
-                                              ? 'Update Location'
-                                              : 'Save Location',
-                                          style: const TextStyle(fontSize: 16),
-                                        ),
-                                ),
-                              ),
-                              
-                              const SizedBox(height: 20),
-                            ],
-                          ),
-                        ),
-                      ),
-                      
-                      // Footer (Fixed at bottom of content area)
-                      Container(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Text(
-                          'Developed By Malitha Tishamal',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: _headerTextDark.withOpacity(0.7),
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ],
+                Text(
+                  'Map',
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 14.0 : 16.0,
+                    fontWeight: FontWeight.bold,
+                    color: _primaryBlue,
                   ),
+                ),
+                Row(
+                  children: [
+                    IconButton(
+                      onPressed: _goToCurrentLocation,
+                      icon: Icon(
+                        Icons.my_location, 
+                        color: _primaryBlue,
+                        size: isSmallScreen ? 20.0 : 24.0,
+                      ),
+                      padding: EdgeInsets.all(isSmallScreen ? 4.0 : 6.0),
+                      constraints: BoxConstraints(
+                        minWidth: isSmallScreen ? 36.0 : 40.0,
+                        minHeight: isSmallScreen ? 36.0 : 40.0,
+                      ),
+                      tooltip: 'Go to current location',
+                    ),
+                    IconButton(
+                      onPressed: () {
+                        if (_selectedLocation != null) {
+                          _mapController.move(_selectedLocation!, _zoomLevel);
+                        }
+                      },
+                      icon: Icon(
+                        Icons.center_focus_strong, 
+                        color: _primaryBlue,
+                        size: isSmallScreen ? 20.0 : 24.0,
+                      ),
+                      padding: EdgeInsets.all(isSmallScreen ? 4.0 : 6.0),
+                      constraints: BoxConstraints(
+                        minWidth: isSmallScreen ? 36.0 : 40.0,
+                        minHeight: isSmallScreen ? 36.0 : 40.0,
+                      ),
+                      tooltip: 'Center on selected location',
+                    ),
+                  ],
                 ),
               ],
             ),
+            SizedBox(height: isSmallScreen ? 8.0 : 12.0),
+            Container(
+              height: mapHeight,
+              decoration: BoxDecoration(
+                border: Border.all(color: _primaryBlue.withOpacity(0.3)),
+                borderRadius: BorderRadius.circular(isSmallScreen ? 6.0 : 8.0),
+              ),
+              child: FlutterMap(
+                mapController: _mapController,
+                options: MapOptions(
+                  center: _selectedLocation ?? const LatLng(6.9271, 79.8612),
+                  zoom: _zoomLevel,
+                  onTap: _onMapTap,
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate: _tileLayers[_selectedTileLayer]['url'],
+                    userAgentPackageName: 'com.example.location_selector',
+                  ),
+                  MarkerLayer(
+                    markers: _selectedLocation != null
+                        ? [
+                            Marker(
+                              point: _selectedLocation!,
+                              width: isSmallScreen ? 32.0 : 40.0,
+                              height: isSmallScreen ? 32.0 : 40.0,
+                              child: Icon(
+                                Icons.location_pin,
+                                color: _selectedLocationType == 'auto' 
+                                    ? _secondaryColor 
+                                    : _primaryBlue,
+                                size: isSmallScreen ? 32.0 : 40.0,
+                              ),
+                            ),
+                          ]
+                        : [],
+                  ),
+                  RichAttributionWidget(
+                    attributions: [
+                      TextSourceAttribution(
+                        'OpenStreetMap contributors',
+                        onTap: () => launchUrlString('https://openstreetmap.org/copyright'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildDetailRow(String title, String value) {
+  Widget _buildCurrentLocationCard() {
+    final isSmallScreen = _screenWidth < 360;
+    final isMediumScreen = _screenWidth >= 360 && _screenWidth < 400;
+
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(isSmallScreen ? 10.0 : 12.0),
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Current Selection (Changes on Map Tap)',
+              style: TextStyle(
+                fontSize: isSmallScreen ? 14.0 : 16.0,
+                fontWeight: FontWeight.bold,
+                color: _primaryBlue,
+              ),
+            ),
+            SizedBox(height: isSmallScreen ? 8.0 : 12.0),
+            _buildDetailRow('Location Type', _selectedLocationType == 'auto' ? 'Auto-detected' : 'Manual', isSmallScreen),
+            _buildDetailRow('Address', _address.isNotEmpty ? _address : 'Not selected', isSmallScreen),
+            _buildDetailRow('Latitude', _latitude.isNotEmpty ? _latitude : '--', isSmallScreen),
+            _buildDetailRow('Longitude', _longitude.isNotEmpty ? _longitude : '--', isSmallScreen),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String title, String value, bool isSmallScreen) {
+    final titleWidth = isSmallScreen ? 90.0 : 120.0;
+    final titleFontSize = isSmallScreen ? 13.0 : 14.0;
+    final valueFontSize = isSmallScreen ? 13.0 : 14.0;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 3.0 : 4.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 120,
+            width: titleWidth,
             child: Text(
               '$title:',
               style: TextStyle(
                 fontWeight: FontWeight.w500,
+                fontSize: titleFontSize,
                 color: _primaryBlue,
               ),
             ),
@@ -1210,11 +1328,136 @@ Widget _buildExistingLocationDisplay() {
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(color: Colors.black87),
+              style: TextStyle(
+                fontSize: valueFontSize,
+                color: Colors.black87,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
-      ));
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    _updateScreenDimensions();
+    final isSmallScreen = _screenWidth < 360;
+    final isMediumScreen = _screenWidth >= 360 && _screenWidth < 400;
+    
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: _backgroundColor,
+        body: Center(
+          child: CircularProgressIndicator(color: _primaryBlue),
+        ),
+      );
+    }
+
+    return Scaffold(
+      key: _scaffoldKey,
+      backgroundColor: _backgroundColor,
+      drawer: LandOwnerDrawer(
+        onLogout: _handleLogout,
+        onNavigate: _handleDrawerNavigate,
+      ),
+      body: Column(
+        children: [
+          _buildDashboardHeader(context),
+          
+          Expanded(
+            child: Column(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildExistingLocationDisplay(),
+                        
+                        SizedBox(height: isSmallScreen ? 12.0 : 16.0),
+                        
+                        _buildLocationTypeSelection(),
+                        
+                        if (_selectedLocationType == 'manual') ...[
+                          SizedBox(height: isSmallScreen ? 12.0 : 16.0),
+                          _buildManualLocationInput(),
+                        ],
+                        
+                        SizedBox(height: isSmallScreen ? 12.0 : 16.0),
+                        
+                        _buildMapCard(),
+                        
+                        SizedBox(height: isSmallScreen ? 12.0 : 16.0),
+                        
+                        _buildCurrentLocationCard(),
+                        
+                        SizedBox(height: isSmallScreen ? 12.0 : 16.0),
+                        
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: _isSaving ? null : _saveToFirebase,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _primaryBlue,
+                              foregroundColor: Colors.white,
+                              padding: EdgeInsets.symmetric(
+                                vertical: isSmallScreen ? 14.0 : 16.0,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  isSmallScreen ? 10.0 : 12.0
+                                ),
+                              ),
+                              elevation: 4,
+                            ),
+                            child: _isSaving
+                                ? SizedBox(
+                                    height: isSmallScreen ? 18.0 : 20.0,
+                                    width: isSmallScreen ? 18.0 : 20.0,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                                    ),
+                                  )
+                                : Text(
+                                    (widget.existingData != null || _fetchedExistingData != null)
+                                        ? 'Update Location'
+                                        : 'Save Location',
+                                    style: TextStyle(
+                                      fontSize: isSmallScreen ? 14.0 : 16.0,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                        
+                        SizedBox(height: isSmallScreen ? 16.0 : 20.0),
+                      ],
+                    ),
+                  ),
+                ),
+                
+                Container(
+                  padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
+                  child: Text(
+                    'Developed By Malitha Tishamal',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: _headerTextDark.withOpacity(0.7),
+                      fontSize: isSmallScreen ? 11.0 : 12.0,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
   
   void _showErrorDialog(String title, String message) {
