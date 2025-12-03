@@ -166,25 +166,91 @@ class _FactoryLocationsPageState extends State<FactoryLocationsPage> {
         
         // Only include documents with valid latitude and longitude
         if (data['latitude'] != null && data['longitude'] != null) {
-          // Fetch factory details for this user
-          final userId = data['userId']?.toString() ?? doc.id;
+          // Get userId - try multiple possible field names
+          String userId = '';
+          
+          if (data['userId'] != null) {
+            userId = data['userId'].toString();
+          } else if (data['owner'] != null) {
+            userId = data['owner'].toString();
+          } else if (data['user'] != null) {
+            userId = data['user'].toString();
+          } else {
+            userId = doc.id;
+          }
+          
           String factoryName = 'Unknown Factory';
           String ownerName = 'Unknown Owner';
+          String contactNumber = 'N/A';
+          String factoryLogoUrl = '';
+          String district = 'N/A';
+          String cropType = 'N/A';
+          String address = data['address']?.toString() ?? 'Address not available';
           
           try {
-            // Try to get factory name from factories collection
-            final factoryDoc = await _firestore.collection('factories').doc(userId).get();
-            if (factoryDoc.exists) {
-              factoryName = factoryDoc.data()?['factoryName'] ?? 'Unknown Factory';
+            // 1. First check if factory name is in the land_location document itself
+            if (data['factoryName'] != null && data['factoryName'].toString().isNotEmpty) {
+              factoryName = data['factoryName'].toString();
             }
             
-            // Try to get owner name from users collection
+            // 2. If not found, check factories collection
+            if (factoryName == 'Unknown Factory' || factoryName.isEmpty) {
+              final factoryDoc = await _firestore.collection('factories').doc(userId).get();
+              
+              if (factoryDoc.exists) {
+                final factoryData = factoryDoc.data();
+                
+                factoryName = factoryData?['factoryName']?.toString() ?? 'Unknown Factory';
+                contactNumber = factoryData?['contactNumber']?.toString() ?? 'N/A';
+                factoryLogoUrl = factoryData?['factoryLogoUrl']?.toString() ?? '';
+                district = factoryData?['district']?.toString() ?? 'N/A';
+                cropType = factoryData?['cropType']?.toString() ?? 'N/A';
+                
+                // Also get address from factory if not in land_location
+                if ((address == 'Address not available' || address.isEmpty) && 
+                    factoryData?['address'] != null) {
+                  address = factoryData!['address'].toString();
+                }
+              } else {
+                // Try query approach for factories
+                final factoriesQuery = await _firestore
+                    .collection('factories')
+                    .where('userId', isEqualTo: userId)
+                    .limit(1)
+                    .get();
+                    
+                if (factoriesQuery.docs.isNotEmpty) {
+                  final factoryData = factoriesQuery.docs.first.data();
+                  factoryName = factoryData['factoryName']?.toString() ?? 'Unknown Factory';
+                  contactNumber = factoryData['contactNumber']?.toString() ?? 'N/A';
+                  factoryLogoUrl = factoryData['factoryLogoUrl']?.toString() ?? '';
+                  district = factoryData['district']?.toString() ?? 'N/A';
+                  cropType = factoryData['cropType']?.toString() ?? 'N/A';
+                }
+              }
+            }
+            
+            // 3. Get owner name
             final userDoc = await _firestore.collection('users').doc(userId).get();
             if (userDoc.exists) {
-              ownerName = userDoc.data()?['name'] ?? 'Unknown Owner';
+              final userData = userDoc.data() as Map<String, dynamic>;
+              ownerName = userData['name']?.toString() ?? 'Unknown Owner';
+            } else {
+              // Fallback to land_location data
+              if (data['ownerName'] != null) {
+                ownerName = data['ownerName'].toString();
+              }
             }
           } catch (e) {
             debugPrint("Error fetching factory/user details: $e");
+            
+            // Fallback to land_location data
+            if (data['factoryName'] != null) {
+              factoryName = data['factoryName'].toString();
+            }
+            if (data['ownerName'] != null) {
+              ownerName = data['ownerName'].toString();
+            }
           }
 
           // Parse coordinates
@@ -204,6 +270,11 @@ class _FactoryLocationsPageState extends State<FactoryLocationsPage> {
           }
 
           if (latitude != null && longitude != null) {
+            // Get display name - prefer landName, then factoryName
+            final displayName = data['landName']?.toString() ?? 
+                               data['factoryName']?.toString() ?? 
+                               factoryName;
+            
             locations.add({
               'id': doc.id,
               'userId': userId,
@@ -211,9 +282,14 @@ class _FactoryLocationsPageState extends State<FactoryLocationsPage> {
               'longitude': longitude,
               'latitudeString': data['latitudeString']?.toString() ?? latitude.toStringAsFixed(6),
               'longitudeString': data['longitudeString']?.toString() ?? longitude.toStringAsFixed(6),
-              'address': data['address']?.toString() ?? 'Address not available',
+              'address': address,
+              'displayName': displayName,
               'factoryName': factoryName,
               'ownerName': ownerName,
+              'contactNumber': contactNumber,
+              'factoryLogoUrl': factoryLogoUrl,
+              'district': district,
+              'cropType': cropType,
               'locationType': data['locationType']?.toString() ?? 'manual',
               'createdAt': data['createdAt'],
               'updatedAt': data['updatedAt'],
@@ -253,27 +329,61 @@ class _FactoryLocationsPageState extends State<FactoryLocationsPage> {
     if (_searchController.text.isNotEmpty) {
       final searchLower = _searchController.text.toLowerCase();
       filtered = filtered.where((factory) {
+        final displayName = factory['displayName']?.toString().toLowerCase() ?? '';
         final factoryName = factory['factoryName']?.toString().toLowerCase() ?? '';
         final ownerName = factory['ownerName']?.toString().toLowerCase() ?? '';
         final address = factory['address']?.toString().toLowerCase() ?? '';
-        return factoryName.contains(searchLower) ||
+        final cropType = factory['cropType']?.toString().toLowerCase() ?? '';
+        final district = factory['district']?.toString().toLowerCase() ?? '';
+        
+        return displayName.contains(searchLower) ||
+               factoryName.contains(searchLower) ||
                ownerName.contains(searchLower) ||
-               address.contains(searchLower);
+               address.contains(searchLower) ||
+               cropType.contains(searchLower) ||
+               district.contains(searchLower);
       }).toList();
     }
 
     // Apply province filter
     if (_selectedProvince != null && _selectedProvince != 'All Provinces') {
-      // This is a simplified province filter based on address
+      final provinceLower = _selectedProvince!.toLowerCase();
       filtered = filtered.where((factory) {
         final address = factory['address']?.toString().toLowerCase() ?? '';
-        return address.contains(_selectedProvince!.toLowerCase());
+        final district = factory['district']?.toString().toLowerCase() ?? '';
+        
+        // Check if province name appears in address or district
+        return address.contains(provinceLower) ||
+               district.contains(provinceLower) ||
+               _checkProvinceMatch(provinceLower, district);
       }).toList();
     }
 
     setState(() {
       _filteredFactoryLocations = filtered;
     });
+  }
+
+  bool _checkProvinceMatch(String province, String district) {
+    // Simple province-district mapping
+    final provinceMap = {
+      'western': ['colombo', 'gampaha', 'kalutara'],
+      'central': ['kandy', 'matale', 'nuwara eliya'],
+      'southern': ['galle', 'matara', 'hambantota'],
+      'eastern': ['ampara', 'batticaloa', 'trincomalee'],
+      'northern': ['jaffna', 'kilinochchi', 'mannar', 'mullaitivu', 'vavuniya'],
+      'north western': ['kurunegala', 'puttalam'],
+      'north central': ['anuradhapura', 'polonnaruwa'],
+      'uva': ['badulla', 'monaragala'],
+      'sabaragamuwa': ['ratnapura', 'kegalle'],
+    };
+    
+    for (final entry in provinceMap.entries) {
+      if (province.contains(entry.key)) {
+        return entry.value.any((districtName) => district.contains(districtName));
+      }
+    }
+    return false;
   }
 
   void _clearFilters() {
@@ -287,7 +397,6 @@ class _FactoryLocationsPageState extends State<FactoryLocationsPage> {
 
   void _handleDrawerNavigate(String routeName) {
     Navigator.pop(context); // Close drawer
-    // Handle navigation based on route name
   }
 
   Widget _buildDashboardHeader(BuildContext context) {
@@ -445,7 +554,7 @@ class _FactoryLocationsPageState extends State<FactoryLocationsPage> {
                     controller: _searchController,
                     onChanged: (_) => _applyFilters(),
                     decoration: const InputDecoration(
-                      hintText: 'Search factories, owners...',
+                      hintText: 'Search factories, lands, owners...',
                       border: InputBorder.none,
                       hintStyle: TextStyle(color: AppColors.secondaryText),
                     ),
@@ -657,6 +766,10 @@ class _FactoryLocationsPageState extends State<FactoryLocationsPage> {
   }
 
   Widget _buildFactoryList() {
+    if (_filteredFactoryLocations.isEmpty) {
+      return Container();
+    }
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -672,13 +785,14 @@ class _FactoryLocationsPageState extends State<FactoryLocationsPage> {
           ),
         ),
         
-        Padding(
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Column(
-            children: _filteredFactoryLocations.map((factory) {
-              return _buildFactoryCard(factory);
-            }).toList(),
-          ),
+          itemCount: _filteredFactoryLocations.length,
+          itemBuilder: (context, index) {
+            return _buildFactoryCard(_filteredFactoryLocations[index]);
+          },
         ),
       ],
     );
@@ -686,6 +800,9 @@ class _FactoryLocationsPageState extends State<FactoryLocationsPage> {
 
   Widget _buildFactoryCard(Map<String, dynamic> factory) {
     final isSelected = _selectedFactory != null && _selectedFactory!['id'] == factory['id'];
+    
+    final displayName = factory['displayName'] ?? factory['factoryName'] ?? 'Unknown Factory';
+    final factoryName = factory['factoryName'] ?? 'Unknown Factory';
     
     return GestureDetector(
       onTap: () {
@@ -717,20 +834,29 @@ class _FactoryLocationsPageState extends State<FactoryLocationsPage> {
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
+              // Factory/land icon with logo if available
               Container(
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
                   color: AppColors.primaryBlue.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(10),
+                  image: factory['factoryLogoUrl'] != null && factory['factoryLogoUrl'].toString().isNotEmpty
+                      ? DecorationImage(
+                          image: NetworkImage(factory['factoryLogoUrl'].toString()),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
                 ),
-                child: Center(
-                  child: Icon(
-                    Icons.factory,
-                    color: AppColors.primaryBlue,
-                    size: 24,
-                  ),
-                ),
+                child: factory['factoryLogoUrl'] == null || factory['factoryLogoUrl'].toString().isEmpty
+                    ? Center(
+                        child: Icon(
+                          _getCropIcon(factory['cropType']),
+                          color: AppColors.primaryBlue,
+                          size: 24,
+                        ),
+                      )
+                    : null,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -738,7 +864,7 @@ class _FactoryLocationsPageState extends State<FactoryLocationsPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      factory['factoryName'] ?? 'Unknown Factory',
+                      displayName,
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -748,6 +874,14 @@ class _FactoryLocationsPageState extends State<FactoryLocationsPage> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
+                    Text(
+                      'Factory: $factoryName',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.secondaryText,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
                     Text(
                       'Owner: ${factory['ownerName'] ?? 'N/A'}',
                       style: TextStyle(
@@ -773,6 +907,24 @@ class _FactoryLocationsPageState extends State<FactoryLocationsPage> {
                         ),
                       ],
                     ),
+                    // Crop type badge
+                    if (factory['cropType'] != null && factory['cropType'] != 'N/A')
+                      Container(
+                        margin: const EdgeInsets.only(top: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: _getCropColor(factory['cropType']).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          factory['cropType'] ?? '',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: _getCropColor(factory['cropType']),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -799,6 +951,32 @@ class _FactoryLocationsPageState extends State<FactoryLocationsPage> {
     );
   }
 
+  Color _getCropColor(String? cropType) {
+    switch (cropType) {
+      case 'Tea':
+        return AppColors.successGreen;
+      case 'Cinnamon':
+        return AppColors.warningOrange;
+      case 'Both':
+        return AppColors.accentTeal;
+      default:
+        return AppColors.primaryBlue;
+    }
+  }
+
+  IconData _getCropIcon(String? cropType) {
+    switch (cropType) {
+      case 'Tea':
+        return Icons.agriculture;
+      case 'Cinnamon':
+        return Icons.spa;
+      case 'Both':
+        return Icons.all_inclusive;
+      default:
+        return Icons.factory;
+    }
+  }
+
   Widget _buildSelectedFactoryDetails() {
     if (_selectedFactory == null) return const SizedBox.shrink();
     
@@ -823,12 +1001,14 @@ class _FactoryLocationsPageState extends State<FactoryLocationsPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Selected Factory Details',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.darkText,
+              Expanded(
+                child: Text(
+                  'Location Details',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.darkText,
+                  ),
                 ),
               ),
               IconButton(
@@ -845,14 +1025,78 @@ class _FactoryLocationsPageState extends State<FactoryLocationsPage> {
           
           const SizedBox(height: 12),
           
-          _buildDetailRow('Factory Name', _selectedFactory!['factoryName'] ?? 'N/A'),
-          _buildDetailRow('Owner Name', _selectedFactory!['ownerName'] ?? 'N/A'),
-          _buildDetailRow('Address', _selectedFactory!['address'] ?? 'N/A'),
-          _buildDetailRow('Latitude', _selectedFactory!['latitudeString'] ?? 'N/A'),
-          _buildDetailRow('Longitude', _selectedFactory!['longitudeString'] ?? 'N/A'),
-          _buildDetailRow('Location Type', _selectedFactory!['locationType'] ?? 'manual'),
+          // Display Name prominently
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.primaryBlue.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  _getCropIcon(_selectedFactory!['cropType']),
+                  color: AppColors.primaryBlue,
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _selectedFactory!['displayName'] ?? _selectedFactory!['factoryName'] ?? 'Unknown Location',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.darkText,
+                        ),
+                      ),
+                      if (_selectedFactory!['cropType'] != null && _selectedFactory!['cropType'] != 'N/A')
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: _getCropColor(_selectedFactory!['cropType']).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              _selectedFactory!['cropType'] ?? '',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: _getCropColor(_selectedFactory!['cropType']),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
           
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
+          
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (_selectedFactory!['factoryName'] != null)
+                _buildDetailRow('Factory Name', _selectedFactory!['factoryName'] ?? 'N/A'),
+              _buildDetailRow('Owner Name', _selectedFactory!['ownerName'] ?? 'N/A'),
+              if (_selectedFactory!['contactNumber'] != null && _selectedFactory!['contactNumber'] != 'N/A')
+                _buildDetailRow('Contact', _selectedFactory!['contactNumber'] ?? 'N/A'),
+              _buildDetailRow('Address', _selectedFactory!['address'] ?? 'N/A'),
+              if (_selectedFactory!['district'] != null && _selectedFactory!['district'] != 'N/A')
+                _buildDetailRow('District', _selectedFactory!['district'] ?? 'N/A'),
+              _buildDetailRow('Coordinates', '${_selectedFactory!['latitudeString']}, ${_selectedFactory!['longitudeString']}'),
+              _buildDetailRow('Location Type', _selectedFactory!['locationType'] ?? 'manual'),
+            ],
+          ),
+          
+          const SizedBox(height: 16),
           
           Row(
             children: [
@@ -874,6 +1118,7 @@ class _FactoryLocationsPageState extends State<FactoryLocationsPage> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                 ),
               ),
@@ -886,27 +1131,131 @@ class _FactoryLocationsPageState extends State<FactoryLocationsPage> {
 
   Widget _buildDetailRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 120,
+            width: 100,
             child: Text(
               '$label:',
               style: const TextStyle(
                 fontSize: 14,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
                 color: AppColors.secondaryText,
               ),
             ),
           ),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               value,
               style: const TextStyle(
                 fontSize: 14,
                 color: AppColors.darkText,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      margin: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.primaryBlue.withOpacity(0.1)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            _searchController.text.isNotEmpty || _selectedProvince != null
+              ? Icons.search_off
+              : Icons.factory,
+            size: 64,
+            color: AppColors.primaryBlue,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            _searchController.text.isNotEmpty || _selectedProvince != null
+              ? 'No Matching Factories Found'
+              : 'No Factory Locations Found',
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: AppColors.darkText,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _searchController.text.isNotEmpty || _selectedProvince != null
+              ? 'Try adjusting your search or filters to find what you\'re looking for.'
+              : 'No factory locations have been saved to the database yet.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AppColors.secondaryText,
+              fontSize: 14,
+            ),
+          ),
+          if (_searchController.text.isNotEmpty || _selectedProvince != null)
+            const SizedBox(height: 16),
+          if (_searchController.text.isNotEmpty || _selectedProvince != null)
+            ElevatedButton.icon(
+              onPressed: _clearFilters,
+              icon: const Icon(Icons.clear_all, size: 16),
+              label: const Text('Clear Filters'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryBlue,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.accentRed.withOpacity(0.2)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.error_outline, size: 48, color: AppColors.accentRed),
+          const SizedBox(height: 16),
+          Text(
+            _errorMessage!,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.darkText,
+            ),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: _fetchFactoryLocations,
+            icon: const Icon(Icons.refresh, size: 16),
+            label: const Text('Retry'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryBlue,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
             ),
           ),
@@ -929,162 +1278,70 @@ class _FactoryLocationsPageState extends State<FactoryLocationsPage> {
       ),
       body: Column(
         children: [
-          // Header
+          // Header (Fixed)
           _buildDashboardHeader(context),
           
-          // Content
+          // Main Content (Scrollable)
           Expanded(
-            child: Column(
-              children: [
-                // Filters Section
-                _buildFilterSection(),
-                
-                // Map Section
-                _buildMapSection(),
-                
-                // Selected Factory Details
-                _buildSelectedFactoryDetails(),
-                
-                // Factories List or Loading/Error States
-                Expanded(
-                  child: _isLoading
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              CircularProgressIndicator(color: AppColors.primaryBlue),
-                              const SizedBox(height: 16),
-                              const Text(
-                                'Loading factory locations...',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: AppColors.darkText,
-                                ),
-                              ),
-                            ],
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Column(
+                children: [
+                  // Filters Section
+                  _buildFilterSection(),
+                  
+                  // Map Section
+                  _buildMapSection(),
+                  
+                  // Selected Factory Details
+                  if (_selectedFactory != null)
+                    _buildSelectedFactoryDetails(),
+                  
+                  // Loading State
+                  if (_isLoading)
+                    Container(
+                      padding: const EdgeInsets.symmetric(vertical: 40),
+                      child: Column(
+                        children: [
+                          CircularProgressIndicator(color: AppColors.primaryBlue),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Loading factory locations...',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: AppColors.darkText,
+                            ),
                           ),
-                        )
-                      : _errorMessage != null
-                          ? Center(
-                              child: Container(
-                                padding: const EdgeInsets.all(20),
-                                margin: const EdgeInsets.all(20),
-                                decoration: BoxDecoration(
-                                  color: AppColors.cardBackground,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: AppColors.accentRed.withOpacity(0.2)),
-                                ),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.error_outline, size: 48, color: AppColors.accentRed),
-                                    const SizedBox(height: 16),
-                                    Text(
-                                      _errorMessage!,
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.darkText,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    ElevatedButton.icon(
-                                      onPressed: _fetchFactoryLocations,
-                                      icon: const Icon(Icons.refresh, size: 16),
-                                      label: const Text('Retry'),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: AppColors.primaryBlue,
-                                        foregroundColor: Colors.white,
-                                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            )
-                          : _filteredFactoryLocations.isEmpty
-                              ? Center(
-                                  child: Container(
-                                    padding: const EdgeInsets.all(24),
-                                    margin: const EdgeInsets.all(20),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.cardBackground,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: AppColors.primaryBlue.withOpacity(0.1)),
-                                    ),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          _searchController.text.isNotEmpty || _selectedProvince != null
-                                            ? Icons.search_off
-                                            : Icons.factory,
-                                          size: 64,
-                                          color: AppColors.primaryBlue,
-                                        ),
-                                        const SizedBox(height: 16),
-                                        Text(
-                                          _searchController.text.isNotEmpty || _selectedProvince != null
-                                            ? 'No Matching Factories Found'
-                                            : 'No Factory Locations Found',
-                                          style: const TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.w700,
-                                            color: AppColors.darkText,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 12),
-                                        Text(
-                                          _searchController.text.isNotEmpty || _selectedProvince != null
-                                            ? 'Try adjusting your search or filters to find what you\'re looking for.'
-                                            : 'No factory locations have been saved to the database yet.',
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            color: AppColors.secondaryText,
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                        if (_searchController.text.isNotEmpty || _selectedProvince != null)
-                                          const SizedBox(height: 16),
-                                        if (_searchController.text.isNotEmpty || _selectedProvince != null)
-                                          ElevatedButton.icon(
-                                            onPressed: _clearFilters,
-                                            icon: const Icon(Icons.clear_all, size: 16),
-                                            label: const Text('Clear Filters'),
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: AppColors.primaryBlue,
-                                              foregroundColor: Colors.white,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(12),
-                                              ),
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                )
-                              : SingleChildScrollView(
-                                  child: _buildFactoryList(),
-                                ),
-                ),
-                
-                // Footer
-                Container(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Text(
-                    'Developed by Malitha Tishamal',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: AppColors.darkText.withOpacity(0.7),
-                      fontSize: 12,
+                        ],
+                      ),
+                    )
+                  
+                  // Error State
+                  else if (_errorMessage != null)
+                    _buildErrorState()
+                  
+                  // Empty State
+                  else if (_filteredFactoryLocations.isEmpty)
+                    _buildEmptyState()
+                  
+                  // Factories List
+                  else
+                    _buildFactoryList(),
+                  
+                  // Footer
+                  Container(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(
+                      'Developed by Malitha Tishamal',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.darkText.withOpacity(0.7),
+                        fontSize: 12,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],

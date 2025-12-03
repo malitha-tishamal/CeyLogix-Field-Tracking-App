@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import '../land_owner/farmer_registration.dart'; // Land Owner now navigates here
-import '../factory_owner/factory_owner_registration.dart'; // Factory Owner navigates here
+import '../land_owner/farmer_registration.dart';
+import '../factory_owner/factory_owner_registration.dart';
 
-// Define the colors used, consistent with login_page.dart
 class AppColors {
   static const Color background = Color(0xFFEEEBFF);
   static const Color darkText = Color(0xFF2C2A3A);
@@ -10,23 +9,20 @@ class AppColors {
   static const Color buttonGradientStart = Color(0xFF2764E7);
   static const Color buttonGradientEnd = Color(0xFF457AED); 
   static const Color cardBackground = Colors.white;
-  static const Color secondaryColor = Color(0xFF6AD96A); // CeyLogix logo green
+  static const Color secondaryColor = Color(0xFF6AD96A);
 }
 
 class SignUpPage extends StatelessWidget {
   const SignUpPage({super.key});
 
-  // Handler for when a role card is tapped
   void _onRoleSelected(BuildContext context, String role) {
     Widget nextPage;
 
-    // Determine the target page based on the selected role
     if (role == 'Land Owner') {
-      nextPage = const FarmerRegistrationPage(); // Navigate to Farmer Registration
+      nextPage = const FarmerRegistrationPage();
     } else if (role == 'Factory Owner') {
-      nextPage = const FactoryOwnerRegistrationPage(); // Navigate to Factory Owner Registration
+      nextPage = const FactoryOwnerRegistrationPage();
     } else {
-      // Fallback
       return; 
     }
 
@@ -38,7 +34,6 @@ class SignUpPage extends StatelessWidget {
       ),
     );
     
-    // Navigate to the specific registration page
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => nextPage),
@@ -51,98 +46,114 @@ class SignUpPage extends StatelessWidget {
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 40.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-       // 1. Logo - Updated to match the visual style (large image)
-       Image.asset(
-        'assets/logo/logo.png', // Assuming this path holds the cup/leaf image
-        width: 250, // Made wider to match the visual width
-        height: 200, // Made taller
-        fit: BoxFit.contain, // Use contain to ensure the whole image is visible
-        errorBuilder: (context, error, stackTrace) => const Icon(
-         Icons.local_cafe, // Changed icon to suggest tea/coffee instead of shipping
-         color: AppColors.secondaryColor,
-         size: 100,
-        ),
-       ),
-              
-              const SizedBox(height: 10),
-
-              // 2. Title and Subtitle (Create Account)
-              const Text(
-                'Create Account',
-                style: TextStyle(
-                  color: AppColors.darkText,
-                  fontSize: 32,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const Text(
-                'Please select account type for registration.',
-                style: TextStyle(
-                  color: AppColors.darkText,
-                  fontSize: 14,
-                ),
-                textAlign: TextAlign.center,
-              ),
-
-              const SizedBox(height: 40),
-
-              // 3. Land Owner Card (Navigates to farmer_registration.dart)
-              _RoleSelectionCard(
-                title: 'Land Owner',
-                // Placeholder for tea plantation image
-                imageUrl: 'assets/logo/land.jpg', 
-                onTap: () => _onRoleSelected(context, 'Land Owner'),
-              ),
-
-              const SizedBox(height: 20),
-
-              // 4. Factory Owner Card (Navigates to factory_owner_registration.dart)
-              _RoleSelectionCard(
-                title: 'Factory Owner',
-                // Placeholder for factory image
-                imageUrl: 'assets/logo/fac.png', 
-                onTap: () => _onRoleSelected(context, 'Factory Owner'),
-              ),
-
-              const SizedBox(height: 60),
-              
-              // Already have an account link
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text("Already have an account? ", style: TextStyle(color: AppColors.darkText)),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.pop(context);
-                    },
-                    child: const Text(
-                      'Login',
-                      style: TextStyle(
-                        color: AppColors.primaryBlue,
-                        fontWeight: FontWeight.bold,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: MediaQuery.of(context).size.height -
+                  MediaQuery.of(context).padding.top -
+                  MediaQuery.of(context).padding.bottom,
+            ),
+            child: IntrinsicHeight(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 40.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Logo
+                    Image.asset(
+                      'assets/logo/logo.png',
+                      width: 250,
+                      height: 200,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) => const Icon(
+                        Icons.local_cafe,
+                        color: AppColors.secondaryColor,
+                        size: 100,
                       ),
                     ),
-                  ),
-                ],
-              ),
-              
-              const SizedBox(height: 40),
+                    
+                    const SizedBox(height: 10),
 
-              // 7. Footer Text
-              const Text(
-                'Developed By Malitha Tishamal',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppColors.darkText,
-                  fontSize: 12,
+                    // Title and Subtitle
+                    const Text(
+                      'Create Account',
+                      style: TextStyle(
+                        color: AppColors.darkText,
+                        fontSize: 32,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const Text(
+                      'Please select account type for registration.',
+                      style: TextStyle(
+                        color: AppColors.darkText,
+                        fontSize: 14,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+
+                    const SizedBox(height: 40),
+
+                    // Land Owner Card
+                    _RoleSelectionCard(
+                      title: 'Land Owner',
+                      imageUrl: 'assets/logo/land.jpg', 
+                      onTap: () => _onRoleSelected(context, 'Land Owner'),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // Factory Owner Card
+                    _RoleSelectionCard(
+                      title: 'Factory Owner',
+                      imageUrl: 'assets/logo/fac.png', 
+                      onTap: () => _onRoleSelected(context, 'Factory Owner'),
+                    ),
+
+                    // Spacer to push footer to bottom
+                    const Spacer(),
+
+                    Column(
+                      children: [
+                        // Already have an account link
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text(
+                              "Already have an account? ",
+                              style: TextStyle(color: AppColors.darkText),
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.pop(context);
+                              },
+                              child: const Text(
+                                'Login',
+                                style: TextStyle(
+                                  color: AppColors.primaryBlue,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        
+                        const SizedBox(height: 200),
+
+                        // Footer Text - Fixed at bottom
+                        const Text(
+                          'Developed By Malitha Tishamal',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: AppColors.darkText,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -150,7 +161,6 @@ class SignUpPage extends StatelessWidget {
   }
 }
 
-// Custom widget to display a Network Image with fallback
 class _ImagePlaceholder extends StatelessWidget {
   final String imageUrl;
   final double size;
@@ -162,10 +172,9 @@ class _ImagePlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Using Image.network for placeholder URLs
     return ClipRRect(
       borderRadius: BorderRadius.circular(10),
-      child: Image.network(
+      child: Image.asset(
         imageUrl,
         width: size,
         height: size,
@@ -188,7 +197,6 @@ class _ImagePlaceholder extends StatelessWidget {
   }
 }
 
-// Custom widget for the role selection cards
 class _RoleSelectionCard extends StatelessWidget {
   final String title;
   final String imageUrl;
@@ -220,13 +228,11 @@ class _RoleSelectionCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Icon/Image Placeholder
             _ImagePlaceholder(
               imageUrl: imageUrl,
               size: 50,
             ),
             const SizedBox(width: 20),
-            // Title
             Expanded(
               child: Text(
                 title,

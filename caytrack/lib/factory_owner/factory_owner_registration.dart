@@ -376,197 +376,216 @@ Widget build(BuildContext context) {
    elevation: 0,
    iconTheme: const IconThemeData(color: AppColors.darkText),
   ),
-  body: SafeArea(
-   child: SingleChildScrollView(
-    padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 20.0),
-    child: Form(
-     key: _formKey,
-     child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-       // Logo
-       Center(
-        child: Image.asset(
-         'assets/logo/logo.png', // Ensure this asset path is correct
-         width: 250, 
-         height: 200, 
-         fit: BoxFit.contain, 
-         errorBuilder: (context, error, stackTrace) => const Icon(
-          Icons.factory_outlined, 
-          color: AppColors.secondaryColor,
-          size: 100,
-         ),
-       ),
-       ),
-       
-       const SizedBox(height: 30),
-
-       // Role Display (Fixed - Factory owner)
-       _buildTextField(
-        controller: TextEditingController(text: widget.role),
-        label: 'Role',
-        hint: '',
-        prefixIcon: Icons.badge,
-        validator: (v) => null, 
-        keyboardType: TextInputType.none,
-        readOnly: true,
-       ),
-
-       // NIC Number Field
-       _buildTextField(
-        controller: _nicController,
-        label: 'NIC Number',
-        hint: 'Enter Your NIC',
-        prefixIcon: Icons.credit_card,
-        validator: _validateNIC,
-        keyboardType: TextInputType.text,
-       ),
-
-       // Your Name Field
-       _buildTextField(
-        controller: _nameController,
-        label: 'Your Name',
-        hint: 'Enter Your Full Name',
-        prefixIcon: Icons.person,
-        validator: _validateName,
-        keyboardType: TextInputType.name,
-       ),
-
-       // Your Email Field
-       _buildTextField(
-        controller: _emailController,
-        label: 'Your Email',
-        hint: 'Enter Your Email Address',
-        prefixIcon: Icons.email,
-        validator: _validateEmail,
-        keyboardType: TextInputType.emailAddress,
-       ),
-       
-       // Mobile Number Field
-       _buildTextField(
-        controller: _mobileController,
-        label: 'Mobile Number',
-        hint: 'Enter Your Mobile Number',
-        prefixIcon: Icons.phone,
-        validator: _validateMobile,
-        keyboardType: TextInputType.phone,
-       ),
-
-       // Password Field
-       _buildTextField(
-        controller: _passwordController,
-        label: 'Password',
-        hint: 'Enter Your Password',
-        prefixIcon: Icons.lock,
-        validator: _validatePassword,
-        isPassword: true,
-        isVisible: _isPasswordVisible,
-        toggleVisibility: () {
-        setState(() { _isPasswordVisible = !_isPasswordVisible; });
-        },
-       ),
-
-       // Confirm Password Field
-       _buildTextField(
-        controller: _confirmPasswordController,
-        label: 'Enter Password Again',
-        hint: 'Re-Enter Your Password',
-        prefixIcon: Icons.lock_open,
-        validator: _validateConfirmPassword,
-        isPassword: true,
-        isVisible: _isConfirmPasswordVisible,
-        toggleVisibility: () {
-        setState(() { _isConfirmPasswordVisible = !_isConfirmPasswordVisible; });
-        },
-       ),
-       
-       const SizedBox(height: 30),
-
-       // Sign Up Button
-       SizedBox(
-        height: 60,
-        child: DecoratedBox(
-        decoration: BoxDecoration(
-         borderRadius: BorderRadius.circular(15.0),
-         gradient: _isLoading 
-          ? null // No gradient when loading
-          : const LinearGradient(
-          colors: [AppColors.buttonGradientStart, AppColors.buttonGradientEnd],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          ),
-         color: _isLoading ? AppColors.primaryBlue.withOpacity(0.5) : null,
-         boxShadow: [
-          BoxShadow(
-          color: AppColors.primaryBlue.withOpacity(0.4),
-          blurRadius: 10,
-          offset: const Offset(0, 5),
-          ),
-         ],
-        ),
-        child: ElevatedButton(
-         onPressed: _isLoading ? null : _handleSignUp,
-         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15.0),
-          ),
-         ),
-         child: _isLoading
-          ? const CircularProgressIndicator(color: Colors.white)
-          : const Text(
-           'Sign Up',
-           style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-           ),
-           ),
-        ),
-       ),
-       ),
-       
-       const SizedBox(height: 30),
-
-       // Already Registered link
-       Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+  body: Column(
+   children: [
+    // Scrollable content area
+    Expanded(
+     child: SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 20.0),
+      child: Form(
+       key: _formKey,
+       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-         const Text("Already Registered? ", style: TextStyle(color: AppColors.darkText)),
-         GestureDetector(
-          onTap: () {
-           Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const LoginPage()),
-           ); 
-          },
-          child: const Text(
-           'Sign in',
-           style: TextStyle(
-            color: AppColors.primaryBlue,
-            fontWeight: FontWeight.bold,
+         // Logo
+         Center(
+          child: Image.asset(
+           'assets/logo/logo.png', // Ensure this asset path is correct
+           width: 250, 
+           height: 200, 
+           fit: BoxFit.contain, 
+           errorBuilder: (context, error, stackTrace) => const Icon(
+            Icons.factory_outlined, 
+            color: AppColors.secondaryColor,
+            size: 100,
            ),
           ),
          ),
+         
+         const SizedBox(height: 30),
+
+         // Role Display (Fixed - Factory owner)
+         _buildTextField(
+          controller: TextEditingController(text: widget.role),
+          label: 'Role',
+          hint: '',
+          prefixIcon: Icons.badge,
+          validator: (v) => null, 
+          keyboardType: TextInputType.none,
+          readOnly: true,
+         ),
+
+         // NIC Number Field
+         _buildTextField(
+          controller: _nicController,
+          label: 'NIC Number',
+          hint: 'Enter Your NIC',
+          prefixIcon: Icons.credit_card,
+          validator: _validateNIC,
+          keyboardType: TextInputType.text,
+         ),
+
+         // Your Name Field
+         _buildTextField(
+          controller: _nameController,
+          label: 'Your Name',
+          hint: 'Enter Your Full Name',
+          prefixIcon: Icons.person,
+          validator: _validateName,
+          keyboardType: TextInputType.name,
+         ),
+
+         // Your Email Field
+         _buildTextField(
+          controller: _emailController,
+          label: 'Your Email',
+          hint: 'Enter Your Email Address',
+          prefixIcon: Icons.email,
+          validator: _validateEmail,
+          keyboardType: TextInputType.emailAddress,
+         ),
+         
+         // Mobile Number Field
+         _buildTextField(
+          controller: _mobileController,
+          label: 'Mobile Number',
+          hint: 'Enter Your Mobile Number',
+          prefixIcon: Icons.phone,
+          validator: _validateMobile,
+          keyboardType: TextInputType.phone,
+         ),
+
+         // Password Field
+         _buildTextField(
+          controller: _passwordController,
+          label: 'Password',
+          hint: 'Enter Your Password',
+          prefixIcon: Icons.lock,
+          validator: _validatePassword,
+          isPassword: true,
+          isVisible: _isPasswordVisible,
+          toggleVisibility: () {
+           setState(() { _isPasswordVisible = !_isPasswordVisible; });
+          },
+         ),
+
+         // Confirm Password Field
+         _buildTextField(
+          controller: _confirmPasswordController,
+          label: 'Enter Password Again',
+          hint: 'Re-Enter Your Password',
+          prefixIcon: Icons.lock_open,
+          validator: _validateConfirmPassword,
+          isPassword: true,
+          isVisible: _isConfirmPasswordVisible,
+          toggleVisibility: () {
+           setState(() { _isConfirmPasswordVisible = !_isConfirmPasswordVisible; });
+          },
+         ),
+         
+         const SizedBox(height: 30),
+
+         // Sign Up Button
+         SizedBox(
+          height: 60,
+          child: DecoratedBox(
+           decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(15.0),
+            gradient: _isLoading 
+             ? null // No gradient when loading
+             : const LinearGradient(
+              colors: [AppColors.buttonGradientStart, AppColors.buttonGradientEnd],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+             ),
+            color: _isLoading ? AppColors.primaryBlue.withOpacity(0.5) : null,
+            boxShadow: [
+             BoxShadow(
+              color: AppColors.primaryBlue.withOpacity(0.4),
+              blurRadius: 10,
+              offset: const Offset(0, 5),
+             ),
+            ],
+           ),
+           child: ElevatedButton(
+            onPressed: _isLoading ? null : _handleSignUp,
+            style: ElevatedButton.styleFrom(
+             backgroundColor: Colors.transparent,
+             shadowColor: Colors.transparent,
+             shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15.0),
+             ),
+            ),
+            child: _isLoading
+             ? const CircularProgressIndicator(color: Colors.white)
+             : const Text(
+              'Sign Up',
+              style: TextStyle(
+               fontSize: 20,
+               fontWeight: FontWeight.bold,
+               color: Colors.white,
+              ),
+             ),
+           ),
+          ),
+         ),
+         
+         const SizedBox(height: 30),
+
+         // Already Registered link
+         Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+           const Text("Already Registered? ", style: TextStyle(color: AppColors.darkText)),
+           GestureDetector(
+            onTap: () {
+             Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const LoginPage()),
+             ); 
+            },
+            child: const Text(
+             'Sign in',
+             style: TextStyle(
+              color: AppColors.primaryBlue,
+              fontWeight: FontWeight.bold,
+             ),
+            ),
+           ),
+          ],
+         ),
+         
+         // Add extra space at the bottom of scrollable content
+         const SizedBox(height: 80),
         ],
        ),
-       
-       const SizedBox(height: 40),
-
-       // Footer Text
-       const Text(
-        'Developed By Malitha Tishamal',
-        textAlign: TextAlign.center,
-        style: TextStyle(
-         color: AppColors.darkText,
-         fontSize: 12,
-        ),
-       ),
-      ],
+      ),
      ),
     ),
-   ),
+    
+    // Static footer (non-scrolling, always at bottom)
+    Container(
+     width: double.infinity,
+     padding: const EdgeInsets.symmetric(vertical: 16.0),
+     decoration: BoxDecoration(
+      color: AppColors.background,
+      border: Border(
+       top: BorderSide(
+        color: AppColors.darkText.withOpacity(0.1),
+        width: 1.0,
+       ),
+      ),
+     ),
+     child: const Text(
+      'Developed By Malitha Tishamal',
+      textAlign: TextAlign.center,
+      style: TextStyle(
+       color: AppColors.darkText,
+       fontSize: 12,
+      ),
+     ),
+    ),
+   ],
   ),
  );
 }

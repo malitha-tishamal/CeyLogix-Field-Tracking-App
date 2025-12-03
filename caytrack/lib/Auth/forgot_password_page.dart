@@ -1,10 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; 
-import 'signup_page.dart';
-import 'forgot_password_page.dart'; // <-- Navigation target
-import '../land_owner/landowner_dashbord.dart';
-import '../factory_owner/factory_owner_dashboard.dart';
 
 class AppColors {
   static const Color background = Color(0xFFEEEBFF);
@@ -16,166 +11,70 @@ class AppColors {
   static const Color secondaryColor = Color(0xFF6AD96A); 
 }
 
-enum UserRole { landowner, factoryOwner, unknown }
-
-class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+class ForgotPasswordPage extends StatefulWidget {
+  const ForgotPasswordPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  State<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _auth = FirebaseAuth.instance; 
-  final _firestore = FirebaseFirestore.instance; 
+  final _auth = FirebaseAuth.instance;
   bool _isLoading = false;
-  bool _showPassword = false;
   String? _errorMessage;
-
-  @override
-  void initState() {
-    super.initState();
-    // Check for an existing, persisted user session on startup
-    _checkAutoLogin();
-  }
-
-  // Checks if a user is already logged in (session persisted by Firebase)
-  void _checkAutoLogin() {
-    final User? user = _auth.currentUser;
-    if (user != null) {
-      // If a user exists, navigate away immediately.
-      // Use addPostFrameCallback to ensure navigation happens after the build phase.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _navigateToDashboard(user.uid);
-      });
-    }
-  }
-
-  // Centralized function to fetch user role and navigate
-  Future<void> _navigateToDashboard(String uid) async {
-    // Only show loading indicator if we are not already navigating
-    if (!_isLoading) {
-      setState(() {
-        _isLoading = true;
-      });
-    }
-
-    try {
-      final role = await _fetchUserRole(uid);
-
-      if (mounted) {
-        if (role == UserRole.landowner) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const LandOwnerDashboard()),
-          );
-        } else if (role == UserRole.factoryOwner) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const FactoryOwnerDashboard()),
-          );
-        } else {
-          // If role is unknown, log the user out to force re-login
-          await _auth.signOut(); 
-          setState(() {
-            _isLoading = false;
-            _errorMessage = "User role not found. Please login again.";
-          });
-        }
-      }
-    } catch (e) {
-      // If fetching role fails, log the user out and show an error
-      await _auth.signOut();
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = "Failed to verify user role during login. Please try again.";
-        });
-      }
-    }
-  }
+  String? _successMessage;
 
   @override
   void dispose() {
     _emailController.dispose();
-    _passwordController.dispose();
     super.dispose();
   }
 
-  Future<UserRole> _fetchUserRole(String uid) async {
-    try {
-      final docSnapshot = await _firestore.collection('users').doc(uid).get();
-
-      if (!docSnapshot.exists || docSnapshot.data() == null) {
-        return UserRole.unknown;
-      }
-
-      final data = docSnapshot.data()!;
-      final rawRole = data['role']?.toString() ?? '';
-
-      final cleanRole = rawRole.replaceAll('"', '').trim().toLowerCase();
-
-      if (cleanRole.contains("land") && cleanRole.contains("owner")) {
-        return UserRole.landowner;
-      }
-
-      if (cleanRole.contains("factory") && cleanRole.contains("owner")) {
-        return UserRole.factoryOwner;
-      }
-
-      return UserRole.unknown;
-
-    } catch (e) {
-      // Log the error but return unknown role
-      print("Error fetching user role: $e");
-      return UserRole.unknown;
+  Future<void> _sendPasswordResetEmail() async {
+    final email = _emailController.text.trim();
+    
+    if (email.isEmpty) {
+      setState(() {
+        _errorMessage = "Please enter your email address.";
+        _successMessage = null;
+      });
+      return;
     }
-  }
 
-  Future<void> _signIn() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _successMessage = null;
     });
 
     try {
-      if (_emailController.text.trim().isEmpty || _passwordController.text.trim().isEmpty) {
-        throw Exception("Email and password fields cannot be empty.");
-      }
-
-      final userCredential = await _auth.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
+      await _auth.sendPasswordResetEmail(email: email);
       
-      final uid = userCredential.user?.uid;
-      
-      if (uid == null) {
-        throw Exception("Authentication successful, but UID is missing.");
-      }
-      
-      // Navigate to the correct dashboard based on role (handles loading state internally)
-      await _navigateToDashboard(uid);
+      setState(() {
+        _successMessage = "A password reset link has been sent to $email. Please check your inbox (and spam folder).";
+        _emailController.clear();
+      });
 
     } on FirebaseAuthException catch (e) {
       String message;
-      if (e.code == 'user-not-found' || e.code == 'wrong-password') {
-        message = 'Invalid email or password.';
+      if (e.code == 'user-not-found') {
+        message = 'No user found for that email.';
       } else if (e.code == 'invalid-email') {
         message = 'The email address is badly formatted.';
       } else {
-        message = 'Login failed: ${e.message}';
+        message = 'Error: ${e.message}';
       }
       setState(() {
-        _isLoading = false;
         _errorMessage = message;
       });
     } catch (e) {
       setState(() {
-        _isLoading = false;
         _errorMessage = 'An unexpected error occurred: ${e.toString()}';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
       });
     }
   }
@@ -187,29 +86,29 @@ class _LoginPageState extends State<LoginPage> {
       body: Stack(
         children: [
           SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 40.0),
+            padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 100.0),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Logo/Icon Placeholder
+                // Logo/Icon Placeholder - Matching Login Page Structure
                 Image.asset(
                   'assets/logo/logo.png',
                   width: 250,
                   height: 200,
                   fit: BoxFit.contain,
                   errorBuilder: (context, error, stackTrace) => const Icon(
-                    Icons.local_cafe,
+                    Icons.lock_reset,
                     color: AppColors.secondaryColor,
                     size: 100,
                   ),
                 ),
                 
-                const SizedBox(height: 10),
+                const SizedBox(height: 15),
 
                 const SizedBox(height: 5),
                 const Text(
-                  'Login In Now',
+                  'Reset Your Password',
                   style: TextStyle(
                     color: AppColors.darkText,
                     fontSize: 32,
@@ -217,7 +116,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
                 const Text(
-                  'please login to continue using the app',
+                  'Enter your email to receive a password reset link',
                   style: TextStyle(
                     color: AppColors.darkText,
                     fontSize: 14,
@@ -237,51 +136,7 @@ class _LoginPageState extends State<LoginPage> {
 
                 const SizedBox(height: 24),
 
-                _buildInputLabel('Enter Your Password'),
-                const SizedBox(height: 8),
-                _buildTextField(
-                  controller: _passwordController,
-                  hintText: '*************',
-                  obscureText: !_showPassword,
-                  icon: Icons.lock_outline,
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _showPassword ? Icons.visibility : Icons.visibility_off,
-                      color: AppColors.darkText.withOpacity(0.6),
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _showPassword = !_showPassword;
-                      });
-                    },
-                  ),
-                ),
-
-                const SizedBox(height: 10),
-
-                // Forgot Password link (since session persistence is automatic)
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {
-                      // Navigate to the ForgotPasswordPage
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const ForgotPasswordPage()),
-                      );
-                    }, 
-                    child: const Text(
-                      'Forgot Password?',
-                      style: TextStyle(
-                        color: AppColors.primaryBlue,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ),
-
-
+                // Error Message Display
                 if (_errorMessage != null)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 16.0, top: 10),
@@ -292,27 +147,37 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
 
+                // Success Message Display
+                if (_successMessage != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16.0, top: 10),
+                    child: Text(
+                      _successMessage!,
+                      style: const TextStyle(color: AppColors.secondaryColor, fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+
+                // Reset Button - Matching Login Page Button
                 _GradientButton(
-                  text: _isLoading ? 'Signing In...' : 'Login',
-                  onPressed: _isLoading ? null : _signIn,
+                  text: _isLoading ? 'Sending Link...' : 'Send Reset Link',
+                  onPressed: _isLoading ? null : _sendPasswordResetEmail,
                   isEnabled: !_isLoading,
                 ),
 
                 const SizedBox(height: 20),
 
+                // Back to Login Link
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text("Don't have account? ", style: TextStyle(color: AppColors.darkText)),
+                    const Text("Remember your password? ", style: TextStyle(color: AppColors.darkText)),
                     GestureDetector(
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const SignUpPage()),
-                        );
+                        Navigator.pop(context);
                       },
                       child: const Text(
-                        'Sign up',
+                        'Back to Login',
                         style: TextStyle(
                           color: AppColors.primaryBlue,
                           fontWeight: FontWeight.bold,
@@ -322,12 +187,12 @@ class _LoginPageState extends State<LoginPage> {
                   ],
                 ),
                 
-                const SizedBox(height: 100), // Extra space for fixed footer
+                const SizedBox(height: 120), // Increased space for better bottom alignment
               ],
             ),
           ),
 
-          // Fixed Footer
+          // Fixed Footer - Bottom Aligned
           Positioned(
             bottom: 0,
             left: 0,
@@ -338,12 +203,15 @@ class _LoginPageState extends State<LoginPage> {
                 color: AppColors.background,
                 border: Border(top: BorderSide(color: AppColors.darkText.withOpacity(0.1))),
               ),
-              child: const Text(
-                'Developed By Malitha Tishamal',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppColors.darkText,
-                  fontSize: 12,
+              child: const Align(
+                alignment: Alignment.bottomCenter,
+                child: Text(
+                  'Developed By Malitha Tishamal',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: AppColors.darkText,
+                    fontSize: 12,
+                  ),
                 ),
               ),
             ),
@@ -371,9 +239,7 @@ class _LoginPageState extends State<LoginPage> {
     required TextEditingController controller,
     required String hintText,
     TextInputType keyboardType = TextInputType.text,
-    bool obscureText = false,
     IconData? icon,
-    Widget? suffixIcon,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -390,14 +256,12 @@ class _LoginPageState extends State<LoginPage> {
       child: TextField(
         controller: controller,
         keyboardType: keyboardType,
-        obscureText: obscureText,
         style: const TextStyle(color: AppColors.darkText),
         decoration: InputDecoration(
           hintText: hintText,
           hintStyle: TextStyle(color: AppColors.darkText.withOpacity(0.5)),
           contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
           prefixIcon: icon != null ? Icon(icon, color: AppColors.primaryBlue) : null,
-          suffixIcon: suffixIcon,
           border: InputBorder.none,
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),

@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 // Import the LoginPage to navigate to it
 import 'login_page.dart'; 
@@ -9,6 +8,8 @@ class AppColors {
  static const Color background = Color(0xFFEEEBFF);
  static const Color darkText = Color(0xFF2C2A3A);
  static const Color primaryBlue = Color(0xFF2764E7);
+ static const Color buttonGradientStart = Color(0xFF2764E7);
+ static const Color buttonGradientEnd = Color(0xFF457AED);
 }
 
 class UserAgreementPage extends StatefulWidget {
@@ -124,138 +125,177 @@ class _UserAgreementPageState extends State<UserAgreementPage> {
     surfaceTintColor: background,
     iconTheme: const IconThemeData(color: darkText),
    ),
-   body: Column(
+   body: Stack(
     children: [
-     // Scrollable Terms and Conditions Section
-     Expanded(
-      child: SingleChildScrollView(
-       controller: _scrollController, // Attach the scroll controller
-       padding: const EdgeInsets.all(24.0),
-       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-         // Modified to include an Image Asset and the Text within a Row
-         Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+      // Main scrollable content
+      SingleChildScrollView(
+        controller: _scrollController,
+        padding: const EdgeInsets.only(
+          left: 24.0,
+          right: 24.0,
+          top: 24.0,
+          bottom: 140.0, // Increased bottom padding for footer with text
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-           // Replaced Icon with Image.asset using the specified path
-           ClipRRect(
-            borderRadius: BorderRadius.circular(8.0),
-            child: Image.asset(
-             'assets/logo/logo.png', // The specified asset path
-             width: 80,
-             height: 80,
-             fit: BoxFit.cover,
-             errorBuilder: (context, error, stackTrace) => Icon(
-              Icons.description, // Fallback icon in case image asset is missing
-              color: darkText,
-              size: 40,
-             ),
+            // Modified to include an Image Asset and the Text within a Row
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Replaced Icon with Image.asset using the specified path
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8.0),
+                  child: Image.asset(
+                    'assets/logo/logo.png', // The specified asset path
+                    width: 80,
+                    height: 80,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Icon(
+                      Icons.description, // Fallback icon in case image asset is missing
+                      color: darkText,
+                      size: 40,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12), // Spacing between logo and text
+                Expanded(
+                  child: const Text(
+                    'CeyLogix – User Agreement & Terms and Conditions',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: primaryColor, // Changed color to primaryColor (blue)
+                      fontFamily: 'Inter',
+                    ),
+                    overflow: TextOverflow.visible, // Ensure text wraps if needed
+                  ),
+                ),
+              ],
             ),
-           ),
-           const SizedBox(width: 12), // Spacing between logo and text
-           Expanded(
-            child: const Text(
-             'CeyLogix – User Agreement & Terms and Conditions',
-             style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: primaryColor, // Changed color to primaryColor (blue)
-              fontFamily: 'Inter',
-             ),
-             overflow: TextOverflow.visible, // Ensure text wraps if needed
+            const SizedBox(height: 16),
+            const Text(
+              'Last Updated: November 2025',
+              style: TextStyle(
+                fontSize: 14,
+                fontStyle: FontStyle.italic,
+                color: darkText,
+                fontFamily: 'Inter',
+              ),
             ),
-           ),
-          ],
-         ),
-         const SizedBox(height: 16),
-         const Text(
-          'Last Updated: November 2025',
-          style: TextStyle(
-           fontSize: 14,
-           fontStyle: FontStyle.italic,
-           color: darkText,
-           fontFamily: 'Inter',
-          ),
-         ),
-         const SizedBox(height: 24),
+            const SizedBox(height: 24),
 
-         _buildTermsSection(
-          title: '1. Approved Use and Data Collection',
-          content: 'By using this system, you agree to use it only for approved purposes such as land detail checking, ownership verification, and tracking cinnamon/tea export records. The system may securely collect basic activity logs and user data to improve performance and ensure security.',
-          darkText: darkText
-         ),
-         _buildTermsSection(
-          title: '2. Confidentiality and Compliance',
-          content: 'All information is kept strictly confidential and shared only when required by governmental or judicial authorities under applicable law.',
-          darkText: darkText
-         ),
-         _buildTermsSection(
-          title: '3. User Responsibility and Misuse',
-          content: 'Users must enter accurate details, follow official guidelines, and protect their login credentials. Any unauthorized access, data manipulation, or misuse of the platform may result in immediate account suspension or legal action.',
-          darkText: darkText
-         ),
-         _buildTermsSection(
-          title: '4. Service Disclaimer',
-          content: 'The platform is provided “as is,” and is not responsible for errors caused by user actions, network issues, external delays, or hardware failure. System updates and maintenance may occur without prior notice.',
-          darkText: darkText
-         ),
-        
-         const SizedBox(height: 30),
-         const Text(
-          'By continuing, you acknowledge that you have read, understood, and agree to be bound by these Terms and Conditions.',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-           fontSize: 16,
-           fontWeight: FontWeight.w600,
-           color: darkText,
-           fontFamily: 'Inter',
-          ),
-         ),
-         const SizedBox(height: 10),
-        ],
-       ),
+            _buildTermsSection(
+              title: '1. Approved Use and Data Collection',
+              content: 'By using this system, you agree to use it only for approved purposes such as land detail checking, ownership verification, and tracking cinnamon/tea export records. The system may securely collect basic activity logs and user data to improve performance and ensure security.',
+              darkText: darkText
+            ),
+            _buildTermsSection(
+              title: '2. Confidentiality and Compliance',
+              content: 'All information is kept strictly confidential and shared only when required by governmental or judicial authorities under applicable law.',
+              darkText: darkText
+            ),
+            _buildTermsSection(
+              title: '3. User Responsibility and Misuse',
+              content: 'Users must enter accurate details, follow official guidelines, and protect their login credentials. Any unauthorized access, data manipulation, or misuse of the platform may result in immediate account suspension or legal action.',
+              darkText: darkText
+            ),
+            _buildTermsSection(
+              title: '4. Service Disclaimer',
+              content: 'The platform is provided "as is," and is not responsible for errors caused by user actions, network issues, external delays, or hardware failure. System updates and maintenance may occur without prior notice.',
+              darkText: darkText
+            ),
+          
+            const SizedBox(height: 30),
+            const Text(
+              'By continuing, you acknowledge that you have read, understood, and agree to be bound by these Terms and Conditions.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: darkText,
+                fontFamily: 'Inter',
+              ),
+            ),
+            const SizedBox(height: 100), // Extra space to ensure content is visible above footer
+          ],
+        ),
       ),
-     ),
     
-     // Fixed Bottom Button
-     Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-      child: SizedBox(
-       width: double.infinity,
-       height: 50,
-       child: ElevatedButton(
-        // Button is enabled only if _isScrolledToBottom is true
-        onPressed: _isScrolledToBottom
-          ? () {
-            // Navigate to LoginPage and replace the current route
-            Navigator.pushReplacement(
-             context,
-             MaterialPageRoute(builder: (context) => const LoginPage()),
-            );
-           }
-          : null, // Disabled if not scrolled
-        style: ElevatedButton.styleFrom(
-         backgroundColor: primaryColor,
-         disabledBackgroundColor: primaryColor.withOpacity(0.3), // Show disabled state
-         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12.0),
-         ),
-         elevation: 5,
-         shadowColor: primaryColor.withOpacity(0.4),
+      // Fixed Footer at the bottom
+      Positioned(
+        bottom: 0,
+        left: 0,
+        right: 0,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+          decoration: BoxDecoration(
+            color: background,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 10,
+                offset: const Offset(0, -5),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              // Agree Button
+              SizedBox(
+                height: 50,
+                width: double.infinity,
+                child: ElevatedButton(
+                  // Button is enabled only if _isScrolledToBottom is true
+                  onPressed: _isScrolledToBottom
+                    ? () {
+                      // Navigate to LoginPage and replace the current route
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (context) => const LoginPage()),
+                      );
+                    }
+                    : null, // Disabled if not scrolled
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryColor,
+                    disabledBackgroundColor: primaryColor.withOpacity(0.3), // Show disabled state
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.0),
+                    ),
+                    elevation: 5,
+                    shadowColor: primaryColor.withOpacity(0.4),
+                  ),
+                  child: Text(
+                    _isScrolledToBottom ? "I Agree and Continue" : "Scroll to Read Agreement",
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 12),
+              
+              // Developer Credit Text
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: const Text(
+                  'Developed By Malitha Tishamal',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: darkText,
+                    fontSize: 12,
+                    fontFamily: 'Inter',
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
-        child: Text(
-         _isScrolledToBottom ? "I Agree and Continue" : "Scroll to Read Agreement", // Contextual button text
-         style: const TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-          color: Colors.white,
-          fontFamily: 'Inter',
-         ),
-        ),
-       ),
       ),
-     ),
     ],
    ),
   );
