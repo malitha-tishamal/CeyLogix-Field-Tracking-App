@@ -1,4 +1,3 @@
-// land_owner_dashboard.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -69,7 +68,7 @@ class _LandOwnerDashboardState extends State<LandOwnerDashboard> {
     super.initState();
     _fetchHeaderData();
     _fetchAssociatedFactories();
-    _fetchLandSizeData(); // Fetch land size data
+    _fetchLandSizeData();
   }
 
   // Fetch header data (username, land name, profile image)
@@ -301,6 +300,14 @@ class _LandOwnerDashboardState extends State<LandOwnerDashboard> {
     );
   }
 
+  // Helper methods for responsive design
+  bool get _isSmallScreen => MediaQuery.of(context).size.width < 360;
+  bool get _isMediumScreen => MediaQuery.of(context).size.width >= 360 && MediaQuery.of(context).size.width < 768;
+  bool get _isLargeScreen => MediaQuery.of(context).size.width >= 768;
+  double get _baseFontSize => _isSmallScreen ? 12 : (_isMediumScreen ? 14 : 16);
+  double get _screenWidth => MediaQuery.of(context).size.width;
+  double get _screenHeight => MediaQuery.of(context).size.height;
+
   @override
   Widget build(BuildContext context) {
     void handleDrawerNavigate(String routeName) {
@@ -324,28 +331,28 @@ class _LandOwnerDashboardState extends State<LandOwnerDashboard> {
               children: [
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: EdgeInsets.all(_isSmallScreen ? 12.0 : 16.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildSectionTitle('Land Summary', Icons.landscape_rounded),
-                        const SizedBox(height: 10),
+                        SizedBox(height: _isSmallScreen ? 8.0 : 10.0),
                         _buildKeyMetrics(context),
-                        const SizedBox(height: 30),
+                        SizedBox(height: _isSmallScreen ? 20.0 : 30.0),
                         _buildAssociatedFactoriesSection(),
-                        const SizedBox(height: 30),
+                        SizedBox(height: _isSmallScreen ? 20.0 : 30.0),
                       ],
                     ),
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: EdgeInsets.all(_isSmallScreen ? 12.0 : 16.0),
                   child: Text(
                     'Developed By Malitha Tishamal',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: AppColors.darkText.withOpacity(0.7),
-                      fontSize: 12,
+                      fontSize: _isSmallScreen ? 11.0 : 12.0,
                     ),
                   ),
                 ),
@@ -362,8 +369,21 @@ class _LandOwnerDashboardState extends State<LandOwnerDashboard> {
   // -----------------------------------------------------------------
 
   Widget _buildDashboardHeader(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top + 10;
+    final horizontalPadding = _isSmallScreen ? 16.0 : 20.0;
+    final profileSize = _isSmallScreen ? 50.0 : (_isMediumScreen ? 60.0 : 70.0);
+    final menuIconSize = _isSmallScreen ? 24.0 : 28.0;
+    final nameFontSize = _isSmallScreen ? 16.0 : (_isMediumScreen ? 18.0 : 20.0);
+    final landFontSize = _isSmallScreen ? 12.0 : 14.0;
+    final titleFontSize = _isSmallScreen ? 14.0 : 16.0;
+
     return Container(
-      padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
+      padding: EdgeInsets.only(
+        top: topPadding,
+        left: horizontalPadding,
+        right: horizontalPadding,
+        bottom: _isSmallScreen ? 12.0 : 20.0,
+      ),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [Color(0xFF869AEC), AppColors.headerGradientEnd],
@@ -371,14 +391,14 @@ class _LandOwnerDashboardState extends State<LandOwnerDashboard> {
           end: Alignment.bottomCenter,
         ),
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(30),
-          bottomRight: Radius.circular(30),
+          bottomLeft: Radius.circular(20.0),
+          bottomRight: Radius.circular(20.0),
         ),
         boxShadow: [
           BoxShadow(
             color: Color(0x10000000),
-            blurRadius: 15,
-            offset: Offset(0, 5),
+            blurRadius: 10.0,
+            offset: Offset(0, 3.0),
           ),
         ],
       ),
@@ -389,20 +409,20 @@ class _LandOwnerDashboardState extends State<LandOwnerDashboard> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
-                icon: const Icon(Icons.menu,
-                    color: AppColors.headerTextDark, size: 28),
+                icon: Icon(Icons.menu,
+                    color: AppColors.headerTextDark, size: menuIconSize),
                 onPressed: () {
                   _scaffoldKey.currentState?.openDrawer();
                 },
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: _isSmallScreen ? 8.0 : 10.0),
           Row(
             children: [
               Container(
-                width: 70,
-                height: 70,
+                width: profileSize,
+                height: profileSize,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: _profileImageUrl == null
@@ -412,11 +432,14 @@ class _LandOwnerDashboardState extends State<LandOwnerDashboard> {
                           end: Alignment.bottomRight,
                         )
                       : null,
-                  border: Border.all(color: Colors.white, width: 3),
+                  border: Border.all(
+                    color: Colors.white, 
+                    width: _isSmallScreen ? 2.0 : 3.0
+                  ),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.primaryBlue.withOpacity(0.4),
-                      blurRadius: 10,
+                      color: AppColors.primaryBlue.withOpacity(0.3),
+                      blurRadius: _isSmallScreen ? 6.0 : 10.0,
                       offset: const Offset(0, 3),
                     ),
                   ],
@@ -428,37 +451,45 @@ class _LandOwnerDashboardState extends State<LandOwnerDashboard> {
                       : null,
                 ),
                 child: _profileImageUrl == null
-                    ? const Icon(Icons.person, size: 40, color: Colors.white)
+                    ? Icon(Icons.person, 
+                        size: _isSmallScreen ? 24.0 : (_isMediumScreen ? 32.0 : 40.0), 
+                        color: Colors.white)
                     : null,
               ),
-              const SizedBox(width: 15),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _loggedInUserName,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.headerTextDark,
+              SizedBox(width: _isSmallScreen ? 12.0 : 15.0),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _loggedInUserName,
+                      style: TextStyle(
+                        fontSize: nameFontSize,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.headerTextDark,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  Text(
-                    'Land Name: $_landName \n($_userRole)',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.headerTextDark.withOpacity(0.7),
+                    Text(
+                      'Land Name: $_landName \n($_userRole)',
+                      style: TextStyle(
+                        fontSize: landFontSize,
+                        color: AppColors.headerTextDark.withOpacity(0.7),
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 25),
+          SizedBox(height: _isSmallScreen ? 15.0 : 25.0),
           Text(
             'Land Overview (ID: $_landID)',
-            style: const TextStyle(
-              fontSize: 16,
+            style: TextStyle(
+              fontSize: titleFontSize,
               fontWeight: FontWeight.w600,
               color: AppColors.headerTextDark,
             ),
@@ -469,11 +500,15 @@ class _LandOwnerDashboardState extends State<LandOwnerDashboard> {
   }
 
   Widget _buildKeyMetrics(BuildContext context) {
+    final crossAxisCount = _isSmallScreen ? 1 : 2;
+    final crossAxisSpacing = _isSmallScreen ? 12.0 : 16.0;
+    final mainAxisSpacing = _isSmallScreen ? 12.0 : 16.0;
+
     return GridView.count(
       shrinkWrap: true,
-      crossAxisCount: 2,
-      crossAxisSpacing: 16,
-      mainAxisSpacing: 16,
+      crossAxisCount: crossAxisCount,
+      crossAxisSpacing: crossAxisSpacing,
+      mainAxisSpacing: mainAxisSpacing,
       physics: const NeverScrollableScrollPhysics(),
       children: [
         _buildLandAreaMetricCard(context),
@@ -535,60 +570,60 @@ class _LandOwnerDashboardState extends State<LandOwnerDashboard> {
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.cardBackground,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(_isSmallScreen ? 12.0 : 16.0),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
         child: Padding(
-          padding: const EdgeInsets.all(20.0),
+          padding: EdgeInsets.all(_isSmallScreen ? 12.0 : 16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: EdgeInsets.all(_isSmallScreen ? 8.0 : 12.0),
                 decoration: BoxDecoration(
                   color: _getCropColor().withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(_isSmallScreen ? 8.0 : 12.0),
                 ),
                 child: Icon(
                   _getCropIcon(),
                   color: _getCropColor(),
-                  size: 20,
+                  size: _isSmallScreen ? 16.0 : 20.0,
                 ),
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 2),
+                  SizedBox(height: _isSmallScreen ? 4.0 : 8.0),
                   Text(
                     displayValue,
-                    style: const TextStyle(
-                      fontSize: 20,
+                    style: TextStyle(
+                      fontSize: _isSmallScreen ? 16.0 : 20.0,
                       fontWeight: FontWeight.bold,
                       color: AppColors.darkText,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  SizedBox(height: 2),
                   Text(
                     displayTitle,
                     style: TextStyle(
-                      fontSize: 10,
+                      fontSize: _isSmallScreen ? 10.0 : 12.0,
                       color: AppColors.secondaryText,
                     ),
                   ),
                   if (detailsText != null && detailsText.isNotEmpty)
                     Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
+                      padding: EdgeInsets.only(top: _isSmallScreen ? 4.0 : 8.0),
                       child: Text(
                         detailsText,
                         style: TextStyle(
-                          fontSize: 9,
+                          fontSize: _isSmallScreen ? 9.0 : 10.0,
                           color: const Color.fromARGB(255, 61, 122, 191).withOpacity(0.8),
                         ),
                         maxLines: 2,
@@ -597,17 +632,19 @@ class _LandOwnerDashboardState extends State<LandOwnerDashboard> {
                     ),
                   if (_cropType != null)
                     Container(
-                      margin: const EdgeInsets.only(top: 8),
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      margin: EdgeInsets.only(top: _isSmallScreen ? 4.0 : 8.0),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: _isSmallScreen ? 6.0 : 8.0,
+                        vertical: _isSmallScreen ? 2.0 : 4.0,
+                      ),
                       decoration: BoxDecoration(
                         color: _getCropColor().withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(_isSmallScreen ? 4.0 : 6.0),
                       ),
                       child: Text(
                         _cropType!,
                         style: TextStyle(
-                          fontSize: 10,
+                          fontSize: _isSmallScreen ? 9.0 : 10.0,
                           fontWeight: FontWeight.w600,
                           color: _getCropColor(),
                         ),
@@ -627,42 +664,48 @@ class _LandOwnerDashboardState extends State<LandOwnerDashboard> {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(_isSmallScreen ? 12.0 : 16.0),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(20.0),
+        padding: EdgeInsets.all(_isSmallScreen ? 12.0 : 16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(_isSmallScreen ? 8.0 : 12.0),
               decoration: BoxDecoration(
                 color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(_isSmallScreen ? 8.0 : 12.0),
               ),
-              child: Icon(icon, color: color, size: 28),
+              child: Icon(icon, 
+                color: color, 
+                size: _isSmallScreen ? 20.0 : 24.0,
+              ),
             ),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 16),
+                SizedBox(height: _isSmallScreen ? 8.0 : 12.0),
                 Text(value,
-                    style: const TextStyle(
-                        fontSize: 24,
+                    style: TextStyle(
+                        fontSize: _isSmallScreen ? 18.0 : 22.0,
                         fontWeight: FontWeight.bold,
                         color: AppColors.darkText)),
-                const SizedBox(height: 4),
+                SizedBox(height: _isSmallScreen ? 2.0 : 4.0),
                 Text(title,
                     style:
-                        TextStyle(fontSize: 14, color: AppColors.secondaryText)),
+                        TextStyle(
+                          fontSize: _isSmallScreen ? 12.0 : 14.0, 
+                          color: AppColors.secondaryText
+                        )),
               ],
             ),
           ],
@@ -681,24 +724,29 @@ class _LandOwnerDashboardState extends State<LandOwnerDashboard> {
             _buildSectionTitle('Associated Factories', Icons.factory_rounded),
             if (_allAssociatedFactories.isNotEmpty)
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding: EdgeInsets.symmetric(
+                  horizontal: _isSmallScreen ? 8.0 : 12.0, 
+                  vertical: _isSmallScreen ? 3.0 : 4.0
+                ),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [AppColors.primaryBlue, AppColors.purpleAccent],
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
                   ),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(_isSmallScreen ? 8.0 : 12.0),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.business, size: 14, color: Colors.white),
-                    const SizedBox(width: 6),
+                    Icon(Icons.business, 
+                      size: _isSmallScreen ? 12.0 : 14.0, 
+                      color: Colors.white
+                    ),
+                    SizedBox(width: _isSmallScreen ? 4.0 : 6.0),
                     Text(
                       '${_allAssociatedFactories.length}',
-                      style: const TextStyle(
-                        fontSize: 12,
+                      style: TextStyle(
+                        fontSize: _isSmallScreen ? 11.0 : 12.0,
                         fontWeight: FontWeight.w600,
                         color: Colors.white,
                       ),
@@ -708,9 +756,9 @@ class _LandOwnerDashboardState extends State<LandOwnerDashboard> {
               ),
           ],
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: _isSmallScreen ? 12.0 : 16.0),
         if (_allAssociatedFactories.isNotEmpty) _buildFactoryStatsCards(),
-        const SizedBox(height: 16),
+        SizedBox(height: _isSmallScreen ? 12.0 : 16.0),
         if (_isLoadingFactories)
           _buildLoadingFactories()
         else if (_errorMessage != null)
@@ -724,6 +772,8 @@ class _LandOwnerDashboardState extends State<LandOwnerDashboard> {
   }
 
 Widget _buildFactoryStatsCards() {
+  final cardWidth = _isSmallScreen ? 100.0 : 120.0;
+  
   return SingleChildScrollView(
     scrollDirection: Axis.horizontal,
     child: Column(
@@ -738,27 +788,30 @@ Widget _buildFactoryStatsCards() {
               icon: Icons.factory,
               color: AppColors.primaryBlue,
               iconColor: Colors.white,
+              cardWidth: cardWidth,
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: _isSmallScreen ? 8.0 : 12.0),
             _buildStatCard(
               title: 'Cinnamon',
               value: _cinnamonFactories.length.toString(),
               icon: Icons.spa,
               color: AppColors.warningOrange,
               iconColor: Colors.white,
+              cardWidth: cardWidth,
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: _isSmallScreen ? 8.0 : 12.0),
             _buildStatCard(
               title: 'Tea',
               value: _teaFactories.length.toString(),
               icon: Icons.agriculture,
               color: AppColors.successGreen,
               iconColor: Colors.white,
+              cardWidth: cardWidth,
             ),
           ],
         ),
 
-        const SizedBox(height: 12),
+        SizedBox(height: _isSmallScreen ? 8.0 : 12.0),
 
         // Second row: Multi-Crop
         Row(
@@ -769,6 +822,7 @@ Widget _buildFactoryStatsCards() {
               icon: Icons.all_inclusive,
               color: AppColors.purpleAccent,
               iconColor: Colors.white,
+              cardWidth: cardWidth,
             ),
           ],
         ),
@@ -783,6 +837,7 @@ Widget _buildFactoryStatsCards() {
     required IconData icon,
     required Color color,
     required Color iconColor,
+    required double cardWidth,
   }) {
     return GestureDetector(
       onTap: () {
@@ -796,20 +851,20 @@ Widget _buildFactoryStatsCards() {
         }
       },
       child: Container(
-        width: 120,
-        padding: const EdgeInsets.all(16),
+        width: cardWidth,
+        padding: EdgeInsets.all(_isSmallScreen ? 12.0 : 16.0),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [color, Color.lerp(color, Colors.black, 0.1)!],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(_isSmallScreen ? 12.0 : 16.0),
           boxShadow: [
             BoxShadow(
               color: color.withOpacity(0.3),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
+              blurRadius: _isSmallScreen ? 6.0 : 10.0,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -817,27 +872,30 @@ Widget _buildFactoryStatsCards() {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(_isSmallScreen ? 6.0 : 8.0),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(_isSmallScreen ? 6.0 : 8.0),
               ),
-              child: Icon(icon, size: 20, color: iconColor),
+              child: Icon(icon, 
+                size: _isSmallScreen ? 16.0 : 20.0, 
+                color: iconColor
+              ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: _isSmallScreen ? 8.0 : 12.0),
             Text(
               value,
-              style: const TextStyle(
-                fontSize: 28,
+              style: TextStyle(
+                fontSize: _isSmallScreen ? 20.0 : 24.0,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: _isSmallScreen ? 2.0 : 4.0),
             Text(
               title,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: _isSmallScreen ? 10.0 : 12.0,
                 color: Colors.white.withOpacity(0.9),
               ),
             ),
@@ -885,25 +943,28 @@ Widget _buildFactoryStatsCards() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 24),
+        SizedBox(height: _isSmallScreen ? 16.0 : 24.0),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: EdgeInsets.all(_isSmallScreen ? 6.0 : 8.0),
                   decoration: BoxDecoration(
                     color: color.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(_isSmallScreen ? 8.0 : 10.0),
                   ),
-                  child: Icon(icon, size: 22, color: color),
+                  child: Icon(icon, 
+                    size: _isSmallScreen ? 18.0 : 22.0, 
+                    color: color
+                  ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: _isSmallScreen ? 8.0 : 12.0),
                 Text(
                   title,
-                  style: const TextStyle(
-                    fontSize: 18,
+                  style: TextStyle(
+                    fontSize: _isSmallScreen ? 16.0 : 18.0,
                     fontWeight: FontWeight.w700,
                     color: AppColors.darkText,
                   ),
@@ -911,15 +972,18 @@ Widget _buildFactoryStatsCards() {
               ],
             ),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              padding: EdgeInsets.symmetric(
+                horizontal: _isSmallScreen ? 8.0 : 12.0, 
+                vertical: _isSmallScreen ? 3.0 : 4.0
+              ),
               decoration: BoxDecoration(
                 color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(_isSmallScreen ? 16.0 : 20.0),
               ),
               child: Text(
                 '${factories.length} factories',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: _isSmallScreen ? 10.0 : 12.0,
                   fontWeight: FontWeight.w600,
                   color: color,
                 ),
@@ -927,7 +991,7 @@ Widget _buildFactoryStatsCards() {
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: _isSmallScreen ? 8.0 : 12.0),
         Column(
           children: factories.asMap().entries.map((entry) {
             final index = entry.key;
@@ -959,10 +1023,10 @@ Widget _buildFactoryStatsCards() {
     final icon = _getFactoryCropIcon(cropType);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: EdgeInsets.only(bottom: _isSmallScreen ? 12.0 : 16.0),
       child: Material(
         elevation: 4,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(_isSmallScreen ? 16.0 : 20.0),
         child: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -973,14 +1037,14 @@ Widget _buildFactoryStatsCards() {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(_isSmallScreen ? 16.0 : 20.0),
             border: Border.all(
               color: mainColor.withOpacity(0.1),
               width: 1,
             ),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(_isSmallScreen ? 12.0 : 16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -989,20 +1053,20 @@ Widget _buildFactoryStatsCards() {
                   children: [
                     // Factory Logo/Icon Container
                     Container(
-                      width: 60,
-                      height: 60,
+                      width: _isSmallScreen ? 48.0 : 56.0,
+                      height: _isSmallScreen ? 48.0 : 56.0,
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(_isSmallScreen ? 8.0 : 12.0),
                         boxShadow: [
                           BoxShadow(
                             color: mainColor.withOpacity(0.3),
-                            blurRadius: 8,
+                            blurRadius: _isSmallScreen ? 6.0 : 8.0,
                             offset: const Offset(0, 4),
                           ),
                         ],
                       ),
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(_isSmallScreen ? 8.0 : 12.0),
                         child: factoryLogoUrl != null && factoryLogoUrl.isNotEmpty
                             ? Image.network(
                                 factoryLogoUrl,
@@ -1020,7 +1084,7 @@ Widget _buildFactoryStatsCards() {
                                         end: Alignment.bottomRight,
                                       ),
                                     ),
-                                    child: const Center(
+                                    child: Center(
                                       child: CircularProgressIndicator(
                                         color: Colors.white,
                                         strokeWidth: 2,
@@ -1043,7 +1107,7 @@ Widget _buildFactoryStatsCards() {
                                     child: Icon(
                                       icon,
                                       color: Colors.white,
-                                      size: 30,
+                                      size: _isSmallScreen ? 24.0 : 28.0,
                                     ),
                                   );
                                 },
@@ -1062,12 +1126,12 @@ Widget _buildFactoryStatsCards() {
                                 child: Icon(
                                       icon,
                                       color: Colors.white,
-                                      size: 30,
+                                      size: _isSmallScreen ? 24.0 : 28.0,
                                     ),
                               ),
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    SizedBox(width: _isSmallScreen ? 12.0 : 16.0),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1078,8 +1142,8 @@ Widget _buildFactoryStatsCards() {
                               Expanded(
                                 child: Text(
                                   factoryName,
-                                  style: const TextStyle(
-                                    fontSize: 18,
+                                  style: TextStyle(
+                                    fontSize: _isSmallScreen ? 16.0 : 18.0,
                                     fontWeight: FontWeight.w700,
                                     color: AppColors.darkText,
                                   ),
@@ -1087,18 +1151,20 @@ Widget _buildFactoryStatsCards() {
                                 ),
                               ),
                               Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 4),
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: _isSmallScreen ? 8.0 : 12.0, 
+                                  vertical: _isSmallScreen ? 2.0 : 4.0
+                                ),
                                 decoration: BoxDecoration(
                                   color: mainColor.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(20),
+                                  borderRadius: BorderRadius.circular(_isSmallScreen ? 16.0 : 20.0),
                                   border:
                                       Border.all(color: mainColor.withOpacity(0.3)),
                                 ),
                                 child: Text(
                                   cropType,
                                   style: TextStyle(
-                                    fontSize: 12,
+                                    fontSize: _isSmallScreen ? 10.0 : 12.0,
                                     fontWeight: FontWeight.w600,
                                     color: mainColor,
                                   ),
@@ -1106,20 +1172,20 @@ Widget _buildFactoryStatsCards() {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: _isSmallScreen ? 2.0 : 4.0),
                           Text(
                             'Owner: $ownerName',
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: _isSmallScreen ? 12.0 : 14.0,
                               color: AppColors.secondaryText,
                             ),
                           ),
                           if (updatedAt != null) ...[
-                            const SizedBox(height: 4),
+                            SizedBox(height: _isSmallScreen ? 2.0 : 4.0),
                             Text(
                               'Updated: ${DateFormat('MMM dd, yyyy').format(updatedAt)}',
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: _isSmallScreen ? 10.0 : 12.0,
                                 color: AppColors.secondaryText.withOpacity(0.7),
                               ),
                             ),
@@ -1129,20 +1195,23 @@ Widget _buildFactoryStatsCards() {
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: _isSmallScreen ? 12.0 : 16.0),
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(_isSmallScreen ? 12.0 : 16.0),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(_isSmallScreen ? 8.0 : 12.0),
                     border: Border.all(color: AppColors.background),
                   ),
                   child: Column(
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.phone, size: 18, color: mainColor),
-                          const SizedBox(width: 8),
+                          Icon(Icons.phone, 
+                            size: _isSmallScreen ? 16.0 : 18.0, 
+                            color: mainColor
+                          ),
+                          SizedBox(width: _isSmallScreen ? 6.0 : 8.0),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1150,15 +1219,15 @@ Widget _buildFactoryStatsCards() {
                                 Text(
                                   'Contact Number',
                                   style: TextStyle(
-                                    fontSize: 12,
+                                    fontSize: _isSmallScreen ? 10.0 : 12.0,
                                     color: AppColors.secondaryText,
                                   ),
                                 ),
-                                const SizedBox(height: 2),
+                                SizedBox(height: _isSmallScreen ? 1.0 : 2.0),
                                 Text(
                                   contactNumber,
-                                  style: const TextStyle(
-                                    fontSize: 15,
+                                  style: TextStyle(
+                                    fontSize: _isSmallScreen ? 14.0 : 16.0,
                                     fontWeight: FontWeight.w600,
                                     color: AppColors.darkText,
                                   ),
@@ -1168,12 +1237,15 @@ Widget _buildFactoryStatsCards() {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: _isSmallScreen ? 8.0 : 12.0),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(Icons.location_on, size: 18, color: mainColor),
-                          const SizedBox(width: 8),
+                          Icon(Icons.location_on, 
+                            size: _isSmallScreen ? 16.0 : 18.0, 
+                            color: mainColor
+                          ),
+                          SizedBox(width: _isSmallScreen ? 6.0 : 8.0),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1181,25 +1253,25 @@ Widget _buildFactoryStatsCards() {
                                 Text(
                                   'Location',
                                   style: TextStyle(
-                                    fontSize: 12,
+                                    fontSize: _isSmallScreen ? 10.0 : 12.0,
                                     color: AppColors.secondaryText,
                                   ),
                                 ),
-                                const SizedBox(height: 2),
+                                SizedBox(height: _isSmallScreen ? 1.0 : 2.0),
                                 Text(
                                   '$village, $district',
-                                  style: const TextStyle(
-                                    fontSize: 15,
+                                  style: TextStyle(
+                                    fontSize: _isSmallScreen ? 14.0 : 16.0,
                                     fontWeight: FontWeight.w500,
                                     color: AppColors.darkText,
                                   ),
                                 ),
                                 if (address.isNotEmpty) ...[
-                                  const SizedBox(height: 2),
+                                  SizedBox(height: _isSmallScreen ? 1.0 : 2.0),
                                   Text(
                                     address,
                                     style: TextStyle(
-                                      fontSize: 13,
+                                      fontSize: _isSmallScreen ? 11.0 : 13.0,
                                       color: AppColors.secondaryText,
                                     ),
                                   ),
@@ -1212,43 +1284,58 @@ Widget _buildFactoryStatsCards() {
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: _isSmallScreen ? 12.0 : 16.0),
                 Row(
                   children: [
                     Expanded(
                       child: OutlinedButton.icon(
                         onPressed: () => _makePhoneCall(contactNumber),
-                        icon: Icon(Icons.phone, size: 18, color: mainColor),
+                        icon: Icon(Icons.phone, 
+                          size: _isSmallScreen ? 16.0 : 18.0, 
+                          color: mainColor
+                        ),
                         label: Text(
                           'Call Now',
-                          style:
-                              TextStyle(color: mainColor, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            color: mainColor, 
+                            fontWeight: FontWeight.w600,
+                            fontSize: _isSmallScreen ? 12.0 : 14.0,
+                          ),
                         ),
                         style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          padding: EdgeInsets.symmetric(
+                            vertical: _isSmallScreen ? 10.0 : 12.0,
+                          ),
                           side: BorderSide(color: mainColor),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(_isSmallScreen ? 8.0 : 12.0),
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: _isSmallScreen ? 8.0 : 12.0),
                     Expanded(
                       child: ElevatedButton.icon(
                         onPressed: () => _showFactoryDetailsModal(factory),
-                        icon:
-                            const Icon(Icons.info_outline, size: 18, color: Colors.white),
-                        label: const Text(
+                        icon: Icon(Icons.info_outline, 
+                          size: _isSmallScreen ? 16.0 : 18.0, 
+                          color: Colors.white
+                        ),
+                        label: Text(
                           'Full Details',
-                          style:
-                              TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            color: Colors.white, 
+                            fontWeight: FontWeight.w600,
+                            fontSize: _isSmallScreen ? 12.0 : 14.0,
+                          ),
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: mainColor,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          padding: EdgeInsets.symmetric(
+                            vertical: _isSmallScreen ? 10.0 : 12.0,
+                          ),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(_isSmallScreen ? 8.0 : 12.0),
                           ),
                           elevation: 2,
                         ),
@@ -1266,38 +1353,39 @@ Widget _buildFactoryStatsCards() {
 
   Widget _buildLoadingFactories() {
     return Container(
-      padding: const EdgeInsets.all(40),
+      padding: EdgeInsets.all(_isSmallScreen ? 24.0 : 32.0),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(_isSmallScreen ? 12.0 : 16.0),
       ),
       child: Column(
         children: [
           SizedBox(
-            width: 60,
-            height: 60,
+            width: _isSmallScreen ? 48.0 : 60.0,
+            height: _isSmallScreen ? 48.0 : 60.0,
             child: CircularProgressIndicator(
               strokeWidth: 4,
               valueColor:
                   AlwaysStoppedAnimation<Color>(AppColors.primaryBlue),
             ),
           ),
-          const SizedBox(height: 20),
-          const Text(
+          SizedBox(height: _isSmallScreen ? 12.0 : 16.0),
+          Text(
             'Loading Factory Details',
             style: TextStyle(
-              fontSize: 16,
+              fontSize: _isSmallScreen ? 14.0 : 16.0,
               fontWeight: FontWeight.w600,
               color: AppColors.darkText,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: _isSmallScreen ? 4.0 : 8.0),
           Text(
             'Fetching your associated factories...',
             style: TextStyle(
               color: AppColors.secondaryText,
-              fontSize: 14,
+              fontSize: _isSmallScreen ? 12.0 : 14.0,
             ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),
@@ -1306,46 +1394,57 @@ Widget _buildFactoryStatsCards() {
 
   Widget _buildErrorFactories() {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(_isSmallScreen ? 16.0 : 24.0),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(_isSmallScreen ? 12.0 : 16.0),
         border: Border.all(color: AppColors.accentRed.withOpacity(0.2)),
       ),
       child: Column(
         children: [
-          Icon(Icons.error_outline, size: 48, color: AppColors.accentRed),
-          const SizedBox(height: 16),
+          Icon(Icons.error_outline, 
+            size: _isSmallScreen ? 36.0 : 48.0, 
+            color: AppColors.accentRed
+          ),
+          SizedBox(height: _isSmallScreen ? 12.0 : 16.0),
           Text(
             _errorMessage ?? 'Unable to load factory data',
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 16,
+            style: TextStyle(
+              fontSize: _isSmallScreen ? 14.0 : 16.0,
               fontWeight: FontWeight.w600,
               color: AppColors.darkText,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: _isSmallScreen ? 4.0 : 8.0),
           Text(
             'Please check your internet connection and try again',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: AppColors.secondaryText,
-              fontSize: 14,
+              fontSize: _isSmallScreen ? 12.0 : 14.0,
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: _isSmallScreen ? 12.0 : 16.0),
           ElevatedButton.icon(
             onPressed: _fetchAssociatedFactories,
-            icon: const Icon(Icons.refresh, size: 18),
-            label: const Text('Retry'),
+            icon: Icon(Icons.refresh, 
+              size: _isSmallScreen ? 16.0 : 18.0
+            ),
+            label: Text('Retry',
+              style: TextStyle(
+                fontSize: _isSmallScreen ? 12.0 : 14.0,
+              ),
+            ),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primaryBlue,
               foregroundColor: Colors.white,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              padding: EdgeInsets.symmetric(
+                horizontal: _isSmallScreen ? 16.0 : 24.0, 
+                vertical: _isSmallScreen ? 10.0 : 12.0
+              ),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(_isSmallScreen ? 8.0 : 12.0),
               ),
             ),
           ),
@@ -1356,55 +1455,67 @@ Widget _buildFactoryStatsCards() {
 
   Widget _buildNoFactoriesCard() {
     return Container(
-      padding: const EdgeInsets.all(32),
+      padding: EdgeInsets.all(_isSmallScreen ? 20.0 : 24.0),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(_isSmallScreen ? 12.0 : 16.0),
         border: Border.all(color: AppColors.primaryBlue.withOpacity(0.1)),
       ),
       child: Column(
         children: [
           Container(
-            width: 80,
-            height: 80,
+            width: _isSmallScreen ? 60.0 : 70.0,
+            height: _isSmallScreen ? 60.0 : 70.0,
             decoration: BoxDecoration(
               color: AppColors.primaryBlue.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
             child:
-                Icon(Icons.factory_outlined, size: 40, color: AppColors.primaryBlue),
+                Icon(Icons.factory_outlined, 
+                  size: _isSmallScreen ? 30.0 : 36.0, 
+                  color: AppColors.primaryBlue
+                ),
           ),
-          const SizedBox(height: 20),
-          const Text(
+          SizedBox(height: _isSmallScreen ? 12.0 : 16.0),
+          Text(
             'No Associated Factories',
             style: TextStyle(
-              fontSize: 18,
+              fontSize: _isSmallScreen ? 16.0 : 18.0,
               fontWeight: FontWeight.w700,
               color: AppColors.darkText,
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: _isSmallScreen ? 8.0 : 12.0),
           Text(
             'You are not currently associated with any factories. Add factories to start supplying your crops.',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: AppColors.secondaryText,
-              fontSize: 14,
+              fontSize: _isSmallScreen ? 12.0 : 14.0,
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: _isSmallScreen ? 16.0 : 20.0),
           ElevatedButton.icon(
             onPressed: () {
               // Navigate to Land Details page
             },
-            icon: const Icon(Icons.add_business, size: 18),
-            label: const Text('Add Factories'),
+            icon: Icon(Icons.add_business, 
+              size: _isSmallScreen ? 16.0 : 18.0
+            ),
+            label: Text('Add Factories',
+              style: TextStyle(
+                fontSize: _isSmallScreen ? 12.0 : 14.0,
+              ),
+            ),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primaryBlue,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+              padding: EdgeInsets.symmetric(
+                horizontal: _isSmallScreen ? 16.0 : 24.0, 
+                vertical: _isSmallScreen ? 10.0 : 12.0
+              ),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(_isSmallScreen ? 8.0 : 12.0),
               ),
             ),
           ),
@@ -1419,18 +1530,21 @@ Widget _buildFactoryStatsCards() {
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(6),
+            padding: EdgeInsets.all(_isSmallScreen ? 4.0 : 6.0),
             decoration: BoxDecoration(
               color: AppColors.primaryBlue.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(_isSmallScreen ? 6.0 : 8.0),
             ),
-            child: Icon(icon, color: AppColors.primaryBlue, size: 20),
+            child: Icon(icon, 
+              color: AppColors.primaryBlue, 
+              size: _isSmallScreen ? 16.0 : 20.0
+            ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: _isSmallScreen ? 8.0 : 12.0),
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 18,
+            style: TextStyle(
+              fontSize: _isSmallScreen ? 16.0 : 18.0,
               fontWeight: FontWeight.w700,
               color: AppColors.darkText,
             ),
@@ -1507,9 +1621,13 @@ Widget _buildFactoryStatsCards() {
             Icon(
                 _getCropIcon(),
                 color: color),
-            const SizedBox(width: 12),
+            SizedBox(width: _isSmallScreen ? 8.0 : 12.0),
             Text(title,
-                style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+                style: TextStyle(
+                  color: color, 
+                  fontWeight: FontWeight.bold,
+                  fontSize: _isSmallScreen ? 14.0 : 16.0,
+                )),
           ],
         ),
         content: SizedBox(
@@ -1522,11 +1640,25 @@ Widget _buildFactoryStatsCards() {
               return ListTile(
                 leading: CircleAvatar(
                   backgroundColor: color.withOpacity(0.1),
-                  child: Icon(Icons.factory, color: color),
+                  child: Icon(Icons.factory, 
+                    color: color,
+                    size: _isSmallScreen ? 18.0 : 20.0,
+                  ),
                 ),
-                title: Text(factory['factoryName'] ?? 'Unknown'),
-                subtitle: Text('Owner: ${factory['ownerName'] ?? 'N/A'}'),
-                trailing: Icon(Icons.chevron_right, color: color),
+                title: Text(factory['factoryName'] ?? 'Unknown',
+                  style: TextStyle(
+                    fontSize: _isSmallScreen ? 12.0 : 14.0,
+                  ),
+                ),
+                subtitle: Text('Owner: ${factory['ownerName'] ?? 'N/A'}',
+                  style: TextStyle(
+                    fontSize: _isSmallScreen ? 10.0 : 12.0,
+                  ),
+                ),
+                trailing: Icon(Icons.chevron_right, 
+                  color: color,
+                  size: _isSmallScreen ? 18.0 : 20.0,
+                ),
                 onTap: () {
                   Navigator.pop(context);
                   _showFactoryDetailsModal(factory);
@@ -1538,7 +1670,11 @@ Widget _buildFactoryStatsCards() {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+            child: Text('Close',
+              style: TextStyle(
+                fontSize: _isSmallScreen ? 12.0 : 14.0,
+              ),
+            ),
           ),
         ],
       ),
@@ -1553,6 +1689,8 @@ Widget _buildFactoryStatsCards() {
       builder: (context) => FactoryDetailsModal(
         factory: factory,
         makePhoneCall: _makePhoneCall,
+        isSmallScreen: _isSmallScreen,
+        isMediumScreen: _isMediumScreen,
       ),
     );
   }
@@ -1570,6 +1708,8 @@ Widget _buildFactoryStatsCards() {
         cinnamonLandSize: _cinnamonLandSize,
         landSizeDetails: _landSizeDetails,
         landPhotos: _landPhotos,
+        isSmallScreen: _isSmallScreen,
+        isMediumScreen: _isMediumScreen,
       ),
     );
   }
@@ -1582,11 +1722,15 @@ Widget _buildFactoryStatsCards() {
 class FactoryDetailsModal extends StatelessWidget {
   final Map<String, dynamic> factory;
   final Function(String) makePhoneCall;
+  final bool isSmallScreen;
+  final bool isMediumScreen;
 
   const FactoryDetailsModal({
     super.key,
     required this.factory,
     required this.makePhoneCall,
+    required this.isSmallScreen,
+    required this.isMediumScreen,
   });
 
   @override
@@ -1612,26 +1756,26 @@ class FactoryDetailsModal extends StatelessWidget {
     final factoryPhotos = List<String>.from(factory['factoryPhotos'] ?? []);
 
     final Map<String, Color> cropColors = {
-      'Cinnamon': AppColors.warningOrange,
-      'Tea': AppColors.successGreen,
-      'Both': AppColors.purpleAccent,
+      'Cinnamon': Colors.orange,
+      'Tea': Colors.green,
+      'Both': Colors.purple,
     };
 
-    final mainColor = cropColors[cropType] ?? AppColors.primaryBlue;
+    final mainColor = cropColors[cropType] ?? Colors.blue;
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.90,
-      decoration: const BoxDecoration(
-        color: AppColors.cardBackground,
+      height: MediaQuery.of(context).size.height * (isSmallScreen ? 0.85 : 0.90),
+      decoration: BoxDecoration(
+        color: Colors.white,
         borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(30),
-          topRight: Radius.circular(30),
+          topLeft: Radius.circular(isSmallScreen ? 20.0 : 30.0),
+          topRight: Radius.circular(isSmallScreen ? 20.0 : 30.0),
         ),
       ),
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
@@ -1641,29 +1785,29 @@ class FactoryDetailsModal extends StatelessWidget {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(30),
-                topRight: Radius.circular(30),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(isSmallScreen ? 20.0 : 30.0),
+                topRight: Radius.circular(isSmallScreen ? 20.0 : 30.0),
               ),
             ),
             child: Row(
               children: [
                 // Factory Logo Container
                 Container(
-                  width: 60,
-                  height: 60,
+                  width: isSmallScreen ? 48.0 : 56.0,
+                  height: isSmallScreen ? 48.0 : 56.0,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(isSmallScreen ? 8.0 : 12.0),
                     boxShadow: [
                       BoxShadow(
                         color: mainColor.withOpacity(0.3),
-                        blurRadius: 8,
+                        blurRadius: isSmallScreen ? 6.0 : 8.0,
                         offset: const Offset(0, 4),
                       ),
                     ],
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(isSmallScreen ? 8.0 : 12.0),
                     child: factoryLogoUrl != null && factoryLogoUrl.isNotEmpty
                         ? Image.network(
                             factoryLogoUrl,
@@ -1681,7 +1825,7 @@ class FactoryDetailsModal extends StatelessWidget {
                                     end: Alignment.bottomRight,
                                   ),
                                 ),
-                                child: const Center(
+                                child: Center(
                                   child: CircularProgressIndicator(
                                     color: Colors.white,
                                     strokeWidth: 2,
@@ -1704,7 +1848,7 @@ class FactoryDetailsModal extends StatelessWidget {
                                 child: Icon(
                                   Icons.factory,
                                   color: Colors.white,
-                                  size: 28,
+                                  size: isSmallScreen ? 20.0 : 24.0,
                                 ),
                               );
                             },
@@ -1723,29 +1867,29 @@ class FactoryDetailsModal extends StatelessWidget {
                             child: Icon(
                               Icons.factory,
                               color: Colors.white,
-                              size: 28,
+                              size: isSmallScreen ? 20.0 : 24.0,
                             ),
                           ),
                   ),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: isSmallScreen ? 12.0 : 16.0),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         factoryName,
-                        style: const TextStyle(
-                          fontSize: 20,
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 16.0 : 18.0,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.darkText,
+                          color: Colors.black,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: isSmallScreen ? 2.0 : 4.0),
                       Text(
                         '$cropType Factory',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: isSmallScreen ? 12.0 : 14.0,
                           color: mainColor,
                           fontWeight: FontWeight.w600,
                         ),
@@ -1755,14 +1899,17 @@ class FactoryDetailsModal extends StatelessWidget {
                 ),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close, color: AppColors.secondaryText),
+                  icon: Icon(Icons.close, 
+                    color: Colors.grey[600],
+                    size: isSmallScreen ? 20.0 : 24.0,
+                  ),
                 ),
               ],
             ),
           ),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1781,7 +1928,7 @@ class FactoryDetailsModal extends StatelessWidget {
                         ),
                     ],
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: isSmallScreen ? 16.0 : 24.0),
                   
                   // Factory Photos Section
                   if (factoryPhotos.isNotEmpty)
@@ -1792,28 +1939,28 @@ class FactoryDetailsModal extends StatelessWidget {
                           title: 'Factory Photos',
                           icon: Icons.photo_camera,
                           children: [
-                            const SizedBox(height: 8),
+                            SizedBox(height: isSmallScreen ? 4.0 : 8.0),
                             Text(
                               'Total ${factoryPhotos.length} photo${factoryPhotos.length > 1 ? 's' : ''}',
                               style: TextStyle(
-                                fontSize: 14,
-                                color: AppColors.secondaryText,
+                                fontSize: isSmallScreen ? 12.0 : 14.0,
+                                color: Colors.grey[600],
                               ),
                             ),
-                            const SizedBox(height: 12),
+                            SizedBox(height: isSmallScreen ? 8.0 : 12.0),
                             GridView.builder(
                               shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
-                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 3,
-                                crossAxisSpacing: 8,
-                                mainAxisSpacing: 8,
+                              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: isSmallScreen ? 2 : 3,
+                                crossAxisSpacing: isSmallScreen ? 6.0 : 8.0,
+                                mainAxisSpacing: isSmallScreen ? 6.0 : 8.0,
                                 childAspectRatio: 1,
                               ),
                               itemCount: factoryPhotos.length,
                               itemBuilder: (context, index) {
                                 return ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(isSmallScreen ? 6.0 : 8.0),
                                   child: Image.network(
                                     factoryPhotos[index],
                                     fit: BoxFit.cover,
@@ -1831,7 +1978,10 @@ class FactoryDetailsModal extends StatelessWidget {
                                     errorBuilder: (context, error, stackTrace) {
                                       return Container(
                                         color: Colors.grey[200],
-                                        child: const Icon(Icons.broken_image, color: Colors.grey),
+                                        child: Icon(Icons.broken_image, 
+                                          color: Colors.grey,
+                                          size: isSmallScreen ? 24.0 : 32.0,
+                                        ),
                                       );
                                     },
                                   ),
@@ -1840,7 +1990,7 @@ class FactoryDetailsModal extends StatelessWidget {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: isSmallScreen ? 16.0 : 24.0),
                       ],
                     ),
                   
@@ -1857,7 +2007,7 @@ class FactoryDetailsModal extends StatelessWidget {
                       _buildDetailRow('Country', country),
                     ],
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: isSmallScreen ? 16.0 : 24.0),
                   _buildDetailSection(
                     title: 'Factory Identification',
                     icon: Icons.fingerprint,
@@ -1865,22 +2015,25 @@ class FactoryDetailsModal extends StatelessWidget {
                       _buildDetailRow(
                           'Factory ID', factory['id']?.toString() ?? 'N/A'),
                       Container(
-                        padding: const EdgeInsets.all(12),
+                        padding: EdgeInsets.all(isSmallScreen ? 8.0 : 12.0),
                         decoration: BoxDecoration(
-                          color: AppColors.background,
-                          borderRadius: BorderRadius.circular(10),
+                          color: Colors.grey[50],
+                          borderRadius: BorderRadius.circular(isSmallScreen ? 8.0 : 10.0),
                           border: Border.all(color: mainColor.withOpacity(0.2)),
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.shield, color: mainColor, size: 20),
-                            const SizedBox(width: 10),
+                            Icon(Icons.shield, 
+                              color: mainColor, 
+                              size: isSmallScreen ? 16.0 : 20.0
+                            ),
+                            SizedBox(width: isSmallScreen ? 8.0 : 10.0),
                             Expanded(
                               child: Text(
                                 'Associated via Land Details',
                                 style: TextStyle(
-                                  fontSize: 14,
-                                  color: AppColors.darkText,
+                                  fontSize: isSmallScreen ? 12.0 : 14.0,
+                                  color: Colors.black,
                                 ),
                               ),
                             ),
@@ -1889,49 +2042,65 @@ class FactoryDetailsModal extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 30),
+                  SizedBox(height: isSmallScreen ? 20.0 : 30.0),
                   Row(
                     children: [
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () => makePhoneCall(contactNumber),
-                          icon: Icon(Icons.phone, color: mainColor),
+                          icon: Icon(Icons.phone, 
+                            color: mainColor,
+                            size: isSmallScreen ? 16.0 : 18.0,
+                          ),
                           label: Text(
                             'Call Factory',
-                            style:
-                                TextStyle(color: mainColor, fontWeight: FontWeight.w600),
+                            style: TextStyle(
+                              color: mainColor, 
+                              fontWeight: FontWeight.w600,
+                              fontSize: isSmallScreen ? 12.0 : 14.0,
+                            ),
                           ),
                           style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            padding: EdgeInsets.symmetric(
+                              vertical: isSmallScreen ? 12.0 : 14.0,
+                            ),
                             side: BorderSide(color: mainColor),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(isSmallScreen ? 8.0 : 12.0),
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      SizedBox(width: isSmallScreen ? 8.0 : 12.0),
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: () {},
-                          icon: const Icon(Icons.message, color: Colors.white),
-                          label: const Text(
+                          icon: Icon(Icons.message, 
+                            color: Colors.white,
+                            size: isSmallScreen ? 16.0 : 18.0,
+                          ),
+                          label: Text(
                             'Send Message',
-                            style:
-                                TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                            style: TextStyle(
+                              color: Colors.white, 
+                              fontWeight: FontWeight.w600,
+                              fontSize: isSmallScreen ? 12.0 : 14.0,
+                            ),
                           ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: mainColor,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            padding: EdgeInsets.symmetric(
+                              vertical: isSmallScreen ? 12.0 : 14.0,
+                            ),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(isSmallScreen ? 8.0 : 12.0),
                             ),
                           ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: isSmallScreen ? 12.0 : 16.0),
                 ],
               ),
             ),
@@ -1952,30 +2121,33 @@ class FactoryDetailsModal extends StatelessWidget {
         Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(6),
+              padding: EdgeInsets.all(isSmallScreen ? 4.0 : 6.0),
               decoration: BoxDecoration(
-                color: AppColors.primaryBlue.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(isSmallScreen ? 6.0 : 8.0),
               ),
-              child: Icon(icon, size: 18, color: AppColors.primaryBlue),
+              child: Icon(icon, 
+                size: isSmallScreen ? 16.0 : 18.0, 
+                color: Colors.blue
+              ),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: isSmallScreen ? 8.0 : 10.0),
             Text(
               title,
-              style: const TextStyle(
-                fontSize: 16,
+              style: TextStyle(
+                fontSize: isSmallScreen ? 14.0 : 16.0,
                 fontWeight: FontWeight.w700,
-                color: AppColors.darkText,
+                color: Colors.black,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: isSmallScreen ? 8.0 : 12.0),
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
           decoration: BoxDecoration(
-            color: AppColors.background,
-            borderRadius: BorderRadius.circular(12),
+            color: Colors.grey[50],
+            borderRadius: BorderRadius.circular(isSmallScreen ? 8.0 : 12.0),
           ),
           child: Column(
             children: children,
@@ -1987,28 +2159,28 @@ class FactoryDetailsModal extends StatelessWidget {
 
   Widget _buildDetailRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 6.0 : 8.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 120,
+            width: isSmallScreen ? 100.0 : 120.0,
             child: Text(
               '$label:',
-              style: const TextStyle(
-                fontSize: 14,
+              style: TextStyle(
+                fontSize: isSmallScreen ? 12.0 : 14.0,
                 fontWeight: FontWeight.w600,
-                color: AppColors.secondaryText,
+                color: Colors.grey[600],
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: isSmallScreen ? 6.0 : 8.0),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
-                fontSize: 14,
-                color: AppColors.darkText,
+              style: TextStyle(
+                fontSize: isSmallScreen ? 12.0 : 14.0,
+                color: Colors.black,
               ),
             ),
           ),
@@ -2026,6 +2198,8 @@ class LandSizeDetailsModal extends StatelessWidget {
   final String? cinnamonLandSize;
   final String? landSizeDetails;
   final List<String> landPhotos;
+  final bool isSmallScreen;
+  final bool isMediumScreen;
 
   const LandSizeDetailsModal({
     super.key,
@@ -2036,6 +2210,8 @@ class LandSizeDetailsModal extends StatelessWidget {
     required this.cinnamonLandSize,
     required this.landSizeDetails,
     required this.landPhotos,
+    required this.isSmallScreen,
+    required this.isMediumScreen,
   });
 
   @override
@@ -2044,18 +2220,18 @@ class LandSizeDetailsModal extends StatelessWidget {
     final IconData mainIcon = _getModalCropIcon(cropType);
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.85,
-      decoration: const BoxDecoration(
-        color: AppColors.cardBackground,
+      height: MediaQuery.of(context).size.height * (isSmallScreen ? 0.80 : 0.85),
+      decoration: BoxDecoration(
+        color: Colors.white,
         borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(30),
-          topRight: Radius.circular(30),
+          topLeft: Radius.circular(isSmallScreen ? 20.0 : 30.0),
+          topRight: Radius.circular(isSmallScreen ? 20.0 : 30.0),
         ),
       ),
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
@@ -2065,42 +2241,45 @@ class LandSizeDetailsModal extends StatelessWidget {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(30),
-                topRight: Radius.circular(30),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(isSmallScreen ? 20.0 : 30.0),
+                topRight: Radius.circular(isSmallScreen ? 20.0 : 30.0),
               ),
             ),
             child: Row(
               children: [
                 Container(
-                  width: 50,
-                  height: 50,
+                  width: isSmallScreen ? 40.0 : 48.0,
+                  height: isSmallScreen ? 40.0 : 48.0,
                   decoration: BoxDecoration(
                     color: mainColor,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(isSmallScreen ? 8.0 : 12.0),
                   ),
-                  child: Icon(mainIcon, color: Colors.white, size: 28),
+                  child: Icon(mainIcon, 
+                    color: Colors.white, 
+                    size: isSmallScreen ? 20.0 : 24.0
+                  ),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: isSmallScreen ? 12.0 : 16.0),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Land Size Details',
                         style: TextStyle(
-                          fontSize: 20,
+                          fontSize: isSmallScreen ? 16.0 : 18.0,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.darkText,
+                          color: Colors.black,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: isSmallScreen ? 2.0 : 4.0),
                       Text(
                         cropType != null
                             ? '$cropType Land Information'
                             : 'Land Information',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: isSmallScreen ? 12.0 : 14.0,
                           color: mainColor,
                           fontWeight: FontWeight.w600,
                         ),
@@ -2110,47 +2289,50 @@ class LandSizeDetailsModal extends StatelessWidget {
                 ),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close, color: AppColors.secondaryText),
+                  icon: Icon(Icons.close, 
+                    color: Colors.grey[600],
+                    size: isSmallScreen ? 20.0 : 24.0,
+                  ),
                 ),
               ],
             ),
           ),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
                     decoration: BoxDecoration(
                       color: mainColor.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(isSmallScreen ? 8.0 : 12.0),
                       border: Border.all(color: mainColor.withOpacity(0.2)),
                     ),
                     child: Row(
                       children: [
                         Icon(_getModalCropIcon(cropType),
-                            size: 32, color: mainColor),
-                        const SizedBox(width: 16),
+                            size: isSmallScreen ? 24.0 : 28.0, color: mainColor),
+                        SizedBox(width: isSmallScreen ? 12.0 : 16.0),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 cropType ?? 'Not Specified',
-                                style: const TextStyle(
-                                  fontSize: 18,
+                                style: TextStyle(
+                                  fontSize: isSmallScreen ? 16.0 : 18.0,
                                   fontWeight: FontWeight.w700,
-                                  color: AppColors.darkText,
+                                  color: Colors.black,
                                 ),
                               ),
-                              const SizedBox(height: 4),
+                              SizedBox(height: isSmallScreen ? 2.0 : 4.0),
                               Text(
                                 'Cultivation Type',
                                 style: TextStyle(
-                                  fontSize: 14,
-                                  color: AppColors.secondaryText,
+                                  fontSize: isSmallScreen ? 12.0 : 14.0,
+                                  color: Colors.grey[600],
                                 ),
                               ),
                             ],
@@ -2159,13 +2341,13 @@ class LandSizeDetailsModal extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: isSmallScreen ? 16.0 : 24.0),
                   _buildDetailSection(
                     title: 'Land Size Information',
                     icon: Icons.square_foot,
                     children: _buildLandSizeDetails(),
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: isSmallScreen ? 16.0 : 24.0),
                   
                   // Land Photos Section
                   if (landPhotos.isNotEmpty)
@@ -2176,28 +2358,28 @@ class LandSizeDetailsModal extends StatelessWidget {
                           title: 'Land Photos',
                           icon: Icons.photo_camera,
                           children: [
-                            const SizedBox(height: 8),
+                            SizedBox(height: isSmallScreen ? 4.0 : 8.0),
                             Text(
                               'Total ${landPhotos.length} photo${landPhotos.length > 1 ? 's' : ''}',
                               style: TextStyle(
-                                fontSize: 14,
-                                color: AppColors.secondaryText,
+                                fontSize: isSmallScreen ? 12.0 : 14.0,
+                                color: Colors.grey[600],
                               ),
                             ),
-                            const SizedBox(height: 12),
+                            SizedBox(height: isSmallScreen ? 8.0 : 12.0),
                             GridView.builder(
                               shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
-                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 3,
-                                crossAxisSpacing: 8,
-                                mainAxisSpacing: 8,
+                              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: isSmallScreen ? 2 : 3,
+                                crossAxisSpacing: isSmallScreen ? 6.0 : 8.0,
+                                mainAxisSpacing: isSmallScreen ? 6.0 : 8.0,
                                 childAspectRatio: 1,
                               ),
                               itemCount: landPhotos.length,
                               itemBuilder: (context, index) {
                                 return ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(isSmallScreen ? 6.0 : 8.0),
                                   child: Image.network(
                                     landPhotos[index],
                                     fit: BoxFit.cover,
@@ -2215,7 +2397,10 @@ class LandSizeDetailsModal extends StatelessWidget {
                                     errorBuilder: (context, error, stackTrace) {
                                       return Container(
                                         color: Colors.grey[200],
-                                        child: const Icon(Icons.broken_image, color: Colors.grey),
+                                        child: Icon(Icons.broken_image, 
+                                          color: Colors.grey,
+                                          size: isSmallScreen ? 24.0 : 32.0,
+                                        ),
                                       );
                                     },
                                   ),
@@ -2224,7 +2409,7 @@ class LandSizeDetailsModal extends StatelessWidget {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: isSmallScreen ? 16.0 : 24.0),
                       ],
                     ),
                   
@@ -2234,34 +2419,34 @@ class LandSizeDetailsModal extends StatelessWidget {
                       icon: Icons.insights,
                       children: _buildCropBreakdownDetails(),
                     ),
-                  if (cropType == 'Both') const SizedBox(height: 24),
+                  if (cropType == 'Both') SizedBox(height: isSmallScreen ? 16.0 : 24.0),
                   
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: EdgeInsets.all(isSmallScreen ? 8.0 : 12.0),
                     decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.circular(10),
+                      color: Colors.grey[50],
+                      borderRadius: BorderRadius.circular(isSmallScreen ? 8.0 : 10.0),
                       border:
-                          Border.all(color: AppColors.primaryBlue.withOpacity(0.2)),
+                          Border.all(color: Colors.blue.withOpacity(0.2)),
                     ),
                     child: Row(
                       children: [
                         Icon(Icons.info_outline,
-                            color: AppColors.primaryBlue, size: 20),
-                        const SizedBox(width: 10),
+                            color: Colors.blue, size: isSmallScreen ? 16.0 : 20.0),
+                        SizedBox(width: isSmallScreen ? 8.0 : 10.0),
                         Expanded(
                           child: Text(
                             'All land sizes are measured in ${landSizeUnit ?? 'Hectares'} (ha)',
                             style: TextStyle(
-                              fontSize: 14,
-                              color: AppColors.darkText,
+                              fontSize: isSmallScreen ? 12.0 : 14.0,
+                              color: Colors.black,
                             ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: isSmallScreen ? 12.0 : 16.0),
                 ],
               ),
             ),
@@ -2293,17 +2478,17 @@ class LandSizeDetailsModal extends StatelessWidget {
           'Tea Land Size', '$teaLandSize ${landSizeUnit ?? "ha"}'));
     } else if (cropType == 'Cinnamon' && cinnamonLandSize != null) {
       details.add(_buildDetailRow('Cinnamon Land Size',
-          '$cinnamonLandSize ${landSizeUnit ?? "ha"}'));
+            '$cinnamonLandSize ${landSizeUnit ?? "ha"}'));
     }
 
     if (landSizeDetails != null && landSizeDetails!.isNotEmpty) {
-      details.add(const SizedBox(height: 8));
+      details.add(SizedBox(height: isSmallScreen ? 4.0 : 8.0));
       details.add(Text(
         landSizeDetails!,
         style: TextStyle(
-          fontSize: 14,
+          fontSize: isSmallScreen ? 12.0 : 14.0,
           fontStyle: FontStyle.italic,
-          color: AppColors.secondaryText,
+          color: Colors.grey[600],
         ),
       ));
     }
@@ -2325,7 +2510,7 @@ class LandSizeDetailsModal extends StatelessWidget {
           'Tea Cultivation',
           teaSize,
           teaPercentage,
-          AppColors.successGreen,
+          Colors.green,
         ));
       }
 
@@ -2335,30 +2520,30 @@ class LandSizeDetailsModal extends StatelessWidget {
           'Cinnamon Cultivation',
           cinnamonSize,
           cinnamonPercentage,
-          AppColors.warningOrange,
+          Colors.orange,
         ));
       }
 
       breakdown.add(Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12.0),
+        padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 8.0 : 12.0),
         child: Row(
           children: [
             Expanded(
               child: Text(
                 'Total Land Area',
-                style: const TextStyle(
-                  fontSize: 10,
+                style: TextStyle(
+                  fontSize: isSmallScreen ? 8.0 : 10.0,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.darkText,
+                  color: Colors.black,
                 ),
               ),
             ),
             Text( 
               '${totalSize.toStringAsFixed(1)} ${landSizeUnit ?? "ha"}',
-              style: const TextStyle(
-                fontSize: 15,
+              style: TextStyle(
+                fontSize: isSmallScreen ? 12.0 : 14.0,
                 fontWeight: FontWeight.w700,
-                color: AppColors.primaryBlue,
+                color: Colors.blue,
               ),
             ),
           ],
@@ -2372,7 +2557,7 @@ class LandSizeDetailsModal extends StatelessWidget {
   Widget _buildPercentageRow(
       String label, double size, double percentage, Color color) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 6.0 : 8.0),
       child: Column(
         children: [
           Row(
@@ -2380,28 +2565,28 @@ class LandSizeDetailsModal extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppColors.darkText,
+                style: TextStyle(
+                  fontSize: isSmallScreen ? 12.0 : 14.0,
+                  color: Colors.black,
                 ),
               ),
               Text(
                 '${size.toStringAsFixed(1)} ha (${percentage.toStringAsFixed(1)}%)',
                 style: TextStyle(
-                  fontSize: 15,
+                  fontSize: isSmallScreen ? 12.0 : 14.0,
                   fontWeight: FontWeight.w600,
                   color: color,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: isSmallScreen ? 2.0 : 4.0),
           LinearProgressIndicator(
             value: percentage / 100,
             backgroundColor: color.withOpacity(0.2),
             valueColor: AlwaysStoppedAnimation<Color>(color),
-            minHeight: 6,
-            borderRadius: BorderRadius.circular(3),
+            minHeight: isSmallScreen ? 4.0 : 6.0,
+            borderRadius: BorderRadius.circular(isSmallScreen ? 2.0 : 3.0),
           ),
         ],
       ),
@@ -2410,29 +2595,29 @@ class LandSizeDetailsModal extends StatelessWidget {
 
   Widget _buildDetailRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 6.0 : 8.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 140,
+            width: isSmallScreen ? 110.0 : 130.0,
             child: Text(
               '$label:',
-              style: const TextStyle(
-                fontSize: 15,
+              style: TextStyle(
+                fontSize: isSmallScreen ? 12.0 : 14.0,
                 fontWeight: FontWeight.w600,
-                color: AppColors.secondaryText,
+                color: Colors.grey[600],
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: isSmallScreen ? 6.0 : 8.0),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
-                fontSize: 15,
+              style: TextStyle(
+                fontSize: isSmallScreen ? 12.0 : 14.0,
                 fontWeight: FontWeight.w600,
-                color: AppColors.darkText,
+                color: Colors.black,
               ),
             ),
           ),
@@ -2452,30 +2637,33 @@ class LandSizeDetailsModal extends StatelessWidget {
         Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(6),
+              padding: EdgeInsets.all(isSmallScreen ? 4.0 : 6.0),
               decoration: BoxDecoration(
-                color: AppColors.primaryBlue.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(isSmallScreen ? 6.0 : 8.0),
               ),
-              child: Icon(icon, size: 18, color: AppColors.primaryBlue),
+              child: Icon(icon, 
+                size: isSmallScreen ? 16.0 : 18.0, 
+                color: Colors.blue
+              ),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: isSmallScreen ? 8.0 : 10.0),
             Text(
               title,
-              style: const TextStyle(
-                fontSize: 16,
+              style: TextStyle(
+                fontSize: isSmallScreen ? 14.0 : 16.0,
                 fontWeight: FontWeight.w700,
-                color: AppColors.darkText,
+                color: Colors.black,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: isSmallScreen ? 8.0 : 12.0),
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
           decoration: BoxDecoration(
-            color: AppColors.background,
-            borderRadius: BorderRadius.circular(12),
+            color: Colors.grey[50],
+            borderRadius: BorderRadius.circular(isSmallScreen ? 8.0 : 12.0),
           ),
           child: Column(
             children: children,
@@ -2488,13 +2676,13 @@ class LandSizeDetailsModal extends StatelessWidget {
   Color _getModalCropColor(String? cropType) {
     switch (cropType) {
       case 'Tea':
-        return AppColors.successGreen;
+        return Colors.green;
       case 'Cinnamon':
-        return AppColors.warningOrange;
+        return Colors.orange;
       case 'Both':
-        return AppColors.purpleAccent;
+        return Colors.purple;
       default:
-        return AppColors.primaryBlue;
+        return Colors.blue;
     }
   }
 
