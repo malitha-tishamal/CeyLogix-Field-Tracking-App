@@ -22,6 +22,7 @@ dependencies:
   geolocator: ^11.0.1
   permission_handler: ^11.0.1
   geocoding: ^3.0.0
+  flutter_screenutil: ^5.9.0
 
   # Media
   image_picker: ^1.1.2

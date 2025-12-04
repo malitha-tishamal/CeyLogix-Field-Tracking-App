@@ -43,7 +43,6 @@ class _DeveloperInfoPageState extends State<DeveloperInfoPage> {
   String? _profileImageUrl;
   
   // Responsive variables
-  late bool _isPortrait;
   late double _screenWidth;
   late double _screenHeight;
 
@@ -63,7 +62,6 @@ class _DeveloperInfoPageState extends State<DeveloperInfoPage> {
     final mediaQuery = MediaQuery.of(context);
     _screenWidth = mediaQuery.size.width;
     _screenHeight = mediaQuery.size.height;
-    _isPortrait = mediaQuery.orientation == Orientation.portrait;
   }
 
   // --- DATA FETCHING FUNCTION ---
@@ -228,7 +226,6 @@ class _DeveloperInfoPageState extends State<DeveloperInfoPage> {
                         DeveloperInfoContent(
                           screenWidth: _screenWidth,
                           screenHeight: _screenHeight,
-                          isPortrait: _isPortrait,
                           launchURL: _launchURL,
                           launchEmail: _launchEmail,
                           launchPhone: _launchPhone,
@@ -415,7 +412,6 @@ class _DeveloperInfoPageState extends State<DeveloperInfoPage> {
 class DeveloperInfoContent extends StatelessWidget {
   final double screenWidth;
   final double screenHeight;
-  final bool isPortrait;
   final Function(String url) launchURL;
   final VoidCallback launchEmail;
   final Function(String phoneNumber) launchPhone;
@@ -424,7 +420,6 @@ class DeveloperInfoContent extends StatelessWidget {
     super.key,
     required this.screenWidth,
     required this.screenHeight,
-    required this.isPortrait,
     required this.launchURL,
     required this.launchEmail,
     required this.launchPhone,
@@ -654,7 +649,7 @@ class DeveloperInfoContent extends StatelessWidget {
     );
   }
 
-  // --- 🌟 Responsive Social Media Widgets ---
+  // --- 🌟 RESPONSIVE SOCIAL MEDIA BUTTONS - NO OVERLAP ---
   Widget _buildSocialMediaButtons(bool isSmallScreen, bool isMediumScreen) {
     final List<SocialMediaItem> socialItems = [
       SocialMediaItem(
@@ -695,21 +690,33 @@ class DeveloperInfoContent extends StatelessWidget {
       ),
     ];
 
-    // Determine columns based on screen width
-    final columns = isSmallScreen ? 3 : 
-                   (isMediumScreen ? 4 : 6);
+    // Calculate the number of columns based on screen width
+    final int columns;
+    if (screenWidth < 300) {
+      columns = 2;
+    } else if (screenWidth < 400) {
+      columns = 3;
+    } else if (screenWidth < 500) {
+      columns = 4;
+    } else {
+      columns = 5;
+    }
+
+    // Calculate spacing and button size dynamically
+    final horizontalPadding = isSmallScreen ? 12.0 : 
+                             isMediumScreen ? 16.0 : 
+                             20.0;
     
-    final buttonSize = isSmallScreen ? 55.0 : 
-                      isMediumScreen ? 60.0 : 
-                      70.0;
+    final totalSpacing = (columns - 1) * (isSmallScreen ? 8.0 : 12.0);
+    final availableWidth = screenWidth - (horizontalPadding * 2) - totalSpacing;
+    final buttonWidth = availableWidth / columns;
     
-    final iconSize = isSmallScreen ? 24.0 : 
-                    isMediumScreen ? 30.0 : 
-                    40.0;
-    
-    final labelFontSize = isSmallScreen ? 10.0 : 
-                         isMediumScreen ? 11.0 : 
-                         12.0;
+    // Ensure buttons don't get too small or too large
+    final buttonSize = buttonWidth.clamp(isSmallScreen ? 50.0 : 55.0, 70.0);
+    final iconSize = buttonSize * 0.45;
+    final labelFontSize = isSmallScreen ? 9.0 : 
+                         isMediumScreen ? 10.0 : 
+                         11.0;
 
     return Container(
       padding: EdgeInsets.all(isSmallScreen ? 12.0 : 
@@ -743,85 +750,70 @@ class DeveloperInfoContent extends StatelessWidget {
           
           SizedBox(height: isSmallScreen ? 12.0 : 16.0),
           
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: columns,
-            mainAxisSpacing: isSmallScreen ? 12.0 : 20.0,
-            crossAxisSpacing: isSmallScreen ? 12.0 : 20.0,
-            childAspectRatio: 0.8,
+          // Use Wrap with calculated spacing
+          Wrap(
+            spacing: isSmallScreen ? 8.0 : 12.0,
+            runSpacing: isSmallScreen ? 16.0 : 20.0,
+            alignment: WrapAlignment.center,
             children: socialItems.map((item) {
-              return _buildSocialMediaButton(
-                item, 
-                buttonSize, 
-                iconSize, 
-                labelFontSize,
-                isSmallScreen
+              return SizedBox(
+                width: buttonSize,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Tooltip(
+                      message: 'Open ${item.label}',
+                      child: GestureDetector(
+                        onTap: () => launchURL(item.url),
+                        child: Container(
+                          width: buttonSize,
+                          height: buttonSize,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [item.color.withOpacity(0.9), item.color],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: item.color.withOpacity(0.3),
+                                blurRadius: isSmallScreen ? 8.0 : 12.0,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Center(
+                            child: FaIcon(
+                              item.icon,
+                              color: Colors.white,
+                              size: iconSize,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    
+                    SizedBox(height: isSmallScreen ? 4.0 : 6.0),
+                    
+                    Text(
+                      item.label,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: labelFontSize,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.darkText.withOpacity(0.7),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               );
             }).toList(),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildSocialMediaButton(
-    SocialMediaItem item, 
-    double buttonSize, 
-    double iconSize, 
-    double labelFontSize,
-    bool isSmallScreen
-  ) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Tooltip(
-          message: 'Open ${item.label}',
-          child: GestureDetector(
-            onTap: () => launchURL(item.url),
-            child: Container(
-              width: buttonSize,
-              height: buttonSize,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [item.color.withOpacity(0.9), item.color],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: item.color.withOpacity(0.3),
-                    blurRadius: isSmallScreen ? 8.0 : 12.0,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Center(
-                child: FaIcon(
-                  item.icon,
-                  color: Colors.white,
-                  size: iconSize,
-                ),
-              ),
-            ),
-          ),
-        ),
-
-        SizedBox(height: isSmallScreen ? 6.0 : 10.0),
-
-        Text(
-          item.label,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: labelFontSize,
-            fontWeight: FontWeight.w500,
-            color: AppColors.darkText.withOpacity(0.7),
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ],
     );
   }
 
@@ -854,6 +846,7 @@ class DeveloperInfoContent extends StatelessWidget {
             isSmallScreen: isSmallScreen,
             isMediumScreen: isMediumScreen,
           ),
+          SizedBox(height: isSmallScreen ? 8.0 : 12.0),
           _buildContactItem(
             icon: Icons.call_rounded,
             label: 'Mobile Number',
@@ -863,6 +856,7 @@ class DeveloperInfoContent extends StatelessWidget {
             isSmallScreen: isSmallScreen,
             isMediumScreen: isMediumScreen,
           ),
+          SizedBox(height: isSmallScreen ? 8.0 : 12.0),
           _buildContactItem(
             icon: Icons.location_on_rounded,
             label: 'Location',
@@ -896,77 +890,72 @@ class DeveloperInfoContent extends StatelessWidget {
                          isMediumScreen ? 15.0 : 
                          16.0;
     
-    return Column(
-      children: [
-        InkWell(
-          onTap: onTap,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(isSmallScreen ? 10.0 : 12.0),
+      child: Container(
+        padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.05),
           borderRadius: BorderRadius.circular(isSmallScreen ? 10.0 : 12.0),
-          child: Container(
-            padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(isSmallScreen ? 10.0 : 12.0),
-              border: Border.all(color: color.withOpacity(0.1)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(isSmallScreen ? 8.0 : 10.0),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.15),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    icon, 
-                    color: color, 
-                    size: iconSize
-                  ),
-                ),
-                SizedBox(width: isSmallScreen ? 12.0 : 16.0),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        label,
-                        style: TextStyle(
-                          fontSize: labelFontSize,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.darkText.withOpacity(0.6),
-                        ),
-                      ),
-                      SizedBox(height: isSmallScreen ? 3.0 : 4.0),
-                      Text(
-                        value,
-                        style: TextStyle(
-                          fontSize: valueFontSize,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.darkText,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: EdgeInsets.all(isSmallScreen ? 4.0 : 6.0),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    color: color,
-                    size: isSmallScreen ? 12.0 : 14.0,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          border: Border.all(color: color.withOpacity(0.1)),
         ),
-        if (!isLast) SizedBox(height: isSmallScreen ? 8.0 : 12.0),
-      ],
+        child: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(isSmallScreen ? 8.0 : 10.0),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon, 
+                color: color, 
+                size: iconSize
+              ),
+            ),
+            SizedBox(width: isSmallScreen ? 12.0 : 16.0),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: labelFontSize,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.darkText.withOpacity(0.6),
+                    ),
+                  ),
+                  SizedBox(height: isSmallScreen ? 3.0 : 4.0),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: valueFontSize,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.darkText,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: EdgeInsets.all(isSmallScreen ? 4.0 : 6.0),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.arrow_forward_ios_rounded,
+                color: color,
+                size: isSmallScreen ? 12.0 : 14.0,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -997,6 +986,7 @@ class DeveloperInfoContent extends StatelessWidget {
       child: Wrap(
         spacing: isSmallScreen ? 8.0 : 12.0,
         runSpacing: isSmallScreen ? 8.0 : 12.0,
+        alignment: WrapAlignment.center,
         children: skills.map((skill) => _buildSkillChip(
           skill, 
           isSmallScreen, 

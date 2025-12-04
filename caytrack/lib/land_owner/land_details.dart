@@ -1162,7 +1162,7 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
           throw Exception('Tea land size must be greater than 0');
         }
         landDataToUpdate['landSize'] = teaSize.toString();
-        landDataToUpdate['landSizeUnit'] = 'Hectares';
+        landDataToUpdate['landSizeUnit'] = 'Acre';
         landDataToUpdate['teaLandSize'] = teaSize.toString();
         
       } else if (_selectedCropType == 'Cinnamon') {
@@ -1171,7 +1171,7 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
           throw Exception('Cinnamon land size must be greater than 0');
         }
         landDataToUpdate['landSize'] = cinnamonSize.toString();
-        landDataToUpdate['landSizeUnit'] = 'Hectares';
+        landDataToUpdate['landSizeUnit'] = 'Acre';
         landDataToUpdate['cinnamonLandSize'] = cinnamonSize.toString();
         
       } else if (_selectedCropType == 'Both') {
@@ -1187,11 +1187,11 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
         // Create detailed land size description
         String landSizeDetails = '';
         if (teaSize > 0 && cinnamonSize > 0) {
-          landSizeDetails = 'Tea: ${teaSize}ha, Cinnamon: ${cinnamonSize}ha (Total: ${totalLandSize}ha)';
+          landSizeDetails = 'Tea: ${teaSize}Ac, Cinnamon: ${cinnamonSize}Ac (Total: ${totalLandSize}Ac)';
         } else if (teaSize > 0) {
-          landSizeDetails = 'Tea: ${teaSize}ha';
+          landSizeDetails = 'Tea: ${teaSize}Ac';
         } else {
-          landSizeDetails = 'Cinnamon: ${cinnamonSize}ha';
+          landSizeDetails = 'Cinnamon: ${cinnamonSize}Ac';
         }
         
         // Store both sizes separately AND total in landSize
@@ -1202,7 +1202,7 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
           landDataToUpdate['cinnamonLandSize'] = cinnamonSize.toString();
         }
         landDataToUpdate['landSize'] = totalLandSize.toString();
-        landDataToUpdate['landSizeUnit'] = 'Hectares';
+        landDataToUpdate['landSizeUnit'] = 'Acre';
         landDataToUpdate['landSizeDetails'] = landSizeDetails;
       }
 
@@ -1233,18 +1233,18 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
         final totalLandSize = teaSize + cinnamonSize;
         
         if (teaSize > 0 && cinnamonSize > 0) {
-          successMessage = "Land details updated successfully! Tea: ${teaSize}ha, Cinnamon: ${cinnamonSize}ha (Total: ${totalLandSize}ha)";
+          successMessage = "Land details updated successfully! Tea: ${teaSize}Ac, Cinnamon: ${cinnamonSize}Ac (Total: ${totalLandSize}Ac)";
         } else if (teaSize > 0) {
-          successMessage = "Land details updated successfully! Tea: ${teaSize}ha";
+          successMessage = "Land details updated successfully! Tea: ${teaSize}Ac";
         } else {
-          successMessage = "Land details updated successfully! Cinnamon: ${cinnamonSize}ha";
+          successMessage = "Land details updated successfully! Cinnamon: ${cinnamonSize}Ac";
         }
       } else if (_selectedCropType == 'Tea') {
         final teaSize = double.tryParse(_landSizeController.text.trim()) ?? 0.0;
-        successMessage = "Land details updated successfully! Tea: ${teaSize}ha";
+        successMessage = "Land details updated successfully! Tea: ${teaSize}Ac";
       } else if (_selectedCropType == 'Cinnamon') {
         final cinnamonSize = double.tryParse(_landSizeController.text.trim()) ?? 0.0;
-        successMessage = "Land details updated successfully! Cinnamon: ${cinnamonSize}ha";
+        successMessage = "Land details updated successfully! Cinnamon: ${cinnamonSize}Ac";
       }
       
       _showStatusMessage(successMessage);
@@ -1393,16 +1393,16 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
                       if (_selectedCropType == 'Tea')
                         _buildLandSizeField(
                           label: 'Tea Land Size',
-                          hint: 'Enter tea land size in hectares (e.g., 5)',
+                          hint: 'Enter tea land size in Acre (e.g., 5)',
                           controller: _landSizeController,
-                          unit: 'ha',
+                          unit: 'Ac',
                         )
                       else if (_selectedCropType == 'Cinnamon')
                         _buildLandSizeField(
                           label: 'Cinnamon Land Size',
-                          hint: 'Enter cinnamon land size in hectares (e.g., 3)',
+                          hint: 'Enter cinnamon land size in Acre (e.g., 3)',
                           controller: _landSizeController,
-                          unit: 'ha',
+                          unit: 'Ac',
                         )
                       else if (_selectedCropType == 'Both')
                         _buildBothCropsLandSizeFields(),
@@ -1603,7 +1603,7 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
               SizedBox(width: isSmallScreen ? 6 : 8),
               Expanded(
                 child: Text(
-                  'Please enter land sizes for both crops separately (in hectares)',
+                  'Please enter land sizes for both crops separately (in Acre)',
                   style: TextStyle(
                     fontSize: isSmallScreen ? 12 : 13,
                     color: AppColors.darkText.withOpacity(0.8),
@@ -1689,7 +1689,7 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
                 borderRadius: BorderRadius.circular(isSmallScreen ? 4 : 6),
               ),
               child: Text(
-                'in hectares',
+                'in Acre',
                 style: TextStyle(
                   fontSize: isSmallScreen ? 10 : 11,
                   fontWeight: FontWeight.w500,
@@ -1750,7 +1750,7 @@ class _LandOwnerProfileContentState extends State<LandOwnerProfileContent> {
                   horizontal: isSmallScreen ? 12 : 16,
                 ),
                 child: Text(
-                  'ha',
+                  'Ac',
                   style: TextStyle(
                     fontSize: isSmallScreen ? 14 : 16,
                     fontWeight: FontWeight.w600,

@@ -67,6 +67,11 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
   late double _screenHeight;
   bool _showListInLandscape = false;
 
+  // Land photos state
+  int _currentPhotoIndex = 0;
+  bool _showPhotoViewer = false;
+  List<String> _currentLandPhotos = [];
+
   // Province data for Sri Lanka
   final List<String> _provinces = [
     'All Provinces',
@@ -106,7 +111,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Check orientation when dependencies change
     _updateScreenDimensions();
   }
 
@@ -132,7 +136,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
     final String uid = user.uid;
 
     try {
-      // Fetch User Name and Role from 'users' collection
       final userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
       if (userDoc.exists) {
         final userData = userDoc.data();
@@ -143,7 +146,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
         });
       }
       
-      // Fetch Factory Name from 'factories' collection
       final factoryDoc = await FirebaseFirestore.instance.collection('factories').doc(uid).get();
       if (factoryDoc.exists) {
         setState(() {
@@ -180,7 +182,7 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
       
       for (var landDoc in landsSnapshot.docs) {
         final landData = landDoc.data() as Map<String, dynamic>;
-        final userId = landDoc.id; // lands collection uses userId as document ID
+        final userId = landDoc.id;
         
         landsMap[userId] = {
           'landDetails': landData,
@@ -192,9 +194,7 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
       for (var locDoc in locationSnapshot.docs) {
         final locData = locDoc.data() as Map<String, dynamic>;
         
-        // Only include documents with valid latitude and longitude
         if (locData['latitude'] != null && locData['longitude'] != null) {
-          // Get userId
           String userId = '';
           
           if (locData['userId'] != null) {
@@ -207,13 +207,11 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
             userId = locDoc.id;
           }
           
-          // Get owner details
           String ownerName = 'Unknown Owner';
           String contactNumber = 'N/A';
           String ownerImageUrl = '';
           
           try {
-            // Get owner name and contact from users collection
             final userDoc = await _firestore.collection('users').doc(userId).get();
             if (userDoc.exists) {
               final userData = userDoc.data() as Map<String, dynamic>;
@@ -221,13 +219,11 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
               contactNumber = userData['contactNumber']?.toString() ?? 'N/A';
               ownerImageUrl = userData['profileImageUrl']?.toString() ?? '';
             } else {
-              // Fallback to land_location data
               if (locData['ownerName'] != null) {
                 ownerName = locData['ownerName'].toString();
               }
             }
             
-            // Parse coordinates
             double? latitude;
             double? longitude;
             
@@ -244,10 +240,8 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
             }
 
             if (latitude != null && longitude != null) {
-              // Check if we have land details from lands collection
               final landDetails = landsMap[userId];
               
-              // Create display name
               String displayName = "${ownerName}'s Land";
               String landName = 'Unnamed Land';
               String cropType = 'N/A';
@@ -265,11 +259,10 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
               String cinnamonLandSize = 'N/A';
               String landSizeUnit = 'Hectares';
               
-              // Use land details if available
               if (landDetails != null) {
                 final details = landDetails['landDetails'];
                 landName = details['landName']?.toString() ?? 'Unnamed Land';
-                displayName = landName; // Use actual land name
+                displayName = landName;
                 cropType = details['cropType']?.toString() ?? 'N/A';
                 landSize = details['landSize']?.toString() ?? 'N/A';
                 landSizeDetails = details['landSizeDetails']?.toString() ?? '';
@@ -284,12 +277,11 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
                 cinnamonLandSize = details['cinnamonLandSize']?.toString() ?? 'N/A';
                 landSizeUnit = details['landSizeUnit']?.toString() ?? 'Hectares';
                 
-                // Get land photos
+                // Get land photos from lands collection
                 if (details['landPhotos'] != null && details['landPhotos'] is List) {
                   landPhotos = List<String>.from(details['landPhotos'] as List);
                 }
               } else {
-                // Use land_location address
                 address = locData['address']?.toString() ?? 'Address not available';
                 if (address.contains('Lat:') && address.contains('Lng:')) {
                   address = "Location at ${latitude.toStringAsFixed(6)}, ${longitude.toStringAsFixed(6)}";
@@ -312,11 +304,10 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
                 'locationType': locData['locationType']?.toString() ?? 'manual',
                 'createdAt': locData['createdAt'],
                 'updatedAt': locData['updatedAt'],
-                // Land details from lands collection
                 'cropType': cropType,
                 'landSize': landSize,
                 'landSizeDetails': landSizeDetails,
-                'landPhotos': landPhotos,
+                'landPhotos': landPhotos, // Land photos from lands collection
                 'province': province,
                 'district': district,
                 'village': village,
@@ -332,19 +323,17 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
             }
           } catch (e) {
             debugPrint("Error processing land document ${locDoc.id}: $e");
-            // Skip this document if there's an error
             continue;
           }
         }
       }
 
-      // Calculate center of all locations
       if (allLocations.isNotEmpty) {
         final avgLat = allLocations.map((l) => l['latitude'] as double).reduce((a, b) => a + b) / allLocations.length;
         final avgLng = allLocations.map((l) => l['longitude'] as double).reduce((a, b) => a + b) / allLocations.length;
         _centerLocation = LatLng(avgLat, avgLng);
       } else {
-        _centerLocation = const LatLng(7.8731, 80.7718); // Sri Lanka center
+        _centerLocation = const LatLng(7.8731, 80.7718);
       }
 
       setState(() {
@@ -365,7 +354,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
   void _applyFilters() {
     List<Map<String, dynamic>> filtered = List.from(_landLocations);
 
-    // Apply search filter
     if (_searchController.text.isNotEmpty) {
       final searchLower = _searchController.text.toLowerCase();
       filtered = filtered.where((land) {
@@ -389,7 +377,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
       }).toList();
     }
 
-    // Apply province filter
     if (_selectedProvince != null && _selectedProvince != 'All Provinces') {
       final provinceLower = _selectedProvince!.toLowerCase();
       filtered = filtered.where((land) {
@@ -407,7 +394,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
   }
 
   bool _checkProvinceMatch(String province, String address) {
-    // Simple province-district mapping
     final provinceMap = {
       'western': ['colombo', 'gampaha', 'kalutara'],
       'central': ['kandy', 'matale', 'nuwara eliya'],
@@ -438,7 +424,160 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
   }
 
   void _handleDrawerNavigate(String routeName) {
-    Navigator.pop(context); // Close drawer
+    Navigator.pop(context);
+  }
+
+  // 🌟 NEW: Show land photos
+  void _showLandPhotos(List<String> photos) {
+    if (photos.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('No photos available for this land'),
+          backgroundColor: AppColors.warningOrange,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _currentLandPhotos = photos;
+      _currentPhotoIndex = 0;
+      _showPhotoViewer = true;
+    });
+  }
+
+  // 🌟 NEW: Land photos viewer widget
+  Widget _buildPhotoViewer() {
+    if (!_showPhotoViewer || _currentLandPhotos.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: EdgeInsets.all(_screenWidth < 360 ? 10 : 20),
+      child: Container(
+        height: _screenHeight * 0.7,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Land Photos (${_currentPhotoIndex + 1}/${_currentLandPhotos.length})',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.darkText,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () {
+                      setState(() {
+                        _showPhotoViewer = false;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+            
+            // Photo display
+            Expanded(
+              child: PageView.builder(
+                itemCount: _currentLandPhotos.length,
+                onPageChanged: (index) {
+                  setState(() {
+                    _currentPhotoIndex = index;
+                  });
+                },
+                itemBuilder: (context, index) {
+                  return Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 10),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      image: DecorationImage(
+                        image: NetworkImage(_currentLandPhotos[index]),
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            
+            // Photo indicators
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(_currentLandPhotos.length, (index) {
+                  return Container(
+                    width: 8,
+                    height: 8,
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _currentPhotoIndex == index 
+                          ? AppColors.primaryBlue 
+                          : Colors.grey.shade300,
+                    ),
+                  );
+                }),
+              ),
+            ),
+            
+            // Navigation buttons
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: _currentPhotoIndex > 0
+                        ? () {
+                            setState(() {
+                              _currentPhotoIndex--;
+                            });
+                          }
+                        : null,
+                    icon: const Icon(Icons.arrow_back, size: 16),
+                    label: const Text('Previous'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryBlue,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: _currentPhotoIndex < _currentLandPhotos.length - 1
+                        ? () {
+                            setState(() {
+                              _currentPhotoIndex++;
+                            });
+                          }
+                        : null,
+                    icon: const Icon(Icons.arrow_forward, size: 16),
+                    label: const Text('Next'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryBlue,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildDashboardHeader(BuildContext context) {
@@ -470,7 +609,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Menu button
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -485,10 +623,8 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
           
           const SizedBox(height: 8),
           
-          // User info
           Row(
             children: [
-              // Profile Picture
               Container(
                 width: 60,
                 height: 60,
@@ -523,7 +659,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
               
               const SizedBox(width: 12),
               
-              // User Info
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -565,7 +700,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
           
           const SizedBox(height: 16), 
           
-          // Page Title
           Text(
             'Land Locations',
             style: const TextStyle(
@@ -599,7 +733,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
       ),
       child: Column(
         children: [
-          // Search Bar
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10),
             decoration: BoxDecoration(
@@ -644,7 +777,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
           
           const SizedBox(height: 10),
           
-          // Filter Toggle Button
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -673,11 +805,9 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
             ],
           ),
           
-          // Filters (Collapsible)
           if (_showFilters) ...[
             const SizedBox(height: 10),
             
-            // Province Filter
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -731,7 +861,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
             
             const SizedBox(height: 12),
             
-            // Clear Filters Button
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
@@ -764,8 +893,8 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
 
   Widget _buildMapSection() {
     final mapHeight = _isPortrait 
-        ? (_screenHeight * 0.35) // 35% of screen height in portrait
-        : (_screenHeight * 0.65); // 65% of screen height in landscape
+        ? (_screenHeight * 0.35)
+        : (_screenHeight * 0.65);
     
     return Container(
       height: mapHeight,
@@ -803,7 +932,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
               userAgentPackageName: 'com.example.land_locations',
             ),
             
-            // Markers for all land locations
             MarkerLayer(
               markers: _filteredLandLocations.map((land) {
                 final latLng = LatLng(land['latitude'] as double, land['longitude'] as double);
@@ -819,7 +947,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
                         _selectedLocation = latLng;
                         _selectedLand = land;
                       });
-                      // Center map on selected location
                       _mapController.move(latLng, _zoomLevel);
                     },
                     child: Icon(
@@ -832,7 +959,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
               }).toList(),
             ),
             
-            // Selected location marker
             if (_selectedLocation != null)
               MarkerLayer(
                 markers: [
@@ -925,14 +1051,15 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
     final displayName = land['displayName'] ?? land['landName'] ?? 'Unnamed Land';
     final cropType = land['cropType'] ?? 'N/A';
     final isSmallScreen = _screenWidth < 360;
-    
+    final landPhotos = land['landPhotos'] as List<String>? ?? [];
+    final hasPhotos = landPhotos.isNotEmpty;
+
     return GestureDetector(
       onTap: () {
         setState(() {
           _selectedLand = land;
           _selectedLocation = LatLng(land['latitude'] as double, land['longitude'] as double);
         });
-        // Center map on this land
         _mapController.move(_selectedLocation!, _zoomLevel);
       },
       child: Container(
@@ -1011,7 +1138,7 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
                         const SizedBox(width: 3),
                         Flexible(
                           child: Text(
-                            'Size: ${land['landSize']} ${land['landSizeUnit'] ?? 'ha'}',
+                            'Size: ${land['landSize']} ${land['landSizeUnit'] ?? 'Ac'}',
                             style: TextStyle(
                               fontSize: isSmallScreen ? 10 : 11,
                               color: AppColors.secondaryText,
@@ -1037,26 +1164,68 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
                       ],
                     ),
                     
-                    // Crop type badge
-                    if (cropType != 'N/A')
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: _getCropColor(cropType).withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            cropType,
-                            style: TextStyle(
-                              fontSize: isSmallScreen ? 10 : 11,
-                              fontWeight: FontWeight.w600,
-                              color: _getCropColor(cropType),
+                    // Photo indicator and Crop type badge
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Row(
+                        children: [
+                          // Photos button if available
+                          if (hasPhotos)
+                            GestureDetector(
+                              onTap: () => _showLandPhotos(landPhotos),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                margin: const EdgeInsets.only(right: 8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primaryBlue.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: AppColors.primaryBlue.withOpacity(0.3),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.photo,
+                                      size: 10,
+                                      color: AppColors.primaryBlue,
+                                    ),
+                                    const SizedBox(width: 3),
+                                    Text(
+                                      '${landPhotos.length} photos',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.primaryBlue,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
+                          
+                          // Crop type badge
+                          if (cropType != 'N/A')
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: _getCropColor(cropType).withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                cropType,
+                                style: TextStyle(
+                                  fontSize: isSmallScreen ? 10 : 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: _getCropColor(cropType),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
+                    ),
                   ],
                 ),
               ),
@@ -1084,67 +1253,13 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
     );
   }
 
-  String _getShortAddress(Map<String, dynamic> land) {
-    // Try to get a short address from available fields
-    if (land['village'] != null && land['village'] != 'N/A') {
-      final village = land['village'];
-      return village.length > 15 ? '${village.substring(0, 15)}...' : village;
-    } else if (land['district'] != null && land['district'] != 'N/A') {
-      final district = land['district'];
-      return district.length > 15 ? '${district.substring(0, 15)}...' : district;
-    } else if (land['address'] != null && land['address'] != 'Address not available') {
-      final address = land['address'];
-      if (address.length > 20) {
-        return '${address.substring(0, 20)}...';
-      }
-      return address;
-    }
-    return 'Location';
-  }
-
-  Color _getCropColor(String? cropType) {
-    switch (cropType?.toLowerCase()) {
-      case 'tea':
-        return AppColors.successGreen;
-      case 'cinnamon':
-        return AppColors.warningOrange;
-      case 'both':
-        return AppColors.accentTeal;
-      case 'paddy':
-        return const Color(0xFF8BC34A);
-      case 'vegetables':
-        return AppColors.primaryBlue;
-      case 'fruits':
-        return AppColors.accentRed;
-      default:
-        return AppColors.secondaryText;
-    }
-  }
-
-  IconData _getCropIcon(String? cropType) {
-    switch (cropType?.toLowerCase()) {
-      case 'tea':
-        return Icons.emoji_nature;
-      case 'cinnamon':
-        return Icons.spa;
-      case 'both':
-        return Icons.all_inclusive;
-      case 'paddy':
-        return Icons.grass;
-      case 'vegetables':
-        return Icons.eco;
-      case 'fruits':
-        return Icons.apple;
-      default:
-        return Icons.terrain;
-    }
-  }
-
   Widget _buildSelectedLandDetails() {
     if (_selectedLand == null) return const SizedBox.shrink();
     
     final cropType = _selectedLand!['cropType'] ?? 'N/A';
     final isSmallScreen = _screenWidth < 360;
+    final landPhotos = _selectedLand!['landPhotos'] as List<String>? ?? [];
+    final hasPhotos = landPhotos.isNotEmpty;
     
     return Container(
       padding: const EdgeInsets.all(12),
@@ -1277,6 +1392,94 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
             ),
           ),
           
+          // 🌟 NEW: Land photos preview
+          if (hasPhotos) ...[
+            const SizedBox(height: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.photo_library, size: 18, color: AppColors.primaryBlue),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Land Photos (${landPhotos.length})',
+                      style: TextStyle(
+                        fontSize: isSmallScreen ? 13 : 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.darkText,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 80,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: landPhotos.length,
+                    itemBuilder: (context, index) {
+                      return GestureDetector(
+                        onTap: () => _showLandPhotos(landPhotos),
+                        child: Container(
+                          width: 100,
+                          height: 80,
+                          margin: EdgeInsets.only(right: index < landPhotos.length - 1 ? 8 : 0),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            //border: Border.all(color: AppColors.borderColor),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(
+                              landPhotos[index],
+                              fit: BoxFit.cover,
+                              loadingBuilder: (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return Center(
+                                  child: CircularProgressIndicator(
+                                    value: loadingProgress.expectedTotalBytes != null
+                                        ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                        : null,
+                                    color: AppColors.primaryBlue,
+                                    strokeWidth: 2,
+                                  ),
+                                );
+                              },
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: Colors.grey[200],
+                                  child: const Icon(Icons.broken_image, color: Colors.grey),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: () => _showLandPhotos(landPhotos),
+                    icon: const Icon(Icons.open_in_full, size: 14),
+                    label: Text(
+                      'View All Photos',
+                      style: TextStyle(
+                        fontSize: isSmallScreen ? 11 : 12,
+                      ),
+                    ),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.primaryBlue,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          
           // Details list
           ..._buildDetailRows(),
           
@@ -1324,9 +1527,9 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
       final additionalFields = [
         {'label': 'Land Size', 'value': '${_selectedLand!['landSize']} ${_selectedLand!['landSizeUnit'] ?? 'Hectares'}'},
         if (_selectedLand!['teaLandSize'] != null && _selectedLand!['teaLandSize'] != 'N/A')
-          {'label': 'Tea Land Size', 'value': '${_selectedLand!['teaLandSize']} ha'},
+          {'label': 'Tea Land Size', 'value': '${_selectedLand!['teaLandSize']} Ac'},
         if (_selectedLand!['cinnamonLandSize'] != null && _selectedLand!['cinnamonLandSize'] != 'N/A')
-          {'label': 'Cinnamon Land Size', 'value': '${_selectedLand!['cinnamonLandSize']} ha'},
+          {'label': 'Cinnamon Land Size', 'value': '${_selectedLand!['cinnamonLandSize']} Ac'},
         if (_selectedLand!['province'] != null && _selectedLand!['province'] != 'N/A')
           {'label': 'Province', 'value': _selectedLand!['province']},
         if (_selectedLand!['district'] != null && _selectedLand!['district'] != 'N/A')
@@ -1377,6 +1580,61 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
     }
     
     return rows;
+  }
+
+  String _getShortAddress(Map<String, dynamic> land) {
+    if (land['village'] != null && land['village'] != 'N/A') {
+      final village = land['village'];
+      return village.length > 15 ? '${village.substring(0, 15)}...' : village;
+    } else if (land['district'] != null && land['district'] != 'N/A') {
+      final district = land['district'];
+      return district.length > 15 ? '${district.substring(0, 15)}...' : district;
+    } else if (land['address'] != null && land['address'] != 'Address not available') {
+      final address = land['address'];
+      if (address.length > 20) {
+        return '${address.substring(0, 20)}...';
+      }
+      return address;
+    }
+    return 'Location';
+  }
+
+  Color _getCropColor(String? cropType) {
+    switch (cropType?.toLowerCase()) {
+      case 'tea':
+        return AppColors.successGreen;
+      case 'cinnamon':
+        return AppColors.warningOrange;
+      case 'both':
+        return AppColors.accentTeal;
+      case 'paddy':
+        return const Color(0xFF8BC34A);
+      case 'vegetables':
+        return AppColors.primaryBlue;
+      case 'fruits':
+        return AppColors.accentRed;
+      default:
+        return AppColors.secondaryText;
+    }
+  }
+
+  IconData _getCropIcon(String? cropType) {
+    switch (cropType?.toLowerCase()) {
+      case 'tea':
+        return Icons.emoji_nature;
+      case 'cinnamon':
+        return Icons.spa;
+      case 'both':
+        return Icons.all_inclusive;
+      case 'paddy':
+        return Icons.grass;
+      case 'vegetables':
+        return Icons.eco;
+      case 'fruits':
+        return Icons.apple;
+      default:
+        return Icons.terrain;
+    }
   }
 
   Widget _buildEmptyState() {
@@ -1517,110 +1775,100 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
   }
 
   Widget _buildMainContent() {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      child: Column(
-        children: [
-          // Filters Section
-          _buildFilterSection(),
-          
-          // Map Section
-          _buildMapSection(),
-          
-          // Selected Land Details
-          if (_selectedLand != null)
-            _buildSelectedLandDetails(),
-          
-          // Loading State
-          if (_isLoading)
-            _buildLoadingState()
-          
-          // Error State
-          else if (_errorMessage != null)
-            _buildErrorState()
-          
-          // Empty State
-          else if (_filteredLandLocations.isEmpty)
-            _buildEmptyState()
-          
-          // Lands List
-          else
-            _buildLandList(),
-          
-          // Footer
-          Container(
-            padding: const EdgeInsets.all(16.0),
-            child: Text(
-              'Developed by Malitha Tishamal',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.darkText.withOpacity(0.7),
-                fontSize: 11,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLandscapeLayout() {
-    return Row(
+    return Stack(
       children: [
-        // Left side - Map
-        Expanded(
-          flex: 3,
-          child: _buildMapSection(),
-        ),
-        
-        const SizedBox(width: 12),
-        
-        // Right side - Content
-        Expanded(
-          flex: 2,
+        SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
           child: Column(
             children: [
-              // Filters in landscape
-              Expanded(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  child: Column(
-                    children: [
-                      _buildFilterSection(),
-                      
-                      // Selected Land Details
-                      if (_selectedLand != null)
-                        _buildSelectedLandDetails(),
-                      
-                      // Loading/Error/Empty/Lands List
-                      if (_isLoading)
-                        _buildLoadingState()
-                      else if (_errorMessage != null)
-                        _buildErrorState()
-                      else if (_filteredLandLocations.isEmpty)
-                        _buildEmptyState()
-                      else
-                        _buildLandList(),
-                    ],
-                  ),
-                ),
-              ),
-              
-              // Footer
+              _buildFilterSection(),
+              _buildMapSection(),
+              if (_selectedLand != null)
+                _buildSelectedLandDetails(),
+              if (_isLoading)
+                _buildLoadingState()
+              else if (_errorMessage != null)
+                _buildErrorState()
+              else if (_filteredLandLocations.isEmpty)
+                _buildEmptyState()
+              else
+                _buildLandList(),
               Container(
-                padding: const EdgeInsets.all(8.0),
+                padding: const EdgeInsets.all(16.0),
                 child: Text(
                   'Developed by Malitha Tishamal',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: AppColors.darkText.withOpacity(0.7),
-                    fontSize: 10,
+                    fontSize: 11,
                   ),
                 ),
               ),
             ],
           ),
         ),
+        
+        // 🌟 Photo viewer overlay
+        if (_showPhotoViewer)
+          _buildPhotoViewer(),
+      ],
+    );
+  }
+
+  Widget _buildLandscapeLayout() {
+    return Stack(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              flex: 3,
+              child: _buildMapSection(),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              flex: 2,
+              child: Column(
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      child: Column(
+                        children: [
+                          _buildFilterSection(),
+                          if (_selectedLand != null)
+                            _buildSelectedLandDetails(),
+                          if (_isLoading)
+                            _buildLoadingState()
+                          else if (_errorMessage != null)
+                            _buildErrorState()
+                          else if (_filteredLandLocations.isEmpty)
+                            _buildEmptyState()
+                          else
+                            _buildLandList(),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Text(
+                      'Developed by Malitha Tishamal',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.darkText.withOpacity(0.7),
+                        fontSize: 10,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        
+        // 🌟 Photo viewer overlay
+        if (_showPhotoViewer)
+          _buildPhotoViewer(),
       ],
     );
   }

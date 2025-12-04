@@ -4,7 +4,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'land_owner_drawer.dart';
+import 'export_product_details.dart'; // Make sure to import this
 
 // Reusing AppColors locally
 class AppColors {
@@ -23,6 +25,10 @@ class AppColors {
   static const Color headerGradientStart = Color(0xFF869AEC);
   static const Color headerGradientEnd = Color(0xFFF7FAFF);
   static const Color headerTextDark = Color(0xFF333333);
+  static const Color info = Color(0xFF2196F3);
+  static const Color textTertiary = Color(0xFF999999);
+  static const Color hover = Color(0xFFF5F7FA);
+  static const Color border = Color(0xFFE1E5E9);
 }
 
 // -----------------------------------------------------------------------------
@@ -126,7 +132,7 @@ class _LandOwnerDashboardState extends State<LandOwnerDashboard> {
         final landData = landDoc.data();
         setState(() {
           _landSize = landData?['landSize']?.toString();
-          _landSizeUnit = landData?['landSizeUnit'] ?? 'Hectares';
+          _landSizeUnit = landData?['landSizeUnit'] ?? 'Acre';
           _cropType = landData?['cropType'];
           _teaLandSize = landData?['teaLandSize']?.toString();
           _cinnamonLandSize = landData?['cinnamonLandSize']?.toString();
@@ -333,6 +339,10 @@ void _fetchAssociatedFactories() async {
                         const SizedBox(height: 30),
                         _buildAssociatedFactoriesSection(),
                         const SizedBox(height: 30),
+                        
+                        // ✅ Export Summary Section
+                        _buildExportSummarySection(),
+                        const SizedBox(height: 30),
                       ],
                     ),
                   ),
@@ -359,7 +369,227 @@ void _fetchAssociatedFactories() async {
   // -----------------------------------------------------------------
   // --- WIDGET BUILDING METHODS ---
   // -----------------------------------------------------------------
+  // -----------------------------------------------------------------
+  // --- EXPORT SUMMARY SECTION ---
+  // -----------------------------------------------------------------
 
+  Widget _buildExportSummarySection() {
+    return FutureBuilder<QuerySnapshot>(
+      future: FirebaseFirestore.instance
+          .collection('land_orders')
+          .where('landOwnerId', isEqualTo: currentUser?.uid)
+          .limit(5) // Show only last 5 orders
+          .get(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildExportSummaryLoading();
+        }
+
+        if (snapshot.hasError || !snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return _buildNoExportHistory();
+        }
+
+        final orders = snapshot.data!.docs;
+        final totalOrders = orders.length;
+        double totalQuantity = 0;
+        double teaTotal = 0;
+        double cinnamonTotal = 0;
+        int deliveredOrders = 0;
+
+        for (var order in orders) {
+          final data = order.data() as Map<String, dynamic>;
+          final status = data['status']?.toString().toLowerCase() ?? '';
+          final cropType = data['cropType'] ?? '';
+          final totalQty = double.tryParse(data['totalQuantity']?.toString() ?? '0') ?? 0;
+          final teaQty = double.tryParse(data['teaQuantity']?.toString() ?? '0') ?? 0;
+          final cinnamonQty = double.tryParse(data['cinnamonQuantity']?.toString() ?? '0') ?? 0;
+
+          totalQuantity += totalQty;
+          
+          if (cropType == 'Tea') {
+            teaTotal += totalQty;
+          } else if (cropType == 'Cinnamon') {
+            cinnamonTotal += cinnamonQty;
+          } else if (cropType == 'Both') {
+            teaTotal += teaQty;
+            cinnamonTotal += cinnamonQty;
+          }
+
+          if (status.contains('delivered') || 
+              status.contains('completed') || 
+              status.contains('accepted')) {
+            deliveredOrders++;
+          }
+        }
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.cardBackground,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryBlue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.inventory_outlined,
+                          color: AppColors.primaryBlue,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'Recent Export Summary',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.darkText,
+                        ),
+                      ),
+                    ],
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      // Navigate to export history page
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ExportProductsHistoryPage(),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryBlue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Row(
+                        children: [
+                          Text(
+                            'View All',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primaryBlue,
+                            ),
+                          ),
+                          SizedBox(width: 4),
+                          Icon(
+                            Icons.arrow_forward,
+                            size: 14,
+                            color: AppColors.primaryBlue,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              
+              // Quick Stats Row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildExportStatCard(
+                    title: 'Total Exports',
+                    value: totalOrders.toString(),
+                    icon: Icons.shopping_cart_checkout,
+                    color: AppColors.primaryBlue,
+                  ),
+                  _buildExportStatCard(
+                    title: 'Delivered',
+                    value: deliveredOrders.toString(),
+                    icon: Icons.check_circle,
+                    color: AppColors.successGreen,
+                  ),
+                  _buildExportStatCard(
+                    title: 'Total Qty',
+                    value: '${totalQuantity.toStringAsFixed(0)} kg',
+                    icon: Icons.scale,
+                    color: AppColors.purpleAccent,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              
+              // Crop-wise breakdown
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Crop Breakdown',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.darkText,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    if (teaTotal > 0)
+                      _buildCropProgress(
+                        label: 'Tea',
+                        value: teaTotal,
+                        total: totalQuantity,
+                        color: AppColors.successGreen,
+                      ),
+                    if (cinnamonTotal > 0)
+                      _buildCropProgress(
+                        label: 'Cinnamon',
+                        value: cinnamonTotal,
+                        total: totalQuantity,
+                        color: AppColors.warningOrange,
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              
+              // Last 3 orders preview
+              if (orders.length > 0) ...[
+                const Text(
+                  'Recent Exports',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.darkText,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ...orders.take(3).map((order) => _buildOrderPreviewItem(order)).toList(),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
   Widget _buildDashboardHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
@@ -476,150 +706,147 @@ void _fetchAssociatedFactories() async {
       physics: const NeverScrollableScrollPhysics(),
       children: [
         _buildLandAreaMetricCard(context),
-        _buildMetricCard(
-          context,
-          'Associated Factories',
-          '${_allAssociatedFactories.length}',
-          Icons.factory,
-          AppColors.primaryBlue,
-        ),
       ],
     );
   }
 
   Widget _buildLandAreaMetricCard(BuildContext context) {
-    String displayValue = 'Loading...';
-    String displayTitle = 'Land Area';
-    String? detailsText;
+  String displayValue = 'Loading...';
+  String displayTitle = 'Land Area';
+  String? detailsText;
 
-    if (_cropType != null && _landSize != null) {
-      if (_cropType == 'Tea') {
-        displayValue = '${_landSize} ${_landSizeUnit ?? "ha"}';
-        displayTitle = 'Tea Land Area';
-        detailsText = 'Tea cultivation land size';
-      } else if (_cropType == 'Cinnamon') {
-        displayValue = '${_landSize} ${_landSizeUnit ?? "ha"}';
-        displayTitle = 'Cinnamon Land Area';
-        detailsText = 'Cinnamon cultivation land size';
-      } else if (_cropType == 'Both') {
-        double teaSize = double.tryParse(_teaLandSize ?? '0') ?? 0;
-        double cinnamonSize = double.tryParse(_cinnamonLandSize ?? '0') ?? 0;
-        double totalSize = teaSize + cinnamonSize;
+  if (_cropType != null && _landSize != null) {
+    if (_cropType == 'Tea') {
+      displayValue = '${_landSize} ${_landSizeUnit ?? "Ac"}';
+      displayTitle = 'Tea Land Area';
+      detailsText = 'Tea cultivation land size';
+    } else if (_cropType == 'Cinnamon') {
+      displayValue = '${_landSize} ${_landSizeUnit ?? "Ac"}';
+      displayTitle = 'Cinnamon Land Area';
+      detailsText = 'Cinnamon cultivation land size';
+    } else if (_cropType == 'Both') {
+      double teaSize = double.tryParse(_teaLandSize ?? '0') ?? 0;
+      double cinnamonSize = double.tryParse(_cinnamonLandSize ?? '0') ?? 0;
+      double totalSize = teaSize + cinnamonSize;
 
-        displayValue = '${totalSize.toStringAsFixed(1)} ${_landSizeUnit ?? "ha"}';
-        displayTitle = 'Total Land Area';
+      displayValue = '${totalSize.toStringAsFixed(1)} ${_landSizeUnit ?? "Ac"}';
+      displayTitle = 'Total Land Area';
 
-        if (teaSize > 0 && cinnamonSize > 0) {
-          detailsText = 'Tea: ${teaSize}ha, Cinnamon: ${cinnamonSize}ha';
-        } else if (teaSize > 0) {
-          detailsText = 'Tea: ${teaSize}ha';
-        } else if (cinnamonSize > 0) {
-          detailsText = 'Cinnamon: ${cinnamonSize}ha';
-        } else {
-          detailsText = 'No specific crop data';
-        }
+      if (teaSize > 0 && cinnamonSize > 0) {
+        detailsText = 'Tea: ${teaSize}Ac, Cinnamon: ${cinnamonSize}Ac';
+      } else if (teaSize > 0) {
+        detailsText = 'Tea: ${teaSize}Ac';
+      } else if (cinnamonSize > 0) {
+        detailsText = 'Cinnamon: ${cinnamonSize}Ac';
       } else {
-        displayValue = '${_landSize ?? "0"} ${_landSizeUnit ?? "ha"}';
-        detailsText = 'General land area';
+        detailsText = 'No specific crop data';
       }
     } else {
-      displayValue = 'No Data';
-      detailsText = 'Land details not available';
+      displayValue = '${_landSize ?? "0"} ${_landSizeUnit ?? "Ac"}';
+      detailsText = 'General land area';
     }
+  } else {
+    displayValue = 'No Data';
+    detailsText = 'Land details not available';
+  }
 
-    return GestureDetector(
-      onTap: () {
-        _showLandSizeDetailsModal();
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.cardBackground,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
+  return GestureDetector(
+    onTap: () {
+      _showLandSizeDetailsModal();
+    },
+    child: Container(
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12), // reduced padding
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            // Icon Box
+            Container(
+              padding: const EdgeInsets.all(6), // smaller padding
+              decoration: BoxDecoration(
+                color: _getCropColor().withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                _getCropIcon(),
+                color: _getCropColor(),
+                size: 16, // smaller icon
+              ),
             ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
+
+            const SizedBox(height: 6),
+
+            // Main Value
+            Text(
+              displayValue,
+              style: const TextStyle(
+                fontSize: 16, // reduced from 20
+                fontWeight: FontWeight.bold,
+                color: AppColors.darkText,
+              ),
+            ),
+
+            // Title
+            Text(
+              displayTitle,
+              style: const TextStyle(
+                fontSize: 9, // kept small
+                color: AppColors.secondaryText,
+              ),
+            ),
+
+            // Details
+            if (detailsText != null && detailsText.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  detailsText,
+                  style: TextStyle(
+                    fontSize: 8, // reduced from 9
+                    color: const Color.fromARGB(255, 61, 122, 191).withOpacity(0.8),
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+
+            // Crop Badge
+            if (_cropType != null)
               Container(
-                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(top: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), // smaller padding
                 decoration: BoxDecoration(
                   color: _getCropColor().withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(5),
                 ),
-                child: Icon(
-                  _getCropIcon(),
-                  color: _getCropColor(),
-                  size: 20,
+                child: Text(
+                  _cropType!,
+                  style: TextStyle(
+                    fontSize: 8, // reduced from 10
+                    fontWeight: FontWeight.w600,
+                    color: _getCropColor(),
+                  ),
                 ),
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 2),
-                  Text(
-                    displayValue,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.darkText,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    displayTitle,
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: AppColors.secondaryText,
-                    ),
-                  ),
-                  if (detailsText != null && detailsText.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Text(
-                        detailsText,
-                        style: TextStyle(
-                          fontSize: 9,
-                          color: const Color.fromARGB(255, 61, 122, 191).withOpacity(0.8),
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  if (_cropType != null)
-                    Container(
-                      margin: const EdgeInsets.only(top: 8),
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: _getCropColor().withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        _cropType!,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: _getCropColor(),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ],
-          ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
 
   Widget _buildMetricCard(BuildContext context, String title, String value,
       IconData icon, Color color) {
@@ -666,7 +893,7 @@ void _fetchAssociatedFactories() async {
             ),
           ],
         ),
-      ),
+      )
     );
   }
 
@@ -721,6 +948,7 @@ void _fetchAssociatedFactories() async {
       ],
     );
   }
+  
 
 Widget _buildFactoryStatsCards() {
   return SingleChildScrollView(
@@ -1352,6 +1580,7 @@ Widget _buildFactoryStatsCards() {
       ),
     );
   }
+  
 
   Widget _buildNoFactoriesCard() {
     return Container(
@@ -1411,6 +1640,7 @@ Widget _buildFactoryStatsCards() {
       ),
     );
   }
+  
 
   Widget _buildSectionTitle(String title, IconData icon) {
     return Padding(
@@ -1432,6 +1662,350 @@ Widget _buildFactoryStatsCards() {
               fontSize: 18,
               fontWeight: FontWeight.w700,
               color: AppColors.darkText,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
+  Widget _buildExportStatCard({
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      width: 100,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.1)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 18, color: color),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 10,
+              color: AppColors.secondaryText,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCropProgress({
+    required String label,
+    required double value,
+    required double total,
+    required Color color,
+  }) {
+    final percentage = total > 0 ? (value / total) * 100 : 0;
+    
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
+              ),
+              Text(
+                '${value.toStringAsFixed(0)} kg (${percentage.toStringAsFixed(0)}%)',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.secondaryText,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          LinearProgressIndicator(
+            value: total > 0 ? value / total : 0,
+            backgroundColor: color.withOpacity(0.2),
+            valueColor: AlwaysStoppedAnimation<Color>(color),
+            minHeight: 6,
+            borderRadius: BorderRadius.circular(3),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOrderPreviewItem(QueryDocumentSnapshot order) {
+    final data = order.data() as Map<String, dynamic>;
+    final factoryName = data['factoryName'] ?? 'Unknown Factory';
+    final status = data['status'] ?? 'Pending';
+    final totalQuantity = data['totalQuantity']?.toString() ?? '0';
+    final cropType = data['cropType'] ?? 'N/A';
+    final orderDate = data['orderDate'] as Timestamp?;
+    final unit = data['unit'] ?? 'kg';
+
+    final statusColor = _getOrderStatusColor(status);
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.hover,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: statusColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              _getOrderStatusIcon(status),
+              size: 16,
+              color: statusColor,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  factoryName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.darkText,
+                  ),
+                ),
+                Row(
+                  children: [
+                    Text(
+                      '$totalQuantity $unit • ',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.secondaryText,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: _getCropColorFromString(cropType).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        cropType,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: _getCropColorFromString(cropType),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (orderDate != null)
+                  Text(
+                    DateFormat('MMM dd, HH:mm').format(orderDate.toDate()),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textTertiary,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: statusColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              status,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: statusColor,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExportSummaryLoading() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryBlue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.inventory_outlined,
+                  color: AppColors.primaryBlue,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Export Summary',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.darkText,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Center(
+            child: CircularProgressIndicator(
+              color: AppColors.primaryBlue,
+              strokeWidth: 2,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Loading export data...',
+            style: TextStyle(
+              fontSize: 12,
+              color: AppColors.secondaryText,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoExportHistory() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryBlue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.inventory_outlined,
+                  color: AppColors.primaryBlue,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Export History',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.darkText,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Center(
+            child: Column(
+              children: [
+                Icon(
+                  Icons.inventory_2_outlined,
+                  size: 48,
+                  color: AppColors.textTertiary.withOpacity(0.3),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'No Export History',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    //color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Start exporting your products to see history',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textTertiary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton(
+                  onPressed: () {
+                    // Navigate to export page
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryBlue,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  ),
+                  child: const Text(
+                    'Start Exporting',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -1571,6 +2145,58 @@ Widget _buildFactoryStatsCards() {
         landPhotos: _landPhotos,
       ),
     );
+  }
+
+  // Helper functions for order status
+  Color _getOrderStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return AppColors.warningOrange;
+      case 'factory recived':
+      case 'received factory':
+        return AppColors.info;
+      case 'delivered':
+      case 'completed':
+      case 'accepted':
+        return AppColors.successGreen;
+      case 'cancelled':
+      case 'rejected':
+        return AppColors.accentRed;
+      default:
+        return AppColors.primaryBlue;
+    }
+  }
+
+  IconData _getOrderStatusIcon(String status) {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return Icons.pending_outlined;
+      case 'factory recived':
+      case 'received factory':
+        return Icons.factory_rounded;
+      case 'delivered':
+      case 'completed':
+      case 'accepted':
+        return Icons.check_circle_outline_rounded;
+      case 'cancelled':
+      case 'rejected':
+        return Icons.cancel_outlined;
+      default:
+        return Icons.info_outline_rounded;
+    }
+  }
+
+  Color _getCropColorFromString(String cropType) {
+    switch (cropType.toLowerCase()) {
+      case 'tea':
+        return AppColors.successGreen;
+      case 'cinnamon':
+        return AppColors.warningOrange;
+      case 'both':
+        return AppColors.purpleAccent;
+      default:
+        return AppColors.primaryBlue;
+    }
   }
 }
 
@@ -2250,7 +2876,7 @@ class LandSizeDetailsModal extends StatelessWidget {
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            'All land sizes are measured in ${landSizeUnit ?? 'Hectares'} (ha)',
+                            'All land sizes are measured in ${landSizeUnit ?? 'Acre'} (Ac)',
                             style: TextStyle(
                               fontSize: 14,
                               color: AppColors.darkText,
@@ -2275,24 +2901,24 @@ class LandSizeDetailsModal extends StatelessWidget {
 
     if (landSize != null) {
       details.add(_buildDetailRow(
-          'Total Land Size', '$landSize ${landSizeUnit ?? "ha"}'));
+          'Total Land Size', '$landSize ${landSizeUnit ?? "Ac"}'));
     }
 
     if (cropType == 'Both') {
       if (teaLandSize != null && double.tryParse(teaLandSize!) != 0) {
         details.add(_buildDetailRow(
-            'Tea Land Size', '$teaLandSize ${landSizeUnit ?? "ha"}'));
+            'Tea Land Size', '$teaLandSize ${landSizeUnit ?? "Ac"}'));
       }
       if (cinnamonLandSize != null && double.tryParse(cinnamonLandSize!) != 0) {
         details.add(_buildDetailRow('Cinnamon Land Size',
-            '$cinnamonLandSize ${landSizeUnit ?? "ha"}'));
+            '$cinnamonLandSize ${landSizeUnit ?? "Ac"}'));
       }
     } else if (cropType == 'Tea' && teaLandSize != null) {
       details.add(_buildDetailRow(
-          'Tea Land Size', '$teaLandSize ${landSizeUnit ?? "ha"}'));
+          'Tea Land Size', '$teaLandSize ${landSizeUnit ?? "Ac"}'));
     } else if (cropType == 'Cinnamon' && cinnamonLandSize != null) {
       details.add(_buildDetailRow('Cinnamon Land Size',
-          '$cinnamonLandSize ${landSizeUnit ?? "ha"}'));
+          '$cinnamonLandSize ${landSizeUnit ?? "Ac"}'));
     }
 
     if (landSizeDetails != null && landSizeDetails!.isNotEmpty) {
@@ -2353,7 +2979,7 @@ class LandSizeDetailsModal extends StatelessWidget {
               ),
             ),
             Text( 
-              '${totalSize.toStringAsFixed(1)} ${landSizeUnit ?? "ha"}',
+              '${totalSize.toStringAsFixed(1)} ${landSizeUnit ?? "Ac"}',
               style: const TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
@@ -2385,7 +3011,7 @@ class LandSizeDetailsModal extends StatelessWidget {
                 ),
               ),
               Text(
-                '${size.toStringAsFixed(1)} ha (${percentage.toStringAsFixed(1)}%)',
+                '${size.toStringAsFixed(1)} Ac (${percentage.toStringAsFixed(1)}%)',
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,

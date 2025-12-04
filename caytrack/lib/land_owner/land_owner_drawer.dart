@@ -7,6 +7,9 @@ import 'user_profile.dart'; // Import the User Profile page (Contains UserDetail
 import 'developer_info.dart'; // Import the Developer Info page
 import 'land_location.dart';
 import '../Auth/login_page.dart'; // Import the Login page
+import 'add_new_order.dart'; // Import the Login page
+import 'export_product_details.dart'; // Import the Login page
+
 
 // --- Hardcoded Colors for Simplicity (Replace with AppColors if available) ---
 const Color _primaryBlue = Color(0xFF2764E7);
@@ -546,6 +549,42 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
                       MaterialPageRoute(
                         builder: (context) => LocationSelectionPage(
                           onLocationSelected: _handleLocationSelected,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+
+                // 4. Land Location
+                _buildModernDrawerItem(
+                  icon: Icons.send,
+                  label: "Export Product",
+                  description: "Export Your Product to Factory",
+                  isSmallScreen: isSmallScreen,
+                  isMediumScreen: isMediumScreen,
+                  onTap: () {
+                    Navigator.of(context).pop(); 
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => AddNewOrderPage(
+                        ),
+                      ),
+                    );
+                  },
+                ),
+
+                // 4. Land Location
+                _buildModernDrawerItem(
+                  icon: Icons.info_outline,
+                  label: "Export Product Details",
+                  description: "Your Export Details to Factory",
+                  isSmallScreen: isSmallScreen,
+                  isMediumScreen: isMediumScreen,
+                  onTap: () {
+                    Navigator.of(context).pop(); 
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => ExportProductsHistoryPage(
                         ),
                       ),
                     );
