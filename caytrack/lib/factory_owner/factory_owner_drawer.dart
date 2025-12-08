@@ -8,6 +8,7 @@ import 'developer_info.dart'; // 💡 NEW: Import the Developer Info page
 import '../Auth/login_page.dart'; // Import the Login page
 import 'land_details.dart';
 import 'lands_map.dart';
+import 'factory_owner_orders.dart';
 
 // --- Hardcoded Colors for Simplicity (Replace with AppColors if available) ---
 const Color _primaryBlue = Color(0xFF2764E7);
@@ -160,433 +161,462 @@ class _FactoryOwnerDrawerState extends State<FactoryOwnerDrawer> {
     String profileUrl = user['profileImageUrl'] ??
         "https://ui-avatars.com/api/?name=$firstName&background=2764E7&color=fff&bold=true&size=150";
 
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(height: screenHeight * 0.04),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // STATIC TOP SECTION (Logo + Profile - Will NOT scroll)
+        Column(
+          children: [
+            SizedBox(height: screenHeight * 0.04),
 
-          // Header (Logo/Title section)
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
-            child: Row(
-              children: [
-                Container(
-                  width: isSmallScreen ? 50 : 60,
-                  height: isSmallScreen ? 50 : 60,
-                  decoration: BoxDecoration(
-                    color: _primaryBlue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: _primaryBlue.withOpacity(0.3),
-                        blurRadius: 15,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  child: Image.asset(
-                    'assets/logo/logo2.png',
+            // Header (Logo/Title section) - FIXED
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
+              child: Row(
+                children: [
+                  Container(
                     width: isSmallScreen ? 50 : 60,
                     height: isSmallScreen ? 50 : 60,
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) => Icon(
-                      Icons.business_rounded,
-                      color: _primaryBlue,
-                      size: isSmallScreen ? 24 : 30,
+                    decoration: BoxDecoration(
+                      color: _primaryBlue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: _primaryBlue.withOpacity(0.3),
+                          blurRadius: 15,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
                     ),
-                  ),
-                ),
-                SizedBox(width: screenWidth * 0.03),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "CeyLogix",
-                      style: TextStyle(
-                        fontSize: isSmallScreen ? 22 : 26,
-                        fontWeight: FontWeight.w900,
+                    child: Image.asset(
+                      'assets/logo/logo2.png',
+                      width: isSmallScreen ? 50 : 60,
+                      height: isSmallScreen ? 50 : 60,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) => Icon(
+                        Icons.business_rounded,
                         color: _primaryBlue,
-                        letterSpacing: -0.8,
+                        size: isSmallScreen ? 24 : 30,
                       ),
-                    ),
-                    SizedBox(height: screenHeight * 0.002),
-                    Text(
-                      "Factory Management",
-                      style: TextStyle(
-                        fontSize: isSmallScreen ? 10 : 11,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF666482),
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          SizedBox(height: screenHeight * 0.03),
-
-          // Profile Section
-          Container(
-            margin: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
-            padding: EdgeInsets.all(isSmallScreen ? 14 : 18),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Colors.white, Color(0xFFF8FAFF)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: _primaryBlue.withOpacity(0.08),
-                  blurRadius: 25,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-              border: Border.all(
-                color: Colors.white.withOpacity(0.9),
-                width: 1.5,
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: isSmallScreen ? 55 : 65,
-                  height: isSmallScreen ? 55 : 65,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: _primaryBlue,
-                      width: isSmallScreen ? 2.0 : 2.5,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: _primaryBlue.withOpacity(0.2),
-                        blurRadius: 15,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: ClipOval(
-                    child: Image.network(
-                      profileUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [_primaryBlue, Color(0xFF457AED)],
-                          ),
-                        ),
-                        child: Icon(
-                          Icons.person_rounded,
-                          color: Colors.white,
-                          size: isSmallScreen ? 24 : 28,
-                        ),
-                      ),
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return Center(
-                          child: SizedBox(
-                            width: isSmallScreen ? 18 : 20,
-                            height: isSmallScreen ? 18 : 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
-                          ),
-                        );
-                      },
                     ),
                   ),
-                ),
-                SizedBox(width: screenWidth * 0.04),
-                Expanded(
-                  child: Column(
+                  SizedBox(width: screenWidth * 0.03),
+                  Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        firstName,
+                        "CeyLogix",
                         style: TextStyle(
-                          fontSize: isSmallScreen ? 15 : 17,
-                          fontWeight: FontWeight.w800,
-                          color: _darkText,
+                          fontSize: isSmallScreen ? 22 : 26,
+                          fontWeight: FontWeight.w900,
+                          color: _primaryBlue,
+                          letterSpacing: -0.8,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
-                      SizedBox(height: screenHeight * 0.004),
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: screenWidth * 0.025,
-                          vertical: screenHeight * 0.004,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _primaryBlue.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: _primaryBlue.withOpacity(0.3),
-                          ),
-                        ),
-                        child: Text(
-                          role.toUpperCase(),
-                          style: TextStyle(
-                            fontSize: isSmallScreen ? 10 : 11,
-                            fontWeight: FontWeight.w700,
-                            color: _primaryBlue,
-                            letterSpacing: 0.8,
-                          ),
+                      SizedBox(height: screenHeight * 0.002),
+                      Text(
+                        "Factory Management",
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 10 : 11,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF666482),
+                          letterSpacing: 0.3,
                         ),
                       ),
                     ],
                   ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(height: screenHeight * 0.025),
-          _buildSectionDivider(screenWidth),
-          SizedBox(height: screenHeight * 0.01),
-
-          // Menu Items
-          Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: screenWidth * 0.03,
-              vertical: screenHeight * 0.01,
-            ),
-            child: Column(
-              children: [
-                // 1. Dashboard 
-                _buildModernDrawerItem(
-                  icon: Icons.dashboard_rounded,
-                  label: "Dashboard",
-                  description: "Overview & Analytics",
-                  isActive: true,
-                  onTap: () {
-                    Navigator.of(context).pop(); 
-                    Navigator.of(context).pushReplacement( 
-                      MaterialPageRoute(builder: (context) => const FactoryOwnerDashboard()), 
-                    );
-                  },
-                  screenWidth: screenWidth,
-                  isSmallScreen: isSmallScreen,
-                ),
-                
-                SizedBox(height: screenHeight * 0.008),
-                
-                // 2. Factory Details
-                _buildModernDrawerItem(
-                  icon: Icons.factory,
-                  label: "Factory Details",
-                  description: "Update company information",
-                  onTap: () {
-                    Navigator.of(context).pop(); 
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (context) => const FactoryDetails()),
-                    );
-                  },
-                  screenWidth: screenWidth,
-                  isSmallScreen: isSmallScreen,
-                ),
-                
-                SizedBox(height: screenHeight * 0.008),
-                
-                // 3. My Profile
-                _buildModernDrawerItem(
-                  icon: Icons.person_rounded,
-                  label: "My Profile",
-                  description: "Personal settings",
-                  onTap: () {
-                    Navigator.of(context).pop(); 
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (context) => const UserDetails()),
-                    );
-                  },
-                  screenWidth: screenWidth,
-                  isSmallScreen: isSmallScreen,
-                ),
-                
-                SizedBox(height: screenHeight * 0.008),
-                
-                // 4. Land Details
-                _buildModernDrawerItem(
-                  icon: Icons.landscape,
-                  label: "Land Details",
-                  description: "View All Associated Lands",
-                  onTap: () {
-                    Navigator.of(context).pop(); 
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => LandDetailsPage(
-                          currentUser: FirebaseAuth.instance.currentUser,
-                        ),
-                      ),
-                    );
-                  },
-                  screenWidth: screenWidth,
-                  isSmallScreen: isSmallScreen,
-                ),
-                
-                SizedBox(height: screenHeight * 0.008),
-                
-                // 5. Land Details Map
-                _buildModernDrawerItem(
-                  icon: Icons.location_on, 
-                  label: "Land Details Map", 
-                  description: "Map with Land Details", 
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const LandLocationsPage(),
-                      ),
-                    );
-                  },
-                  screenWidth: screenWidth,
-                  isSmallScreen: isSmallScreen,
-                ),
-                
-                SizedBox(height: screenHeight * 0.008),
-                
-                // 6. Developer Info
-                _buildModernDrawerItem(
-                  icon: Icons.code_rounded, 
-                  label: "Developer Info", 
-                  description: "About the application", 
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (context) => const DeveloperInfoPage()),
-                    );
-                  },
-                  screenWidth: screenWidth,
-                  isSmallScreen: isSmallScreen,
-                ),
-              ],
-            ),
-          ),
-
-          // Updated Logout Button
-          Container(
-            margin: EdgeInsets.all(screenWidth * 0.04),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.red.shade50,
-                  Colors.red.shade100.withOpacity(0.8),
                 ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(18),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.red.withOpacity(0.1),
-                  blurRadius: 20,
-                  offset: const Offset(0, 5),
-                ),
-              ],
-              border: Border.all(
-                color: Colors.red.withOpacity(0.2),
-                width: 1.5,
               ),
             ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: _handleLogout,
-                borderRadius: BorderRadius.circular(18),
-                child: Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: screenWidth * 0.04,
-                    vertical: screenHeight * 0.014,
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: EdgeInsets.all(screenWidth * 0.025),
-                        decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.15),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.logout_rounded,
-                          color: Colors.red,
-                          size: screenWidth * 0.05,
-                        ),
-                      ),
-                      SizedBox(width: screenWidth * 0.035),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Logout",
-                              style: TextStyle(
-                                fontSize: isSmallScreen ? 14 : 15,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.red,
-                              ),
-                            ),
-                            SizedBox(height: screenHeight * 0.002),
-                            Text(
-                              "Secure sign out",
-                              style: TextStyle(
-                                fontSize: isSmallScreen ? 10 : 11,
-                                color: Colors.red.withOpacity(0.8),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        padding: EdgeInsets.all(screenWidth * 0.015),
-                        decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.arrow_forward_ios_rounded,
-                          color: Colors.red.withOpacity(0.7),
-                          size: screenWidth * 0.03,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
+            SizedBox(height: screenHeight * 0.03),
 
-          // Footer
-          Container(
-            padding: EdgeInsets.all(screenWidth * 0.04),
-            child: Column(
-              children: [
-                Text(
-                  "v2.1.0",
-                  style: TextStyle(
-                    fontSize: screenWidth * 0.028,
-                    fontWeight: FontWeight.w600,
-                    color: _darkText.withOpacity(0.4),
-                    letterSpacing: 0.5,
-                  ),
+            // Profile Section - FIXED
+            Container(
+              margin: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
+              padding: EdgeInsets.all(isSmallScreen ? 14 : 18),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Colors.white, Color(0xFFF8FAFF)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                SizedBox(height: screenHeight * 0.004),
-                Text(
-                  "CeyLogix © 2024",
-                  style: TextStyle(
-                    fontSize: screenWidth * 0.028,
-                    color: _darkText.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: _primaryBlue.withOpacity(0.08),
+                    blurRadius: 25,
+                    offset: const Offset(0, 8),
                   ),
+                ],
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.9),
+                  width: 1.5,
                 ),
-              ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: isSmallScreen ? 55 : 65,
+                    height: isSmallScreen ? 55 : 65,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: _primaryBlue,
+                        width: isSmallScreen ? 2.0 : 2.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: _primaryBlue.withOpacity(0.2),
+                          blurRadius: 15,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ClipOval(
+                      child: Image.network(
+                        profileUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              colors: [_primaryBlue, Color(0xFF457AED)],
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.person_rounded,
+                            color: Colors.white,
+                            size: isSmallScreen ? 24 : 28,
+                          ),
+                        ),
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Center(
+                            child: SizedBox(
+                              width: isSmallScreen ? 18 : 20,
+                              height: isSmallScreen ? 18 : 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: screenWidth * 0.04),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          firstName,
+                          style: TextStyle(
+                            fontSize: isSmallScreen ? 15 : 17,
+                            fontWeight: FontWeight.w800,
+                            color: _darkText,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        SizedBox(height: screenHeight * 0.004),
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: screenWidth * 0.025,
+                            vertical: screenHeight * 0.004,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _primaryBlue.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: _primaryBlue.withOpacity(0.3),
+                            ),
+                          ),
+                          child: Text(
+                            role.toUpperCase(),
+                            style: TextStyle(
+                              fontSize: isSmallScreen ? 10 : 11,
+                              fontWeight: FontWeight.w700,
+                              color: _primaryBlue,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: screenHeight * 0.025),
+            _buildSectionDivider(screenWidth),
+            SizedBox(height: screenHeight * 0.01),
+          ],
+        ),
+
+        // SCROLLABLE MIDDLE SECTION (Menu Items only)
+        Expanded(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: screenWidth * 0.03,
+                vertical: screenHeight * 0.01,
+              ),
+              child: Column(
+                children: [
+                  // 1. Dashboard 
+                  _buildModernDrawerItem(
+                    icon: Icons.dashboard_rounded,
+                    label: "Dashboard",
+                    description: "Overview & Analytics",
+                    isActive: true,
+                    onTap: () {
+                      Navigator.of(context).pop(); 
+                      Navigator.of(context).pushReplacement( 
+                        MaterialPageRoute(builder: (context) => const FactoryOwnerDashboard()), 
+                      );
+                    },
+                    screenWidth: screenWidth,
+                    isSmallScreen: isSmallScreen,
+                  ),
+                  
+                  SizedBox(height: screenHeight * 0.008),
+                  
+                  // 2. Factory Details
+                  _buildModernDrawerItem(
+                    icon: Icons.factory,
+                    label: "Factory Details",
+                    description: "Update company information",
+                    onTap: () {
+                      Navigator.of(context).pop(); 
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (context) => const FactoryDetails()),
+                      );
+                    },
+                    screenWidth: screenWidth,
+                    isSmallScreen: isSmallScreen,
+                  ),
+                  
+                  SizedBox(height: screenHeight * 0.008),
+                  
+                  // 3. My Profile
+                  _buildModernDrawerItem(
+                    icon: Icons.person_rounded,
+                    label: "My Profile",
+                    description: "Personal settings",
+                    onTap: () {
+                      Navigator.of(context).pop(); 
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (context) => const UserDetails()),
+                      );
+                    },
+                    screenWidth: screenWidth,
+                    isSmallScreen: isSmallScreen,
+                  ),
+                  
+                  SizedBox(height: screenHeight * 0.008),
+                  
+                  // 4. Land Details
+                  _buildModernDrawerItem(
+                    icon: Icons.landscape,
+                    label: "Land Details",
+                    description: "View All Associated Lands",
+                    onTap: () {
+                      Navigator.of(context).pop(); 
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => LandDetailsPage(
+                            currentUser: FirebaseAuth.instance.currentUser,
+                          ),
+                        ),
+                      );
+                    },
+                    screenWidth: screenWidth,
+                    isSmallScreen: isSmallScreen,
+                  ),
+                  
+                  SizedBox(height: screenHeight * 0.008),
+                  
+                  // 5. Land Details Map
+                  _buildModernDrawerItem(
+                    icon: Icons.location_on, 
+                    label: "Land Details Map", 
+                    description: "Map with Land Details", 
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const LandLocationsPage(),
+                        ),
+                      );
+                    },
+                    screenWidth: screenWidth,
+                    isSmallScreen: isSmallScreen,
+                  ),
+
+                  _buildModernDrawerItem(
+                   icon: Icons.info_outline, 
+                    label: "Receved Products", 
+                    description: "Land Owners Export Product Receved", 
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const FactoryOwnerOrdersPage(),
+                          
+                        ),
+                      );
+                    },
+                    screenWidth: screenWidth,
+                    isSmallScreen: isSmallScreen,
+                  ),
+                  
+                  SizedBox(height: screenHeight * 0.008),
+                  
+                  // 6. Developer Info
+                  _buildModernDrawerItem(
+                    icon: Icons.code_rounded, 
+                    label: "Developer Info", 
+                    description: "About the application", 
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (context) => const DeveloperInfoPage()),
+                      );
+                    },
+                    screenWidth: screenWidth,
+                    isSmallScreen: isSmallScreen,
+                  ),
+                ],
+              ),
             ),
           ),
-        ],
-      ),
+        ),
+
+        // STATIC BOTTOM SECTION (Logout Button + Footer)
+        Column(
+          children: [
+            // Updated Logout Button
+            Container(
+              margin: EdgeInsets.all(screenWidth * 0.04),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.red.shade50,
+                    Colors.red.shade100.withOpacity(0.8),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.red.withOpacity(0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+                border: Border.all(
+                  color: Colors.red.withOpacity(0.2),
+                  width: 1.5,
+                ),
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _handleLogout,
+                  borderRadius: BorderRadius.circular(18),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: screenWidth * 0.04,
+                      vertical: screenHeight * 0.014,
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(screenWidth * 0.025),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.15),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.logout_rounded,
+                            color: Colors.red,
+                            size: screenWidth * 0.05,
+                          ),
+                        ),
+                        SizedBox(width: screenWidth * 0.035),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Logout",
+                                style: TextStyle(
+                                  fontSize: isSmallScreen ? 14 : 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.red,
+                                ),
+                              ),
+                              SizedBox(height: screenHeight * 0.002),
+                              Text(
+                                "Secure sign out",
+                                style: TextStyle(
+                                  fontSize: isSmallScreen ? 10 : 11,
+                                  color: Colors.red.withOpacity(0.8),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: EdgeInsets.all(screenWidth * 0.015),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            color: Colors.red.withOpacity(0.7),
+                            size: screenWidth * 0.03,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // Footer
+            Container(
+              padding: EdgeInsets.all(screenWidth * 0.04),
+              child: Column(
+                children: [
+                  Text(
+                    "v2.1.0",
+                    style: TextStyle(
+                      fontSize: screenWidth * 0.028,
+                      fontWeight: FontWeight.w600,
+                      color: _darkText.withOpacity(0.4),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  SizedBox(height: screenHeight * 0.004),
+                  Text(
+                    "CeyLogix © 2025",
+                    style: TextStyle(
+                      fontSize: screenWidth * 0.028,
+                      color: _darkText.withOpacity(0.3),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 

@@ -1,10 +1,11 @@
-// factory_owner_dashboard.dart
+// factory_owner_dashboard.dart - UPDATED VERSION WITH COMPLETE ORDER DETAILS MODAL
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'factory_owner_drawer.dart';
 import 'land_details.dart';
+import 'factory_owner_orders.dart'; // නව import එක - FactoryOrderDetailsModal සඳහා
 
 // Reusing AppColors locally
 class AppColors {
@@ -267,7 +268,7 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
       
       final now = DateTime.now();
       final todayStart = DateTime(now.year, now.month, now.day);
-      final weekStart = now.subtract(Duration(days: now.weekday - 1));
+      final weekStart = now.subtract(const Duration(days: 7));
       
       final List<Map<String, dynamic>> recentOrders = [];
 
@@ -282,6 +283,12 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
         final orderDate = (orderData['orderDate'] as Timestamp?)?.toDate();
         final factoryName = orderData['factoryName'] ?? '';
         final landOwnerName = orderData['landOwnerName'] ?? '';
+        final description = orderData['description'] ?? '';
+        final unit = orderData['unit'] ?? 'kg';
+        final orderPhotos = List<String>.from(orderData['orderPhotos'] ?? []);
+        final createdAt = orderData['createdAt'];
+        final updatedAt = orderData['updatedAt'];
+        final landOwnerId = orderData['landOwnerId'] ?? '';
 
         totalQuantity += totalQty;
         
@@ -299,7 +306,7 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
         } else if (status.contains('delivered') || 
                    status.contains('completed') || 
                    status.contains('accepted') ||
-                   status.contains('factory recived') ||
+                   status.contains('factory received') ||
                    status.contains('received factory')) {
           deliveredOrders++;
         }
@@ -313,20 +320,35 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
           }
         }
 
-        // Add to recent orders (last 5 orders)
-        if (recentOrders.length < 5) {
-          recentOrders.add({
-            'id': orderId,
-            'landOwnerName': landOwnerName,
-            'factoryName': factoryName,
-            'status': orderData['status'] ?? 'Pending',
-            'cropType': cropType,
-            'totalQuantity': totalQty,
-            'unit': orderData['unit'] ?? 'kg',
-            'orderDate': orderDate,
-          });
-        }
+        // Add to recent orders (last 5 orders sorted by date)
+        recentOrders.add({
+          'id': orderId,
+          'landOwnerName': landOwnerName,
+          'factoryName': factoryName,
+          'status': orderData['status'] ?? 'Pending',
+          'cropType': cropType,
+          'totalQuantity': totalQty,
+          'teaQuantity': teaQty,
+          'cinnamonQuantity': cinnamonQty,
+          'unit': unit,
+          'description': description,
+          'orderDate': orderDate,
+          'orderPhotos': orderPhotos,
+          'createdAt': createdAt,
+          'updatedAt': updatedAt,
+          'landOwnerId': landOwnerId,
+          'factoryId': factoryId,
+        });
       }
+
+      // Sort recent orders by date (newest first) and take latest 5
+      recentOrders.sort((a, b) {
+        final aDate = a['orderDate'] as DateTime? ?? DateTime(0);
+        final bDate = b['orderDate'] as DateTime? ?? DateTime(0);
+        return bDate.compareTo(aDate);
+      });
+
+      final latestOrders = recentOrders.take(5).toList();
 
       setState(() {
         _ordersStatistics = {
@@ -338,7 +360,7 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
           'deliveredOrders': deliveredOrders,
           'todayOrders': todayOrders,
           'weekOrders': weekOrders,
-          'recentOrders': recentOrders,
+          'recentOrders': latestOrders,
         };
         _isLoadingOrders = false;
       });
@@ -408,12 +430,48 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
     );
   }
 
-  // Show order details modal
+  // Show order details modal using the COMPLETE FactoryOrderDetailsModal from factory_owner_orders.dart
   void _showOrderDetailsModal(Map<String, dynamic> order) {
     showDialog(
       context: context,
-      builder: (context) => FactoryOrderDetailsModal(order: order),
+      builder: (context) => FactoryOrderDetailsModal(
+        order: order,
+        onStatusUpdate: (orderId) => _updateOrderStatus(orderId),
+      ),
     );
+  }
+
+  // Update order status to "Factory Received"
+  Future<void> _updateOrderStatus(String orderId) async {
+    try {
+      await _firestore.collection('land_orders').doc(orderId).update({
+        'status': 'Factory Received',
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      // Refresh orders statistics
+      _fetchOrdersStatistics();
+
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Order status updated to "Factory Received"'),
+            backgroundColor: AppColors.successGreen,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint("Error updating order status: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update order status: $e'),
+            backgroundColor: AppColors.accentRed,
+          ),
+        );
+      }
+    }
   }
 
   // Navigate to LandDetailsPage with category lands
@@ -468,11 +526,12 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
 
   // Navigate to all orders page
   void _navigateToAllOrders() {
-    // Implement navigation to orders page
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Navigating to all orders...'),
-        backgroundColor: AppColors.primaryBlue,
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => FactoryOwnerOrdersPage(
+          currentUser: currentUser,
+        ),
       ),
     );
   }
@@ -745,7 +804,7 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
                             isMediumScreen ? 10 : 12),
                     Flexible(
                       child: Text(
-                        'Recent Received Orders',
+                        'Recent Received',
                         style: TextStyle(
                           fontSize: isSmallScreen ? 13 : 
                                   isMediumScreen ? 14 : 16,
@@ -817,15 +876,17 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
   Widget _buildOrdersContent(double screenWidth, double screenHeight) {
     final isSmallScreen = screenWidth < 360;
     final isMediumScreen = screenWidth >= 360 && screenWidth < 400;
-    
+
     return Column(
       children: [
         // Stats Row - Responsive layout
         _buildResponsiveStatsRow(screenWidth, screenHeight),
-        
-        SizedBox(height: isSmallScreen ? 12 : 
-                isMediumScreen ? 14 : 16),
-        
+
+        SizedBox(
+          height: isSmallScreen ? 4 : 
+                  isMediumScreen ? 6 : 8,
+        ),
+
         // Crop Breakdown
         Container(
           padding: EdgeInsets.all(isSmallScreen ? 10 : 
@@ -837,8 +898,10 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(height: isSmallScreen ? 6 : 
-                      isMediumScreen ? 7 : 8),
+              SizedBox(
+                height: isSmallScreen ? 6 : 
+                        isMediumScreen ? 7 : 8,
+              ),
               if (_ordersStatistics['teaQuantity'] > 0)
                 _buildCropProgress(
                   label: 'Tea',
@@ -858,14 +921,16 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
             ],
           ),
         ),
-        
-        SizedBox(height: isSmallScreen ? 10 : 
-                isMediumScreen ? 12 : 15),
-        
+
+        SizedBox(
+          height: isSmallScreen ? 10 : 
+                  isMediumScreen ? 12 : 15,
+        ),
+
         // Recent Orders
         if (_ordersStatistics['recentOrders'].isNotEmpty) ...[
           Text(
-            'Recent Orders',
+            'Recent (Latest 5)',
             style: TextStyle(
               fontSize: isSmallScreen ? 12 : 
                       isMediumScreen ? 13 : 14,
@@ -873,11 +938,13 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
               color: AppColors.darkText,
             ),
           ),
-          SizedBox(height: isSmallScreen ? 6 : 
-                  isMediumScreen ? 7 : 8),
-          ..._ordersStatistics['recentOrders'].take(3).map((order) => 
-            _buildOrderPreviewItem(order, screenWidth, screenHeight)
-          ).toList(),
+          SizedBox(
+            height: isSmallScreen ? 6 : 
+                    isMediumScreen ? 7 : 8,
+          ),
+          ..._ordersStatistics['recentOrders']
+              .map((order) => _buildOrderPreviewItem(order, screenWidth, screenHeight))
+              .toList(),
         ],
       ],
     );
@@ -886,91 +953,114 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
   Widget _buildResponsiveStatsRow(double screenWidth, double screenHeight) {
     final isSmallScreen = screenWidth < 360;
     final isMediumScreen = screenWidth >= 360 && screenWidth < 400;
-    
-    // For very small screens, use 2x2 grid
-    if (isSmallScreen) {
-      return Padding(
-  padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 20),
-  child: GridView.count(
-    crossAxisCount: 2,
-    shrinkWrap: true,
-    physics: const NeverScrollableScrollPhysics(),
-    crossAxisSpacing: 8, 
-    mainAxisSpacing: 8,
+    final horizontalSpacing = isSmallScreen ? 6.0 : isMediumScreen ? 8.0 : 12.0;
+    final verticalSpacing = isSmallScreen ? 6.0 : isMediumScreen ? 8.0 : 12.0;
+
+return Padding(
+  padding: EdgeInsets.only(
+    bottom: isSmallScreen ? 10 : isMediumScreen ? 12 : 16,
+  ),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      _buildOrderStatCard(
+      // --- Top Row ---
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8.0),
+        child: Text(
+          "Overall Orders",
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: AppColors.darkText,
+          ),
+        ),
+      ),
+// --- Top Row ---
+Row(
+  children: [
+    Expanded(
+      child: _buildOrderStatCard(
         title: 'Total Orders',
         value: _ordersStatistics['totalOrders'].toString(),
         icon: Icons.shopping_cart_checkout,
         color: AppColors.primaryBlue,
         screenWidth: screenWidth,
       ),
-      _buildOrderStatCard(
-        title: 'Delivered',
+    ),
+    SizedBox(width: horizontalSpacing),
+    Expanded(
+      child: _buildOrderStatCard(
+        title: 'Received Completed',
         value: _ordersStatistics['deliveredOrders'].toString(),
         icon: Icons.check_circle,
         color: AppColors.successGreen,
         screenWidth: screenWidth,
       ),
-      _buildOrderStatCard(
+    ),
+  ],
+),
+
+SizedBox(height: verticalSpacing),
+
+// --- Centered Single Card Row ---
+Row(
+  mainAxisAlignment: MainAxisAlignment.center, // <-- center the content
+  children: [
+    SizedBox(
+      width: screenWidth / 3 - horizontalSpacing / 3, // make width similar to one of the top cards
+      child: _buildOrderStatCard(
         title: 'Pending',
         value: _ordersStatistics['pendingOrders'].toString(),
         icon: Icons.pending,
-        color: AppColors.warningOrange,
+        color: const Color.fromARGB(255, 255, 8, 0),
         screenWidth: screenWidth,
       ),
-      _buildOrderStatCard(
-        title: 'Total Qty',
-        value: '${_ordersStatistics['totalQuantity'].toStringAsFixed(0)} kg',
-        icon: Icons.scale,
-        color: AppColors.purpleAccent,
-        screenWidth: screenWidth,
+    ),
+  ],
+),
+
+
+      SizedBox(height: verticalSpacing),
+
+      // --- Bottom Row ---
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8.0),
+        child: Text(
+          "Recent",
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: AppColors.darkText,
+          ),
+        ),
+      ),
+      Row(
+        children: [
+          Expanded(
+            child: _buildOrderStatCard(
+              title: 'Today Received',
+              value: _ordersStatistics['todayOrders'].toString(),
+              icon: Icons.today,
+              color: AppColors.accentTeal,
+              screenWidth: screenWidth,
+            ),
+          ),
+          SizedBox(width: horizontalSpacing),
+          Expanded(
+            child: _buildOrderStatCard(
+              title: 'This Week',
+              value: _ordersStatistics['weekOrders'].toString(),
+              icon: Icons.calendar_today,
+              color: AppColors.purpleAccent,
+              screenWidth: screenWidth,
+            ),
+          ),
+        ],
       ),
     ],
   ),
 );
 
-    }
-    
-    // For medium and large screens, use 4 in a row
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          _buildOrderStatCard(
-            title: 'Total Orders',
-            value: _ordersStatistics['totalOrders'].toString(),
-            icon: Icons.shopping_cart_checkout,
-            color: AppColors.primaryBlue,
-            screenWidth: screenWidth,
-          ),
-          SizedBox(width: screenWidth * 0.03),
-          _buildOrderStatCard(
-            title: 'Delivered',
-            value: _ordersStatistics['deliveredOrders'].toString(),
-            icon: Icons.check_circle,
-            color: AppColors.successGreen,
-            screenWidth: screenWidth,
-          ),
-          SizedBox(width: screenWidth * 0.03),
-          _buildOrderStatCard(
-            title: 'Pending',
-            value: _ordersStatistics['pendingOrders'].toString(),
-            icon: Icons.pending,
-            color: AppColors.warningOrange,
-            screenWidth: screenWidth,
-          ),
-          SizedBox(width: screenWidth * 0.03),
-          _buildOrderStatCard(
-            title: 'Total Qty',
-            value: '${_ordersStatistics['totalQuantity'].toStringAsFixed(0)} kg',
-            icon: Icons.scale,
-            color: AppColors.purpleAccent,
-            screenWidth: screenWidth,
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _buildOrderStatCard({
@@ -982,17 +1072,21 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
   }) {
     final isSmallScreen = screenWidth < 360;
     final isMediumScreen = screenWidth >= 360 && screenWidth < 400;
-    
+
     final cardWidth = isSmallScreen ? screenWidth * 0.42 : 
-                     isMediumScreen ? screenWidth * 0.20 : screenWidth * 0.18;
+                    isMediumScreen ? screenWidth * 0.20 : screenWidth * 0.18;
     final cardHeight = isSmallScreen ? screenWidth * 0.18 : 
-                      isMediumScreen ? screenWidth * 0.22 : screenWidth * 0.20;
-    
+                     isMediumScreen ? screenWidth * 0.22 : screenWidth * 0.20;
+
     return Container(
       width: cardWidth,
       height: cardHeight,
-      padding: EdgeInsets.all(isSmallScreen ? 6 : 
-              isMediumScreen ? 8 : 10),
+      padding: EdgeInsets.fromLTRB(
+        isSmallScreen ? 8 : isMediumScreen ? 10 : 8, // left
+        isSmallScreen ? 8 : isMediumScreen ? 6 : 2, // top
+        isSmallScreen ? 8 : isMediumScreen ? 10 : 12, // right
+        isSmallScreen ? 12 : isMediumScreen ? 4 : 0, // bottom padding increased
+      ),
       decoration: BoxDecoration(
         color: color.withOpacity(0.05),
         borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
@@ -1002,37 +1096,31 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: EdgeInsets.all(isSmallScreen ? 3 : 
-                    isMediumScreen ? 4 : 5),
+            padding: EdgeInsets.all(isSmallScreen ? 4 : isMediumScreen ? 5 : 6),
             decoration: BoxDecoration(
               color: color.withOpacity(0.1),
               borderRadius: BorderRadius.circular(isSmallScreen ? 6 : 8),
             ),
             child: Icon(
               icon, 
-              size: isSmallScreen ? 12 : 
-                    isMediumScreen ? 14 : 16, 
+              size: isSmallScreen ? 14 : isMediumScreen ? 16 : 18, 
               color: color
             ),
           ),
-          SizedBox(height: isSmallScreen ? 3 : 
-                  isMediumScreen ? 4 : 6),
+          SizedBox(height: isSmallScreen ? 4 : isMediumScreen ? 5 : 6),
           Text(
             value,
             style: TextStyle(
-              fontSize: isSmallScreen ? 12 : 
-                      isMediumScreen ? 14 : 16,
+              fontSize: isSmallScreen ? 12 : isMediumScreen ? 14 : 16,
               fontWeight: FontWeight.w700,
               color: color,
             ),
           ),
-          SizedBox(height: isSmallScreen ? 1 : 
-                  isMediumScreen ? 2 : 4),
+          SizedBox(height: isSmallScreen ? 2 : isMediumScreen ? 3 : 4),
           Text(
             title,
             style: TextStyle(
-              fontSize: isSmallScreen ? 7 : 
-                      isMediumScreen ? 8 : 9,
+              fontSize: isSmallScreen ? 7 : isMediumScreen ? 8 : 9,
               color: AppColors.secondaryText,
             ),
             textAlign: TextAlign.center,
@@ -1296,7 +1384,7 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
               fontSize: isSmallScreen ? 12 : 
                       isMediumScreen ? 13 : 14,
               fontWeight: FontWeight.w600,
-              //color: AppColors.textSecondary,
+              color: AppColors.darkText,
             ),
           ),
           SizedBox(height: isSmallScreen ? 3 : 
@@ -2040,6 +2128,7 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
         return AppColors.warningOrange;
       case 'factory recived':
       case 'received factory':
+      case 'factory received':
         return AppColors.info;
       case 'delivered':
       case 'completed':
@@ -2059,6 +2148,7 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
         return Icons.pending_outlined;
       case 'factory recived':
       case 'received factory':
+      case 'factory received':
         return Icons.factory_rounded;
       case 'delivered':
       case 'completed':
@@ -2082,1267 +2172,6 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
         return AppColors.accentTeal;
       default:
         return AppColors.primaryBlue;
-    }
-  }
-}
-
-// -----------------------------------------------------------------
-// --- FACTORY ORDER DETAILS MODAL WIDGET ---
-// -----------------------------------------------------------------
-
-class FactoryOrderDetailsModal extends StatelessWidget {
-  final Map<String, dynamic> order;
-
-  const FactoryOrderDetailsModal({super.key, required this.order});
-
-  @override
-  Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
-    final isSmallScreen = screenWidth < 360;
-    final isMediumScreen = screenWidth >= 360 && screenWidth < 400;
-    
-    final landOwnerName = order['landOwnerName'] ?? 'Unknown Land Owner';
-    final factoryName = order['factoryName'] ?? '';
-    final status = order['status'] ?? 'Pending';
-    final cropType = order['cropType'] ?? 'N/A';
-    final totalQuantity = order['totalQuantity'] ?? 0;
-    final teaQuantity = order['teaQuantity'] ?? 0;
-    final cinnamonQuantity = order['cinnamonQuantity'] ?? 0;
-    final unit = order['unit'] ?? 'kg';
-    final description = order['description'] ?? '';
-    final orderDate = order['orderDate'] as DateTime?;
-    final createdAt = order['createdAt'] as Timestamp?;
-    final updatedAt = order['updatedAt'] as Timestamp?;
-    final orderPhotos = List<String>.from(order['orderPhotos'] ?? []);
-
-    final statusColor = _getOrderStatusColor(status);
-    final cropColor = _getCropColorFromString(cropType);
-
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: EdgeInsets.all(screenWidth * 0.05),
-      child: Container(
-        constraints: BoxConstraints(
-          maxWidth: 500,
-          maxHeight: screenHeight * 0.85,
-        ),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(isSmallScreen ? 20 : 24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 30,
-              spreadRadius: 5,
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Header
-            Container(
-              padding: EdgeInsets.all(isSmallScreen ? 14 : 
-                      isMediumScreen ? 16 : 20),
-              decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.1),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(isSmallScreen ? 20 : 24),
-                  topRight: Radius.circular(isSmallScreen ? 20 : 24),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(isSmallScreen ? 8 : 
-                            isMediumScreen ? 10 : 12),
-                    decoration: BoxDecoration(
-                      color: statusColor,
-                      borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
-                    ),
-                    child: Icon(
-                      _getOrderStatusIcon(status),
-                      size: isSmallScreen ? 18 : 
-                            isMediumScreen ? 20 : 24,
-                      color: Colors.white,
-                    ),
-                  ),
-                  SizedBox(width: isSmallScreen ? 10 : 
-                          isMediumScreen ? 12 : 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Order Details',
-                          style: TextStyle(
-                            fontSize: isSmallScreen ? 14 : 
-                                    isMediumScreen ? 16 : 18,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.darkText,
-                          ),
-                        ),
-                        SizedBox(height: screenHeight * 0.004),
-                        Text(
-                          'From: $landOwnerName',
-                          style: TextStyle(
-                            fontSize: isSmallScreen ? 10 : 
-                                    isMediumScreen ? 12 : 14,
-                            color: AppColors.secondaryText,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: isSmallScreen ? 8 : 
-                                isMediumScreen ? 10 : 12,
-                      vertical: isSmallScreen ? 3 : 
-                                isMediumScreen ? 4 : 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(isSmallScreen ? 16 : 20),
-                      border: Border.all(
-                        color: statusColor.withOpacity(0.4),
-                      ),
-                    ),
-                    child: Text(
-                      status.length > 10 && isSmallScreen
-                        ? status.substring(0, 10).toUpperCase()
-                        : status.toUpperCase(),
-                      style: TextStyle(
-                        fontSize: isSmallScreen ? 8 : 
-                                isMediumScreen ? 10 : 12,
-                        fontWeight: FontWeight.w700,
-                        color: statusColor,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Content
-            Expanded(
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: EdgeInsets.all(isSmallScreen ? 14 : 
-                          isMediumScreen ? 16 : 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Order Summary
-                      Container(
-                        padding: EdgeInsets.all(isSmallScreen ? 10 : 
-                                isMediumScreen ? 12 : 16),
-                        decoration: BoxDecoration(
-                          color: AppColors.hover,
-                          borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'ORDER SUMMARY',
-                              style: TextStyle(
-                                fontSize: isSmallScreen ? 9 : 
-                                        isMediumScreen ? 10 : 12,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.secondaryText,
-                                letterSpacing: 1,
-                              ),
-                            ),
-                            SizedBox(height: screenHeight * 0.01),
-                            
-                            // Crop Type
-                            Row(
-                              children: [
-                                Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: isSmallScreen ? 8 : 
-                                              isMediumScreen ? 10 : 12,
-                                    vertical: isSmallScreen ? 3 : 
-                                              isMediumScreen ? 4 : 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: cropColor.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
-                                  ),
-                                  child: Text(
-                                    cropType.length > 8 && isSmallScreen
-                                      ? cropType.substring(0, 8)
-                                      : cropType,
-                                    style: TextStyle(
-                                      fontSize: isSmallScreen ? 10 : 
-                                              isMediumScreen ? 12 : 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: cropColor,
-                                    ),
-                                  ),
-                                ),
-                                Spacer(),
-                                Text(
-                                  'TOTAL: $totalQuantity $unit',
-                                  style: TextStyle(
-                                    fontSize: isSmallScreen ? 14 : 
-                                            isMediumScreen ? 16 : 18,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.primaryBlue,
-                                  ),
-                                ),
-                              ],
-                            ),
-
-                            SizedBox(height: screenHeight * 0.015),
-
-                            // Quantity Breakdown
-                            if (cropType == 'Both' && (teaQuantity > 0 || cinnamonQuantity > 0))
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                children: [
-                                  if (teaQuantity > 0)
-                                    _buildQuantityPill(
-                                      label: 'TEA',
-                                      value: teaQuantity,
-                                      unit: unit,
-                                      color: AppColors.successGreen,
-                                      screenWidth: screenWidth,
-                                    ),
-                                  if (cinnamonQuantity > 0)
-                                    _buildQuantityPill(
-                                      label: 'CINNAMON',
-                                      value: cinnamonQuantity,
-                                      unit: unit,
-                                      color: AppColors.warningOrange,
-                                      screenWidth: screenWidth,
-                                    ),
-                                ],
-                              ),
-                          ],
-                        ),
-                      ),
-
-                      SizedBox(height: screenHeight * 0.015),
-
-                      // Order Details
-                      Container(
-                        padding: EdgeInsets.all(isSmallScreen ? 10 : 
-                                isMediumScreen ? 12 : 16),
-                        decoration: BoxDecoration(
-                          color: AppColors.cardBackground,
-                          borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'ORDER INFORMATION',
-                              style: TextStyle(
-                                fontSize: isSmallScreen ? 9 : 
-                                        isMediumScreen ? 10 : 12,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.secondaryText,
-                                letterSpacing: 1,
-                              ),
-                            ),
-                            SizedBox(height: screenHeight * 0.01),
-                            _buildOrderDetailRow('Order Date', _formatDate(orderDate), screenWidth),
-                            if (createdAt != null)
-                              _buildOrderDetailRow('Created', _formatDate(createdAt.toDate()), screenWidth),
-                            if (updatedAt != null)
-                              _buildOrderDetailRow('Last Updated', _formatDate(updatedAt.toDate()), screenWidth),
-                            _buildOrderDetailRow('To Factory', factoryName, screenWidth),
-                          ],
-                        ),
-                      ),
-
-                      SizedBox(height: screenHeight * 0.015),
-
-                      // Description
-                      if (description.isNotEmpty)
-                        Container(
-                          padding: EdgeInsets.all(isSmallScreen ? 10 : 
-                                  isMediumScreen ? 12 : 16),
-                          decoration: BoxDecoration(
-                            color: AppColors.cardBackground,
-                            borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'DESCRIPTION',
-                                style: TextStyle(
-                                  fontSize: isSmallScreen ? 9 : 
-                                          isMediumScreen ? 10 : 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.secondaryText,
-                                  letterSpacing: 1,
-                                ),
-                              ),
-                              SizedBox(height: screenHeight * 0.008),
-                              Text(
-                                description,
-                                style: TextStyle(
-                                  fontSize: isSmallScreen ? 11 : 
-                                          isMediumScreen ? 12 : 14,
-                                  color: AppColors.darkText,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                      SizedBox(height: screenHeight * 0.015),
-
-                      // Photos
-                      if (orderPhotos.isNotEmpty)
-                        Container(
-                          padding: EdgeInsets.all(isSmallScreen ? 10 : 
-                                  isMediumScreen ? 12 : 16),
-                          decoration: BoxDecoration(
-                            color: AppColors.cardBackground,
-                            borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'ORDER PHOTOS (${orderPhotos.length})',
-                                style: TextStyle(
-                                  fontSize: isSmallScreen ? 9 : 
-                                          isMediumScreen ? 10 : 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.secondaryText,
-                                  letterSpacing: 1,
-                                ),
-                              ),
-                              SizedBox(height: screenHeight * 0.01),
-                              SizedBox(
-                                height: 100,
-                                child: ListView.builder(
-                                  scrollDirection: Axis.horizontal,
-                                  itemCount: orderPhotos.length,
-                                  itemBuilder: (context, index) {
-                                    return Container(
-                                      margin: EdgeInsets.only(right: 12),
-                                      width: 100,
-                                      height: 100,
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: AppColors.border),
-                                      ),
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(12),
-                                        child: Image.network(
-                                          orderPhotos[index],
-                                          fit: BoxFit.cover,
-                                          loadingBuilder: (context, child, loadingProgress) {
-                                            if (loadingProgress == null) return child;
-                                            return Center(
-                                              child: CircularProgressIndicator(
-                                                color: AppColors.primaryBlue,
-                                                strokeWidth: 2,
-                                              ),
-                                            );
-                                          },
-                                          errorBuilder: (context, error, stackTrace) {
-                                            return Container(
-                                              color: AppColors.hover,
-                                              child: Column(
-                                                mainAxisAlignment: MainAxisAlignment.center,
-                                                children: [
-                                                  Icon(
-                                                    Icons.broken_image,
-                                                    color: AppColors.textTertiary,
-                                                    size: isSmallScreen ? 24 : 32,
-                                                  ),
-                                                  SizedBox(height: 8),
-                                                  Text(
-                                                    'Failed to load',
-                                                    style: TextStyle(
-                                                      fontSize: isSmallScreen ? 8 : 10,
-                                                      color: AppColors.textTertiary,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-            // Close Button
-            Container(
-              padding: EdgeInsets.all(isSmallScreen ? 10 : 
-                      isMediumScreen ? 12 : 16),
-              decoration: BoxDecoration(
-                border: Border(
-                  top: BorderSide(
-                    color: AppColors.border,
-                    width: 1,
-                  ),
-                ),
-              ),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryBlue,
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 12 : 
-                             isMediumScreen ? 14 : 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
-                    ),
-                  ),
-                  child: Text(
-                    'Close',
-                    style: TextStyle(
-                      fontSize: isSmallScreen ? 12 : 
-                              isMediumScreen ? 14 : 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuantityPill({
-    required String label,
-    required dynamic value,
-    required String unit,
-    required Color color,
-    required double screenWidth,
-  }) {
-    final isSmallScreen = screenWidth < 360;
-    final isMediumScreen = screenWidth >= 360 && screenWidth < 400;
-    
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: isSmallScreen ? 10 : 
-                  isMediumScreen ? 12 : 16,
-        vertical: isSmallScreen ? 4 : 
-                  isMediumScreen ? 6 : 8,
-      ),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(isSmallScreen ? 16 : 20),
-        border: Border.all(color: color.withOpacity(0.2)),
-      ),
-      child: Column(
-        children: [
-          Text(
-            label.length > 8 && isSmallScreen
-              ? label.substring(0, 8)
-              : label,
-            style: TextStyle(
-              fontSize: isSmallScreen ? 8 : 
-                      isMediumScreen ? 10 : 12,
-              fontWeight: FontWeight.w700,
-              color: color,
-              letterSpacing: 1,
-            ),
-          ),
-          SizedBox(height: screenWidth * 0.005),
-          Text(
-            '$value $unit',
-            style: TextStyle(
-              fontSize: isSmallScreen ? 12 : 
-                      isMediumScreen ? 14 : 16,
-              fontWeight: FontWeight.w700,
-              color: color,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOrderDetailRow(String title, String value, double screenWidth) {
-    final isSmallScreen = screenWidth < 360;
-    final isMediumScreen = screenWidth >= 360 && screenWidth < 400;
-    
-    return Container(
-      padding: EdgeInsets.symmetric(vertical: screenWidth * 0.02),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: AppColors.border,
-            width: 1,
-          ),
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Text(
-              title,
-              style: TextStyle(
-                fontSize: isSmallScreen ? 10 : 
-                        isMediumScreen ? 12 : 14,
-                fontWeight: FontWeight.w500,
-                color: AppColors.secondaryText,
-              ),
-            ),
-          ),
-          SizedBox(width: screenWidth * 0.04),
-          Expanded(
-            flex: 2,
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: isSmallScreen ? 10 : 
-                        isMediumScreen ? 12 : 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.darkText,
-              ),
-              textAlign: TextAlign.right,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatDate(DateTime? date) {
-    if (date == null) return 'N/A';
-    return DateFormat('MMM dd, yyyy • HH:mm').format(date);
-  }
-
-  Color _getOrderStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'pending':
-        return AppColors.warningOrange;
-      case 'factory recived':
-      case 'received factory':
-        return AppColors.info;
-      case 'delivered':
-      case 'completed':
-      case 'accepted':
-        return AppColors.successGreen;
-      case 'cancelled':
-      case 'rejected':
-        return AppColors.accentRed;
-      default:
-        return AppColors.primaryBlue;
-    }
-  }
-
-  IconData _getOrderStatusIcon(String status) {
-    switch (status.toLowerCase()) {
-      case 'pending':
-        return Icons.pending_outlined;
-      case 'factory recived':
-      case 'received factory':
-        return Icons.factory_rounded;
-      case 'delivered':
-      case 'completed':
-      case 'accepted':
-        return Icons.check_circle_outline_rounded;
-      case 'cancelled':
-      case 'rejected':
-        return Icons.cancel_outlined;
-      default:
-        return Icons.info_outline_rounded;
-    }
-  }
-
-  Color _getCropColorFromString(String cropType) {
-    switch (cropType.toLowerCase()) {
-      case 'tea':
-        return AppColors.successGreen;
-      case 'cinnamon':
-        return AppColors.warningOrange;
-      case 'both':
-        return AppColors.accentTeal;
-      default:
-        return AppColors.primaryBlue;
-    }
-  }
-}
-
-// -----------------------------------------------------------------
-// --- FACTORY OWNER LAND DETAILS MODAL WIDGET ---
-// -----------------------------------------------------------------
-
-class FactoryOwnerLandDetailsModal extends StatelessWidget {
-  final Map<String, dynamic> land;
-
-  const FactoryOwnerLandDetailsModal({super.key, required this.land});
-
-  @override
-  Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
-    final isSmallScreen = screenWidth < 360;
-    final isMediumScreen = screenWidth >= 360 && screenWidth < 400;
-    
-    final landName = land['landName'] ?? 'Unknown Land';
-    final ownerName = land['ownerName'] ?? 'N/A';
-    final cropType = land['cropType'] ?? 'N/A';
-    final landSize = land['landSize'] ?? 'N/A';
-    final landSizeUnit = land['landSizeUnit'] ?? 'ha';
-    final address = land['address'] ?? 'N/A';
-    final district = land['district'] ?? 'N/A';
-    final agDivision = land['agDivision'] ?? 'N/A';
-    final gnDivision = land['gnDivision'] ?? 'N/A';
-    final village = land['village'] ?? 'N/A';
-    final province = land['province'] ?? 'N/A';
-    final country = land['country'] ?? 'Sri Lanka';
-    final cinnamonLandSize = land['cinnamonLandSize'] ?? 'N/A';
-    final teaLandSize = land['teaLandSize'] ?? 'N/A';
-    final landPhotos = List<String>.from(land['landPhotos'] ?? []);
-    final ownerUid = land['owner'] ?? '';
-    final ownerEmail = land['ownerEmail'] ?? '';
-    final ownerMobile = land['ownerMobile'] ?? '';
-    final ownerNic = land['ownerNic'] ?? '';
-    final ownerProfileImageUrl = land['ownerProfileImageUrl'] ?? '';
-    final ownerRegistrationDate = land['ownerRegistrationDate'];
-    final ownerStatus = land['ownerStatus'] ?? 'N/A';
-
-    final Map<String, Color> cropColors = {
-      'Cinnamon': AppColors.warningOrange,
-      'Tea': AppColors.successGreen,
-      'Both': AppColors.accentTeal,
-    };
-
-    final mainColor = cropColors[cropType] ?? AppColors.primaryBlue;
-
-    return Container(
-      height: screenHeight * 0.85,
-      decoration: const BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(30),
-          topRight: Radius.circular(30),
-        ),
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: EdgeInsets.all(isSmallScreen ? 14 : 
-                    isMediumScreen ? 16 : 20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  mainColor.withOpacity(0.1),
-                  mainColor.withOpacity(0.05),
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(30),
-                topRight: Radius.circular(30),
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: isSmallScreen ? 40 : 
-                        isMediumScreen ? 45 : 50,
-                  height: isSmallScreen ? 40 : 
-                        isMediumScreen ? 45 : 50,
-                  decoration: BoxDecoration(
-                    color: mainColor,
-                    borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
-                  ),
-                  child: Icon(
-                    _getCropIcon(cropType),
-                    color: Colors.white,
-                    size: isSmallScreen ? 20 : 
-                          isMediumScreen ? 24 : 28,
-                  ),
-                ),
-                SizedBox(width: isSmallScreen ? 12 : 
-                        isMediumScreen ? 14 : 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        landName,
-                        style: TextStyle(
-                          fontSize: isSmallScreen ? 14 : 
-                                  isMediumScreen ? 16 : 20,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.darkText,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      SizedBox(height: screenHeight * 0.004),
-                      Text(
-                        '$cropType Land',
-                        style: TextStyle(
-                          fontSize: isSmallScreen ? 11 : 
-                                  isMediumScreen ? 12 : 14,
-                          color: mainColor,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: Icon(
-                    Icons.close,
-                    color: AppColors.secondaryText,
-                    size: isSmallScreen ? 20 : 
-                          isMediumScreen ? 22 : 24,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.all(isSmallScreen ? 14 : 
-                      isMediumScreen ? 16 : 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // OWNER DETAILS SECTION
-                  _buildOwnerDetailsSection(
-                    ownerName: ownerName,
-                    ownerProfileImageUrl: ownerProfileImageUrl,
-                    ownerMobile: ownerMobile,
-                    ownerEmail: ownerEmail,
-                    ownerNic: ownerNic,
-                    ownerStatus: ownerStatus,
-                    mainColor: mainColor,
-                    screenWidth: screenWidth,
-                    screenHeight: screenHeight,
-                  ),
-                  
-                  SizedBox(height: screenHeight * 0.02),
-                  
-                  _buildDetailSection(
-                    title: 'Land Information',
-                    icon: Icons.info_outline,
-                    children: [
-                      _buildDetailRow('Land Name', landName, screenWidth),
-                      _buildDetailRow('Crop Type', cropType, screenWidth),
-                      _buildDetailRow('Total Land Size', '$landSize $landSizeUnit', screenWidth),
-                      if (cropType == 'Both' || cropType == 'Tea')
-                        _buildDetailRow('Tea Land Size', '$teaLandSize $landSizeUnit', screenWidth),
-                      if (cropType == 'Both' || cropType == 'Cinnamon')
-                        _buildDetailRow('Cinnamon Land Size', '$cinnamonLandSize $landSizeUnit', screenWidth),
-                    ],
-                    screenWidth: screenWidth,
-                  ),
-                  
-                  SizedBox(height: screenHeight * 0.02),
-                  
-                  _buildDetailSection(
-                    title: 'Location Details',
-                    icon: Icons.location_on,
-                    children: [
-                      if (address.isNotEmpty) _buildDetailRow('Address', address, screenWidth),
-                      if (village.isNotEmpty) _buildDetailRow('Village/Town', village, screenWidth),
-                      if (district.isNotEmpty) _buildDetailRow('District', district, screenWidth),
-                      if (province.isNotEmpty) _buildDetailRow('Province', province, screenWidth),
-                      if (agDivision.isNotEmpty) _buildDetailRow('A/G Division', agDivision, screenWidth),
-                      if (gnDivision.isNotEmpty) _buildDetailRow('G/N Division', gnDivision, screenWidth),
-                      _buildDetailRow('Country', country, screenWidth),
-                    ],
-                    screenWidth: screenWidth,
-                  ),
-                  
-                  SizedBox(height: screenHeight * 0.02),
-                  
-                  if (landPhotos.isNotEmpty)
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildDetailSection(
-                          title: 'Land Photos',
-                          icon: Icons.photo_camera,
-                          children: [
-                            GridView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: isSmallScreen ? 2 : 2,
-                                crossAxisSpacing: isSmallScreen ? 6 : 
-                                                isMediumScreen ? 7 : 8,
-                                mainAxisSpacing: isSmallScreen ? 6 : 
-                                                isMediumScreen ? 7 : 8,
-                                childAspectRatio: 1,
-                              ),
-                              itemCount: landPhotos.length,
-                              itemBuilder: (context, index) {
-                                return ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.network(
-                                    landPhotos[index],
-                                    fit: BoxFit.cover,
-                                    loadingBuilder: (context, child, loadingProgress) {
-                                      if (loadingProgress == null) return child;
-                                      return Center(
-                                        child: CircularProgressIndicator(
-                                          value: loadingProgress.expectedTotalBytes != null
-                                              ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                              : null,
-                                          color: mainColor,
-                                        ),
-                                      );
-                                    },
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Container(
-                                        color: Colors.grey[200],
-                                        child: Icon(
-                                          Icons.broken_image,
-                                          color: Colors.grey,
-                                          size: screenWidth * 0.1,
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                          screenWidth: screenWidth,
-                        ),
-                        SizedBox(height: screenHeight * 0.02),
-                      ],
-                    ),
-                  
-                  _buildDetailSection(
-                    title: 'Land Identification',
-                    icon: Icons.fingerprint,
-                    children: [
-                      _buildDetailRow('Land ID', land['id']?.toString() ?? 'N/A', screenWidth),
-                      Container(
-                        padding: EdgeInsets.all(isSmallScreen ? 8 : 
-                                isMediumScreen ? 10 : 12),
-                        decoration: BoxDecoration(
-                          color: AppColors.background,
-                          borderRadius: BorderRadius.circular(isSmallScreen ? 8 : 10),
-                          border: Border.all(color: mainColor.withOpacity(0.2)),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.shield,
-                              color: mainColor,
-                              size: isSmallScreen ? 16 : 
-                                    isMediumScreen ? 18 : 20,
-                            ),
-                            SizedBox(width: isSmallScreen ? 8 : 
-                                    isMediumScreen ? 9 : 10),
-                            Expanded(
-                              child: Text(
-                                'Associated with your factory',
-                                style: TextStyle(
-                                  fontSize: isSmallScreen ? 12 : 
-                                          isMediumScreen ? 13 : 14,
-                                  color: AppColors.darkText,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                    screenWidth: screenWidth,
-                  ),
-                  
-                  SizedBox(height: screenHeight * 0.03),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOwnerDetailsSection({
-    required String ownerName,
-    required String ownerProfileImageUrl,
-    required String ownerMobile,
-    required String ownerEmail,
-    required String ownerNic,
-    required String ownerStatus,
-    required Color mainColor,
-    required double screenWidth,
-    required double screenHeight,
-  }) {
-    final isSmallScreen = screenWidth < 360;
-    final isMediumScreen = screenWidth >= 360 && screenWidth < 400;
-    
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
-        border: Border.all(color: mainColor.withOpacity(0.1)),
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(isSmallScreen ? 10 : 
-                isMediumScreen ? 12 : 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(isSmallScreen ? 4 : 
-                          isMediumScreen ? 5 : 6),
-                  decoration: BoxDecoration(
-                    color: mainColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(isSmallScreen ? 6 : 8),
-                  ),
-                  child: Icon(
-                    Icons.person,
-                    size: isSmallScreen ? 14 : 
-                          isMediumScreen ? 16 : 18,
-                    color: mainColor,
-                  ),
-                ),
-                SizedBox(width: isSmallScreen ? 8 : 
-                        isMediumScreen ? 9 : 10),
-                Text(
-                  'Land Owner Details',
-                  style: TextStyle(
-                    fontSize: isSmallScreen ? 13 : 
-                            isMediumScreen ? 14 : 16,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.darkText,
-                  ),
-                ),
-              ],
-            ),
-            
-            SizedBox(height: screenHeight * 0.015),
-            
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Owner Profile Picture
-                Container(
-                  width: isSmallScreen ? 50 : 
-                        isMediumScreen ? 60 : 70,
-                  height: isSmallScreen ? 50 : 
-                        isMediumScreen ? 60 : 70,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: mainColor.withOpacity(0.3), width: 2),
-                    image: ownerProfileImageUrl.isNotEmpty
-                      ? DecorationImage(
-                          image: NetworkImage(ownerProfileImageUrl),
-                          fit: BoxFit.cover,
-                        )
-                      : null,
-                    color: ownerProfileImageUrl.isEmpty ? mainColor.withOpacity(0.1) : null,
-                  ),
-                  child: ownerProfileImageUrl.isEmpty
-                    ? Center(
-                        child: Icon(
-                          Icons.person,
-                          size: isSmallScreen ? 20 : 
-                                isMediumScreen ? 24 : 28,
-                          color: mainColor,
-                        ),
-                      )
-                    : null,
-                ),
-                
-                SizedBox(width: isSmallScreen ? 10 : 
-                        isMediumScreen ? 12 : 16),
-                
-                // Owner Details
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        ownerName,
-                        style: TextStyle(
-                          fontSize: isSmallScreen ? 14 : 
-                                  isMediumScreen ? 15 : 17,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.darkText,
-                        ),
-                      ),
-                      
-                      SizedBox(height: screenHeight * 0.006),
-                      
-                      // Contact Number
-                      if (ownerMobile.isNotEmpty)
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.phone,
-                              size: isSmallScreen ? 12 : 
-                                    isMediumScreen ? 14 : 16,
-                              color: mainColor,
-                            ),
-                            SizedBox(width: isSmallScreen ? 6 : 
-                                    isMediumScreen ? 7 : 8),
-                            Expanded(
-                              child: Text(
-                                ownerMobile,
-                                style: TextStyle(
-                                  fontSize: isSmallScreen ? 12 : 
-                                          isMediumScreen ? 13 : 14,
-                                  color: AppColors.darkText,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      
-                      SizedBox(height: screenHeight * 0.004),
-                      
-                      // Email
-                      if (ownerEmail.isNotEmpty)
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.email,
-                              size: isSmallScreen ? 12 : 
-                                    isMediumScreen ? 14 : 16,
-                              color: mainColor,
-                            ),
-                            SizedBox(width: isSmallScreen ? 6 : 
-                                    isMediumScreen ? 7 : 8),
-                            Expanded(
-                              child: Text(
-                                ownerEmail,
-                                style: TextStyle(
-                                  fontSize: isSmallScreen ? 11 : 
-                                          isMediumScreen ? 12 : 13,
-                                  color: AppColors.secondaryText,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            
-            SizedBox(height: screenHeight * 0.015),
-            
-            // Additional Owner Info
-            Container(
-              padding: EdgeInsets.all(isSmallScreen ? 8 : 
-                      isMediumScreen ? 10 : 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(isSmallScreen ? 8 : 10),
-                border: Border.all(color: AppColors.background),
-              ),
-              child: Column(
-                children: [
-                  if (ownerNic.isNotEmpty)
-                    _buildOwnerDetailRow(
-                      label: 'NIC Number:',
-                      value: ownerNic,
-                      icon: Icons.badge,
-                      screenWidth: screenWidth,
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOwnerDetailRow({
-    required String label,
-    required String value,
-    required IconData icon,
-    required double screenWidth,
-  }) {
-    final isSmallScreen = screenWidth < 360;
-    final isMediumScreen = screenWidth >= 360 && screenWidth < 400;
-    
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: screenWidth * 0.015),
-      child: Row(
-        children: [
-          Icon(
-            icon,
-            size: isSmallScreen ? 14 : 
-                  isMediumScreen ? 16 : 18,
-            color: AppColors.primaryBlue,
-          ),
-          SizedBox(width: isSmallScreen ? 8 : 
-                  isMediumScreen ? 9 : 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: isSmallScreen ? 10 : 
-                            isMediumScreen ? 11 : 12,
-                    color: AppColors.secondaryText,
-                  ),
-                ),
-                SizedBox(height: screenWidth * 0.005),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: isSmallScreen ? 12 : 
-                            isMediumScreen ? 13 : 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.darkText,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDetailSection({
-    required String title,
-    required IconData icon,
-    required List<Widget> children,
-    required double screenWidth,
-  }) {
-    final isSmallScreen = screenWidth < 360;
-    final isMediumScreen = screenWidth >= 360 && screenWidth < 400;
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              padding: EdgeInsets.all(isSmallScreen ? 4 : 
-                      isMediumScreen ? 5 : 6),
-              decoration: BoxDecoration(
-                color: AppColors.primaryBlue.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(isSmallScreen ? 6 : 8),
-              ),
-              child: Icon(
-                icon,
-                size: isSmallScreen ? 14 : 
-                      isMediumScreen ? 16 : 18,
-                color: AppColors.primaryBlue,
-              ),
-            ),
-            SizedBox(width: isSmallScreen ? 8 : 
-                    isMediumScreen ? 9 : 10),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: isSmallScreen ? 13 : 
-                        isMediumScreen ? 14 : 16,
-                fontWeight: FontWeight.w700,
-                color: AppColors.darkText,
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: screenWidth * 0.03),
-        Container(
-          padding: EdgeInsets.all(isSmallScreen ? 10 : 
-                  isMediumScreen ? 12 : 16),
-          decoration: BoxDecoration(
-            color: AppColors.background,
-            borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
-          ),
-          child: Column(
-            children: children,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDetailRow(String label, String value, double screenWidth) {
-    final isSmallScreen = screenWidth < 360;
-    final isMediumScreen = screenWidth >= 360 && screenWidth < 400;
-    
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: screenWidth * 0.02),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: screenWidth * (isSmallScreen ? 0.35 : 
-                   isMediumScreen ? 0.38 : 0.4),
-            child: Text(
-              '$label:',
-              style: TextStyle(
-                fontSize: isSmallScreen ? 11 : 
-                        isMediumScreen ? 12 : 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.secondaryText,
-              ),
-            ),
-          ),
-          SizedBox(width: screenWidth * 0.02),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: isSmallScreen ? 11 : 
-                        isMediumScreen ? 12 : 14,
-                color: AppColors.darkText,
-              ),
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Helper method to get crop icon
-  IconData _getCropIcon(String cropType) {
-    switch (cropType) {
-      case 'Cinnamon':
-        return Icons.spa;
-      case 'Tea':
-        return Icons.agriculture;
-      case 'Both':
-        return Icons.all_inclusive;
-      default:
-        return Icons.landscape;
     }
   }
 }

@@ -6,7 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'land_owner_drawer.dart';
-import 'export_product_details.dart'; // Make sure to import this
+import 'export_product_details.dart';
 
 // Reusing AppColors locally
 class AppColors {
@@ -75,7 +75,7 @@ class _LandOwnerDashboardState extends State<LandOwnerDashboard> {
     super.initState();
     _fetchHeaderData();
     _fetchAssociatedFactories();
-    _fetchLandSizeData(); // Fetch land size data
+    _fetchLandSizeData();
   }
 
   // Fetch header data (username, land name, profile image)
@@ -89,7 +89,6 @@ class _LandOwnerDashboardState extends State<LandOwnerDashboard> {
     });
 
     try {
-      // Fetch User Name and Role
       final userDoc =
           await FirebaseFirestore.instance.collection('users').doc(uid).get();
       if (userDoc.exists) {
@@ -100,7 +99,6 @@ class _LandOwnerDashboardState extends State<LandOwnerDashboard> {
         });
       }
 
-      // Fetch Land Name
       final landDoc =
           await FirebaseFirestore.instance.collection('lands').doc(uid).get();
       if (landDoc.exists) {
@@ -123,10 +121,7 @@ class _LandOwnerDashboardState extends State<LandOwnerDashboard> {
     if (user == null) return;
 
     try {
-      final landDoc = await _firestore
-          .collection('lands')
-          .doc(user.uid)
-          .get();
+      final landDoc = await _firestore.collection('lands').doc(user.uid).get();
 
       if (landDoc.exists) {
         final landData = landDoc.data();
@@ -146,22 +141,70 @@ class _LandOwnerDashboardState extends State<LandOwnerDashboard> {
   }
 
   // Fetch associated factories with owner names
-void _fetchAssociatedFactories() async {
-  final user = currentUser;
-  if (user == null) return;
+  void _fetchAssociatedFactories() async {
+    final user = currentUser;
+    if (user == null) return;
 
-  setState(() {
-    _isLoadingFactories = true;
-    _errorMessage = null;
-  });
+    setState(() {
+      _isLoadingFactories = true;
+      _errorMessage = null;
+    });
 
-  try {
-    final landDoc = await _firestore.collection('lands').doc(user.uid).get();
-    if (landDoc.exists) {
-      final landData = landDoc.data();
-      final factoryIds = List<String>.from(landData?['factoryIds'] ?? []);
+    try {
+      final landDoc = await _firestore.collection('lands').doc(user.uid).get();
+      if (landDoc.exists) {
+        final landData = landDoc.data();
+        final factoryIds = List<String>.from(landData?['factoryIds'] ?? []);
 
-      if (factoryIds.isEmpty) {
+        if (factoryIds.isEmpty) {
+          setState(() {
+            _allAssociatedFactories = [];
+            _teaFactories = [];
+            _cinnamonFactories = [];
+            _multiCropFactories = [];
+            _isLoadingFactories = false;
+          });
+          return;
+        }
+
+        List<Map<String, dynamic>> factories = [];
+        for (String factoryId in factoryIds) {
+          try {
+            final factoryDoc =
+                await _firestore.collection('factories').doc(factoryId).get();
+            if (factoryDoc.exists) {
+              final factoryData = factoryDoc.data() as Map<String, dynamic>;
+              
+              String ownerUid = factoryId;
+              String ownerName = 'Unknown Owner';
+              
+              try {
+                final userDoc = await _firestore
+                    .collection('users')
+                    .doc(ownerUid)
+                    .get();
+                
+                if (userDoc.exists) {
+                  final userData = userDoc.data() as Map<String, dynamic>;
+                  ownerName = userData['name'] ?? 'Unknown Owner';
+                }
+              } catch (e) {
+                debugPrint("Error fetching owner info for $ownerUid: $e");
+              }
+              
+              factories.add({
+                'id': factoryId,
+                ...factoryData,
+                'ownerName': ownerName,
+              });
+            }
+          } catch (e) {
+            debugPrint("Error fetching factory $factoryId: $e");
+          }
+        }
+
+        _categorizeFactories(factories);
+      } else {
         setState(() {
           _allAssociatedFactories = [];
           _teaFactories = [];
@@ -169,67 +212,15 @@ void _fetchAssociatedFactories() async {
           _multiCropFactories = [];
           _isLoadingFactories = false;
         });
-        return;
       }
-
-      List<Map<String, dynamic>> factories = [];
-      for (String factoryId in factoryIds) {
-        try {
-          final factoryDoc =
-              await _firestore.collection('factories').doc(factoryId).get();
-          if (factoryDoc.exists) {
-            final factoryData = factoryDoc.data() as Map<String, dynamic>;
-            
-            // The factory document ID is the owner's UID
-            // So factoryId itself is the owner UID
-            String ownerUid = factoryId; // Factory document ID = owner UID
-            String ownerName = 'Unknown Owner';
-            
-            // Fetch owner name from users table
-            try {
-              final userDoc = await _firestore
-                  .collection('users')
-                  .doc(ownerUid)
-                  .get();
-              
-              if (userDoc.exists) {
-                final userData = userDoc.data() as Map<String, dynamic>;
-                ownerName = userData['name'] ?? 'Unknown Owner';
-              }
-            } catch (e) {
-              debugPrint("Error fetching owner info for $ownerUid: $e");
-            }
-            
-            // Add factory data with owner name
-            factories.add({
-              'id': factoryId,
-              ...factoryData,
-              'ownerName': ownerName,
-            });
-          }
-        } catch (e) {
-          debugPrint("Error fetching factory $factoryId: $e");
-        }
-      }
-
-      _categorizeFactories(factories);
-    } else {
+    } catch (e) {
+      debugPrint("Error fetching associated factories: $e");
       setState(() {
-        _allAssociatedFactories = [];
-        _teaFactories = [];
-        _cinnamonFactories = [];
-        _multiCropFactories = [];
+        _errorMessage = "Failed to load factory data";
         _isLoadingFactories = false;
       });
     }
-  } catch (e) {
-    debugPrint("Error fetching associated factories: $e");
-    setState(() {
-      _errorMessage = "Failed to load factory data";
-      _isLoadingFactories = false;
-    });
   }
-}
 
   // Categorize factories by crop type
   void _categorizeFactories(List<Map<String, dynamic>> factories) {
@@ -264,7 +255,6 @@ void _fetchAssociatedFactories() async {
       return;
     }
 
-    // Clean phone number
     final String tel = 'tel:${phoneNumber.replaceAll(RegExp(r'[-\s]'), '')}';
     
     try {
@@ -333,15 +323,18 @@ void _fetchAssociatedFactories() async {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Land Summary Section
                         _buildSectionTitle('Land Summary', Icons.landscape_rounded),
                         const SizedBox(height: 10),
                         _buildKeyMetrics(context),
+                        
+                        // ✅ Export Summary Section - NOW AT THE TOP
+                        const SizedBox(height: 30),
+                        _buildExportSummarySection(),
+                        
+                        // Associated Factories Section
                         const SizedBox(height: 30),
                         _buildAssociatedFactoriesSection(),
-                        const SizedBox(height: 30),
-                        
-                        // ✅ Export Summary Section
-                        _buildExportSummarySection(),
                         const SizedBox(height: 30),
                       ],
                     ),
@@ -369,227 +362,7 @@ void _fetchAssociatedFactories() async {
   // -----------------------------------------------------------------
   // --- WIDGET BUILDING METHODS ---
   // -----------------------------------------------------------------
-  // -----------------------------------------------------------------
-  // --- EXPORT SUMMARY SECTION ---
-  // -----------------------------------------------------------------
 
-  Widget _buildExportSummarySection() {
-    return FutureBuilder<QuerySnapshot>(
-      future: FirebaseFirestore.instance
-          .collection('land_orders')
-          .where('landOwnerId', isEqualTo: currentUser?.uid)
-          .limit(5) // Show only last 5 orders
-          .get(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return _buildExportSummaryLoading();
-        }
-
-        if (snapshot.hasError || !snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return _buildNoExportHistory();
-        }
-
-        final orders = snapshot.data!.docs;
-        final totalOrders = orders.length;
-        double totalQuantity = 0;
-        double teaTotal = 0;
-        double cinnamonTotal = 0;
-        int deliveredOrders = 0;
-
-        for (var order in orders) {
-          final data = order.data() as Map<String, dynamic>;
-          final status = data['status']?.toString().toLowerCase() ?? '';
-          final cropType = data['cropType'] ?? '';
-          final totalQty = double.tryParse(data['totalQuantity']?.toString() ?? '0') ?? 0;
-          final teaQty = double.tryParse(data['teaQuantity']?.toString() ?? '0') ?? 0;
-          final cinnamonQty = double.tryParse(data['cinnamonQuantity']?.toString() ?? '0') ?? 0;
-
-          totalQuantity += totalQty;
-          
-          if (cropType == 'Tea') {
-            teaTotal += totalQty;
-          } else if (cropType == 'Cinnamon') {
-            cinnamonTotal += cinnamonQty;
-          } else if (cropType == 'Both') {
-            teaTotal += teaQty;
-            cinnamonTotal += cinnamonQty;
-          }
-
-          if (status.contains('delivered') || 
-              status.contains('completed') || 
-              status.contains('accepted')) {
-            deliveredOrders++;
-          }
-        }
-
-        return Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.cardBackground,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 5),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryBlue.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.inventory_outlined,
-                          color: AppColors.primaryBlue,
-                          size: 20,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      const Text(
-                        'Recent Export Summary',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.darkText,
-                        ),
-                      ),
-                    ],
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      // Navigate to export history page
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ExportProductsHistoryPage(),
-                        ),
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryBlue.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Row(
-                        children: [
-                          Text(
-                            'View All',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.primaryBlue,
-                            ),
-                          ),
-                          SizedBox(width: 4),
-                          Icon(
-                            Icons.arrow_forward,
-                            size: 14,
-                            color: AppColors.primaryBlue,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              
-              // Quick Stats Row
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _buildExportStatCard(
-                    title: 'Total Exports',
-                    value: totalOrders.toString(),
-                    icon: Icons.shopping_cart_checkout,
-                    color: AppColors.primaryBlue,
-                  ),
-                  _buildExportStatCard(
-                    title: 'Delivered',
-                    value: deliveredOrders.toString(),
-                    icon: Icons.check_circle,
-                    color: AppColors.successGreen,
-                  ),
-                  _buildExportStatCard(
-                    title: 'Total Qty',
-                    value: '${totalQuantity.toStringAsFixed(0)} kg',
-                    icon: Icons.scale,
-                    color: AppColors.purpleAccent,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              
-              // Crop-wise breakdown
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.background,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Crop Breakdown',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.darkText,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    if (teaTotal > 0)
-                      _buildCropProgress(
-                        label: 'Tea',
-                        value: teaTotal,
-                        total: totalQuantity,
-                        color: AppColors.successGreen,
-                      ),
-                    if (cinnamonTotal > 0)
-                      _buildCropProgress(
-                        label: 'Cinnamon',
-                        value: cinnamonTotal,
-                        total: totalQuantity,
-                        color: AppColors.warningOrange,
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              
-              // Last 3 orders preview
-              if (orders.length > 0) ...[
-                const Text(
-                  'Recent Exports',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.darkText,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                ...orders.take(3).map((order) => _buildOrderPreviewItem(order)).toList(),
-              ],
-            ],
-          ),
-        );
-      },
-    );
-  }
   Widget _buildDashboardHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
@@ -711,142 +484,131 @@ void _fetchAssociatedFactories() async {
   }
 
   Widget _buildLandAreaMetricCard(BuildContext context) {
-  String displayValue = 'Loading...';
-  String displayTitle = 'Land Area';
-  String? detailsText;
+    String displayValue = 'Loading...';
+    String displayTitle = 'Land Area';
+    String? detailsText;
 
-  if (_cropType != null && _landSize != null) {
-    if (_cropType == 'Tea') {
-      displayValue = '${_landSize} ${_landSizeUnit ?? "Ac"}';
-      displayTitle = 'Tea Land Area';
-      detailsText = 'Tea cultivation land size';
-    } else if (_cropType == 'Cinnamon') {
-      displayValue = '${_landSize} ${_landSizeUnit ?? "Ac"}';
-      displayTitle = 'Cinnamon Land Area';
-      detailsText = 'Cinnamon cultivation land size';
-    } else if (_cropType == 'Both') {
-      double teaSize = double.tryParse(_teaLandSize ?? '0') ?? 0;
-      double cinnamonSize = double.tryParse(_cinnamonLandSize ?? '0') ?? 0;
-      double totalSize = teaSize + cinnamonSize;
+    if (_cropType != null && _landSize != null) {
+      if (_cropType == 'Tea') {
+        displayValue = '${_landSize} ${_landSizeUnit ?? "Ac"}';
+        displayTitle = 'Tea Land Area';
+        detailsText = 'Tea cultivation land size';
+      } else if (_cropType == 'Cinnamon') {
+        displayValue = '${_landSize} ${_landSizeUnit ?? "Ac"}';
+        displayTitle = 'Cinnamon Land Area';
+        detailsText = 'Cinnamon cultivation land size';
+      } else if (_cropType == 'Both') {
+        double teaSize = double.tryParse(_teaLandSize ?? '0') ?? 0;
+        double cinnamonSize = double.tryParse(_cinnamonLandSize ?? '0') ?? 0;
+        double totalSize = teaSize + cinnamonSize;
 
-      displayValue = '${totalSize.toStringAsFixed(1)} ${_landSizeUnit ?? "Ac"}';
-      displayTitle = 'Total Land Area';
+        displayValue = '${totalSize.toStringAsFixed(1)} ${_landSizeUnit ?? "Ac"}';
+        displayTitle = 'Total Land Area';
 
-      if (teaSize > 0 && cinnamonSize > 0) {
-        detailsText = 'Tea: ${teaSize}Ac, Cinnamon: ${cinnamonSize}Ac';
-      } else if (teaSize > 0) {
-        detailsText = 'Tea: ${teaSize}Ac';
-      } else if (cinnamonSize > 0) {
-        detailsText = 'Cinnamon: ${cinnamonSize}Ac';
+        if (teaSize > 0 && cinnamonSize > 0) {
+          detailsText = 'Tea: ${teaSize}Ac, Cinnamon: ${cinnamonSize}Ac';
+        } else if (teaSize > 0) {
+          detailsText = 'Tea: ${teaSize}Ac';
+        } else if (cinnamonSize > 0) {
+          detailsText = 'Cinnamon: ${cinnamonSize}Ac';
+        } else {
+          detailsText = 'No specific crop data';
+        }
       } else {
-        detailsText = 'No specific crop data';
+        displayValue = '${_landSize ?? "0"} ${_landSizeUnit ?? "Ac"}';
+        detailsText = 'General land area';
       }
     } else {
-      displayValue = '${_landSize ?? "0"} ${_landSizeUnit ?? "Ac"}';
-      detailsText = 'General land area';
+      displayValue = 'No Data';
+      detailsText = 'Land details not available';
     }
-  } else {
-    displayValue = 'No Data';
-    detailsText = 'Land details not available';
-  }
 
-  return GestureDetector(
-    onTap: () {
-      _showLandSizeDetailsModal();
-    },
-    child: Container(
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 6,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12), // reduced padding
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            // Icon Box
-            Container(
-              padding: const EdgeInsets.all(6), // smaller padding
-              decoration: BoxDecoration(
-                color: _getCropColor().withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                _getCropIcon(),
-                color: _getCropColor(),
-                size: 16, // smaller icon
-              ),
+    return GestureDetector(
+      onTap: () {
+        _showLandSizeDetailsModal();
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 6,
+              offset: const Offset(0, 3),
             ),
-
-            const SizedBox(height: 6),
-
-            // Main Value
-            Text(
-              displayValue,
-              style: const TextStyle(
-                fontSize: 16, // reduced from 20
-                fontWeight: FontWeight.bold,
-                color: AppColors.darkText,
-              ),
-            ),
-
-            // Title
-            Text(
-              displayTitle,
-              style: const TextStyle(
-                fontSize: 9, // kept small
-                color: AppColors.secondaryText,
-              ),
-            ),
-
-            // Details
-            if (detailsText != null && detailsText.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  detailsText,
-                  style: TextStyle(
-                    fontSize: 8, // reduced from 9
-                    color: const Color.fromARGB(255, 61, 122, 191).withOpacity(0.8),
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-
-            // Crop Badge
-            if (_cropType != null)
-              Container(
-                margin: const EdgeInsets.only(top: 4),
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), // smaller padding
-                decoration: BoxDecoration(
-                  color: _getCropColor().withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(5),
-                ),
-                child: Text(
-                  _cropType!,
-                  style: TextStyle(
-                    fontSize: 8, // reduced from 10
-                    fontWeight: FontWeight.w600,
-                    color: _getCropColor(),
-                  ),
-                ),
-              ),
           ],
         ),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: _getCropColor().withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  _getCropIcon(),
+                  color: _getCropColor(),
+                  size: 16,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                displayValue,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.darkText,
+                ),
+              ),
+              Text(
+                displayTitle,
+                style: const TextStyle(
+                  fontSize: 9,
+                  color: AppColors.secondaryText,
+                ),
+              ),
+              if (detailsText != null && detailsText.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    detailsText,
+                    style: TextStyle(
+                      fontSize: 8,
+                      color: const Color.fromARGB(255, 61, 122, 191).withOpacity(0.8),
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              if (_cropType != null)
+                Container(
+                  margin: const EdgeInsets.only(top: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: _getCropColor().withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  child: Text(
+                    _cropType!,
+                    style: TextStyle(
+                      fontSize: 8,
+                      fontWeight: FontWeight.w600,
+                      color: _getCropColor(),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
-    ),
-  );
-}
-
+    );
+  }
 
   Widget _buildMetricCard(BuildContext context, String title, String value,
       IconData icon, Color color) {
@@ -948,61 +710,56 @@ void _fetchAssociatedFactories() async {
       ],
     );
   }
-  
 
-Widget _buildFactoryStatsCards() {
-  return SingleChildScrollView(
-    scrollDirection: Axis.horizontal,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // First row: 3 cards
-        Row(
-          children: [
-            _buildStatCard(
-              title: 'Total Factories',
-              value: _allAssociatedFactories.length.toString(),
-              icon: Icons.factory,
-              color: AppColors.primaryBlue,
-              iconColor: Colors.white,
-            ),
-            const SizedBox(width: 12),
-            _buildStatCard(
-              title: 'Cinnamon',
-              value: _cinnamonFactories.length.toString(),
-              icon: Icons.spa,
-              color: AppColors.warningOrange,
-              iconColor: Colors.white,
-            ),
-            const SizedBox(width: 12),
-            _buildStatCard(
-              title: 'Tea',
-              value: _teaFactories.length.toString(),
-              icon: Icons.agriculture,
-              color: AppColors.successGreen,
-              iconColor: Colors.white,
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 12),
-
-        // Second row: Multi-Crop
-        Row(
-          children: [
-            _buildStatCard(
-              title: 'Multi-Crop',
-              value: _multiCropFactories.length.toString(),
-              icon: Icons.all_inclusive,
-              color: AppColors.purpleAccent,
-              iconColor: Colors.white,
-            ),
-          ],
-        ),
-      ],
-    ),
-  );
-}
+  Widget _buildFactoryStatsCards() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              _buildStatCard(
+                title: 'Total Factories',
+                value: _allAssociatedFactories.length.toString(),
+                icon: Icons.factory,
+                color: AppColors.primaryBlue,
+                iconColor: Colors.white,
+              ),
+              const SizedBox(width: 12),
+              _buildStatCard(
+                title: 'Cinnamon',
+                value: _cinnamonFactories.length.toString(),
+                icon: Icons.spa,
+                color: AppColors.warningOrange,
+                iconColor: Colors.white,
+              ),
+              const SizedBox(width: 12),
+              _buildStatCard(
+                title: 'Tea',
+                value: _teaFactories.length.toString(),
+                icon: Icons.agriculture,
+                color: AppColors.successGreen,
+                iconColor: Colors.white,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _buildStatCard(
+                title: 'Multi-Crop',
+                value: _multiCropFactories.length.toString(),
+                icon: Icons.all_inclusive,
+                color: AppColors.purpleAccent,
+                iconColor: Colors.white,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildStatCard({
     required String title,
@@ -1179,7 +936,6 @@ Widget _buildFactoryStatsCards() {
         ? (factory['updatedAt'] as Timestamp).toDate()
         : null;
     
-    // Get factory logo URL
     final factoryLogoUrl = factory['factoryLogoUrl'];
 
     final mainColor = categoryColor;
@@ -1214,7 +970,6 @@ Widget _buildFactoryStatsCards() {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Factory Logo/Icon Container
                     Container(
                       width: 60,
                       height: 60,
@@ -1580,7 +1335,6 @@ Widget _buildFactoryStatsCards() {
       ),
     );
   }
-  
 
   Widget _buildNoFactoriesCard() {
     return Container(
@@ -1622,9 +1376,7 @@ Widget _buildFactoryStatsCards() {
           ),
           const SizedBox(height: 20),
           ElevatedButton.icon(
-            onPressed: () {
-              // Navigate to Land Details page
-            },
+            onPressed: () {},
             icon: const Icon(Icons.add_business, size: 18),
             label: const Text('Add Factories'),
             style: ElevatedButton.styleFrom(
@@ -1640,7 +1392,6 @@ Widget _buildFactoryStatsCards() {
       ),
     );
   }
-  
 
   Widget _buildSectionTitle(String title, IconData icon) {
     return Padding(
@@ -1669,6 +1420,220 @@ Widget _buildFactoryStatsCards() {
     );
   }
 
+  // -----------------------------------------------------------------
+  // --- EXPORT SUMMARY SECTION ---
+  // -----------------------------------------------------------------
+
+  Widget _buildExportSummarySection() {
+    return FutureBuilder<QuerySnapshot>(
+      future: FirebaseFirestore.instance
+          .collection('land_orders')
+          .where('landOwnerId', isEqualTo: currentUser?.uid)
+          .limit(5)
+          .get(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildExportSummaryLoading();
+        }
+
+        if (snapshot.hasError || !snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return _buildNoExportHistory();
+        }
+
+        final orders = snapshot.data!.docs;
+        final totalOrders = orders.length;
+        double totalQuantity = 0;
+        double teaTotal = 0;
+        double cinnamonTotal = 0;
+        int deliveredOrders = 0;
+
+        for (var order in orders) {
+          final data = order.data() as Map<String, dynamic>;
+          final status = data['status']?.toString().toLowerCase() ?? '';
+          final cropType = data['cropType'] ?? '';
+          final totalQty = double.tryParse(data['totalQuantity']?.toString() ?? '0') ?? 0;
+          final teaQty = double.tryParse(data['teaQuantity']?.toString() ?? '0') ?? 0;
+          final cinnamonQty = double.tryParse(data['cinnamonQuantity']?.toString() ?? '0') ?? 0;
+
+          totalQuantity += totalQty;
+          
+          if (cropType == 'Tea') {
+            teaTotal += totalQty;
+          } else if (cropType == 'Cinnamon') {
+            cinnamonTotal += cinnamonQty;
+          } else if (cropType == 'Both') {
+            teaTotal += teaQty;
+            cinnamonTotal += cinnamonQty;
+          }
+
+          if (status.contains('delivered') || 
+              status.contains('completed') || 
+              status.contains('accepted')) {
+            deliveredOrders++;
+          }
+        }
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.cardBackground,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryBlue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.inventory_outlined,
+                          color: AppColors.primaryBlue,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'Recent Export Summary',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.darkText,
+                        ),
+                      ),
+                    ],
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ExportProductsHistoryPage(),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryBlue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Row(
+                        children: [
+                          Text(
+                            'View All',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primaryBlue,
+                            ),
+                          ),
+                          SizedBox(width: 4),
+                          Icon(
+                            Icons.arrow_forward,
+                            size: 14,
+                            color: AppColors.primaryBlue,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildExportStatCard(
+                    title: 'Total Exports',
+                    value: totalOrders.toString(),
+                    icon: Icons.shopping_cart_checkout,
+                    color: AppColors.primaryBlue,
+                  ),
+                  _buildExportStatCard(
+                    title: 'Delivered',
+                    value: deliveredOrders.toString(),
+                    icon: Icons.check_circle,
+                    color: AppColors.successGreen,
+                  ),
+                  _buildExportStatCard(
+                    title: 'Total Qty',
+                    value: '${totalQuantity.toStringAsFixed(0)} kg',
+                    icon: Icons.scale,
+                    color: AppColors.purpleAccent,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Crop Breakdown',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.darkText,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    if (teaTotal > 0)
+                      _buildCropProgress(
+                        label: 'Tea',
+                        value: teaTotal,
+                        total: totalQuantity,
+                        color: AppColors.successGreen,
+                      ),
+                    if (cinnamonTotal > 0)
+                      _buildCropProgress(
+                        label: 'Cinnamon',
+                        value: cinnamonTotal,
+                        total: totalQuantity,
+                        color: AppColors.warningOrange,
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (orders.length > 0) ...[
+                const Text(
+                  'Recent Exports',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.darkText,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ...orders.take(3).map((order) => _buildOrderPreviewItem(order)).toList(),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   Widget _buildExportStatCard({
     required String title,
@@ -1772,96 +1737,101 @@ Widget _buildFactoryStatsCards() {
 
     final statusColor = _getOrderStatusColor(status);
     
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.hover,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              _getOrderStatusIcon(status),
-              size: 16,
-              color: statusColor,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  factoryName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.darkText,
-                  ),
-                ),
-                Row(
-                  children: [
-                    Text(
-                      '$totalQuantity $unit • ',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.secondaryText,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: _getCropColorFromString(cropType).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        cropType,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: _getCropColorFromString(cropType),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                if (orderDate != null)
-                  Text(
-                    DateFormat('MMM dd, HH:mm').format(orderDate.toDate()),
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textTertiary,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              status,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
+    return GestureDetector(
+      onTap: () {
+        _showOrderDetailsModal(order, data);
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.hover,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: statusColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                _getOrderStatusIcon(status),
+                size: 16,
                 color: statusColor,
               ),
             ),
-          ),
-        ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    factoryName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.darkText,
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Text(
+                        '$totalQuantity $unit • ',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.secondaryText,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: _getCropColorFromString(cropType).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          cropType,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: _getCropColorFromString(cropType),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (orderDate != null)
+                    Text(
+                      DateFormat('MMM dd, HH:mm').format(orderDate.toDate()),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textTertiary,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: statusColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                status,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: statusColor,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1973,7 +1943,6 @@ Widget _buildFactoryStatsCards() {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    //color: AppColors.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -1987,9 +1956,7 @@ Widget _buildFactoryStatsCards() {
                 ),
                 const SizedBox(height: 12),
                 ElevatedButton(
-                  onPressed: () {
-                    // Navigate to export page
-                  },
+                  onPressed: () {},
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryBlue,
                     shape: RoundedRectangleBorder(
@@ -2013,6 +1980,81 @@ Widget _buildFactoryStatsCards() {
     );
   }
 
+  // Order Details Modal Dialog
+  void _showOrderDetailsModal(QueryDocumentSnapshot orderDoc, Map<String, dynamic> orderData) async {
+    final orderId = orderDoc.id;
+    final factoryName = orderData['factoryName'] ?? 'Unknown Factory';
+    final factoryId = orderData['factoryId'];
+    final status = orderData['status'] ?? 'Pending';
+    final cropType = orderData['cropType'] ?? 'N/A';
+    final totalQuantity = orderData['totalQuantity']?.toString() ?? '0';
+    final teaQuantity = orderData['teaQuantity']?.toString() ?? '0';
+    final cinnamonQuantity = orderData['cinnamonQuantity']?.toString() ?? '0';
+    final unit = orderData['unit'] ?? 'kg';
+    final description = orderData['description'] ?? '';
+    final orderDate = orderData['orderDate'] as Timestamp?;
+    final createdAt = orderData['createdAt'] as Timestamp?;
+    final updatedAt = orderData['updatedAt'] as Timestamp?;
+    final orderPhotos = List<String>.from(orderData['orderPhotos'] ?? []);
+    
+    Map<String, dynamic> factoryDetails = {};
+    String ownerName = 'Loading...';
+    
+    if (factoryId != null) {
+      try {
+        final factoryDoc = await _firestore.collection('factories').doc(factoryId).get();
+        if (factoryDoc.exists) {
+          factoryDetails = factoryDoc.data() as Map<String, dynamic>;
+          
+          final userDoc = await _firestore.collection('users').doc(factoryId).get();
+          if (userDoc.exists) {
+            final userData = userDoc.data() as Map<String, dynamic>;
+            ownerName = userData['name'] ?? 'Unknown Owner';
+          }
+        }
+      } catch (e) {
+        debugPrint("Error fetching factory details: $e");
+      }
+    }
+    
+    final contactNumber = factoryDetails['contactNumber'] ?? 'N/A';
+    final address = factoryDetails['address'] ?? 'N/A';
+    final village = factoryDetails['village'] ?? 'N/A';
+    final district = factoryDetails['district'] ?? 'N/A';
+    final factoryLogoUrl = factoryDetails['factoryLogoUrl'];
+    
+    final statusColor = _getOrderStatusColor(status);
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => OrderDetailsModal(
+        orderId: orderId,
+        factoryName: factoryName,
+        ownerName: ownerName,
+        contactNumber: contactNumber,
+        address: address,
+        village: village,
+        district: district,
+        factoryLogoUrl: factoryLogoUrl,
+        status: status,
+        statusColor: statusColor,
+        cropType: cropType,
+        totalQuantity: totalQuantity,
+        teaQuantity: teaQuantity,
+        cinnamonQuantity: cinnamonQuantity,
+        unit: unit,
+        description: description,
+        orderDate: orderDate,
+        createdAt: createdAt,
+        updatedAt: updatedAt,
+        orderPhotos: orderPhotos,
+        makePhoneCall: _makePhoneCall,
+      ),
+    );
+  }
+
   // -----------------------------------------------------------------
   // --- HELPER METHODS ---
   // -----------------------------------------------------------------
@@ -2030,7 +2072,6 @@ Widget _buildFactoryStatsCards() {
     }
   }
 
-  // NEW METHOD: Get icon for factory crop type (accepts parameter)
   IconData _getFactoryCropIcon(String cropType) {
     switch (cropType) {
       case 'Cinnamon':
@@ -2231,9 +2272,7 @@ class FactoryDetailsModal extends StatelessWidget {
         ? (factory['updatedAt'] as Timestamp).toDate()
         : null;
     
-    // Get factory logo URL
     final factoryLogoUrl = factory['factoryLogoUrl'];
-    // Get factory photos array
     final factoryPhotos = List<String>.from(factory['factoryPhotos'] ?? []);
 
     final Map<String, Color> cropColors = {
@@ -2273,7 +2312,6 @@ class FactoryDetailsModal extends StatelessWidget {
             ),
             child: Row(
               children: [
-                // Factory Logo Container
                 Container(
                   width: 60,
                   height: 60,
@@ -2408,7 +2446,6 @@ class FactoryDetailsModal extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
                   
-                  // Factory Photos Section
                   if (factoryPhotos.isNotEmpty)
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2643,6 +2680,592 @@ class FactoryDetailsModal extends StatelessWidget {
   }
 }
 
+// Order Details Modal Widget
+class OrderDetailsModal extends StatelessWidget {
+  final String orderId;
+  final String factoryName;
+  final String ownerName;
+  final String contactNumber;
+  final String address;
+  final String village;
+  final String district;
+  final String? factoryLogoUrl;
+  final String status;
+  final Color statusColor;
+  final String cropType;
+  final String totalQuantity;
+  final String teaQuantity;
+  final String cinnamonQuantity;
+  final String unit;
+  final String description;
+  final Timestamp? orderDate;
+  final Timestamp? createdAt;
+  final Timestamp? updatedAt;
+  final List<String> orderPhotos;
+  final Function(String) makePhoneCall;
+
+  const OrderDetailsModal({
+    super.key,
+    required this.orderId,
+    required this.factoryName,
+    required this.ownerName,
+    required this.contactNumber,
+    required this.address,
+    required this.village,
+    required this.district,
+    required this.factoryLogoUrl,
+    required this.status,
+    required this.statusColor,
+    required this.cropType,
+    required this.totalQuantity,
+    required this.teaQuantity,
+    required this.cinnamonQuantity,
+    required this.unit,
+    required this.description,
+    required this.orderDate,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.orderPhotos,
+    required this.makePhoneCall,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cropColor = _getCropColorFromString(cropType);
+    
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.85,
+      decoration: const BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(30),
+          topRight: Radius.circular(30),
+        ),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  statusColor.withOpacity(0.1),
+                  statusColor.withOpacity(0.05),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(30),
+                topRight: Radius.circular(30),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: statusColor.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: factoryLogoUrl != null && factoryLogoUrl!.isNotEmpty
+                        ? Image.network(
+                            factoryLogoUrl!,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      statusColor,
+                                      Color.lerp(statusColor, Colors.black, 0.2)!,
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                ),
+                                child: const Center(
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      statusColor,
+                                      Color.lerp(statusColor, Colors.black, 0.2)!,
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                ),
+                                child: const Icon(
+                                  Icons.factory,
+                                  color: Colors.white,
+                                  size: 28,
+                                ),
+                              );
+                            },
+                          )
+                        : Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  statusColor,
+                                  Color.lerp(statusColor, Colors.black, 0.2)!,
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.factory,
+                              color: Colors.white,
+                              size: 28,
+                            ),
+                          ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        factoryName,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.darkText,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Order: $orderId',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.secondaryText,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close, color: AppColors.secondaryText),
+                ),
+              ],
+            ),
+          ),
+          
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 20),
+            decoration: BoxDecoration(
+              color: statusColor.withOpacity(0.05),
+              border: Border(
+                bottom: BorderSide(color: statusColor.withOpacity(0.1)),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: statusColor.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _getOrderStatusIcon(status),
+                        size: 14,
+                        color: statusColor,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        status.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: statusColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildDetailSection(
+                    title: 'Order Information',
+                    icon: Icons.shopping_cart,
+                    children: [
+                      _buildDetailRow('Order ID', orderId),
+                      _buildDetailRow('Crop Type', cropType),
+                      _buildDetailRowWithBadge(
+                        'Total Quantity',
+                        '$totalQuantity $unit',
+                        cropColor,
+                      ),
+                      if (cropType == 'Both' || cropType == 'Tea') 
+                        _buildDetailRow('Tea Quantity', '$teaQuantity $unit'),
+                      if (cropType == 'Both' || cropType == 'Cinnamon') 
+                        _buildDetailRow('Cinnamon Quantity', '$cinnamonQuantity $unit'),
+                      if (orderDate != null)
+                        _buildDetailRow(
+                          'Order Date',
+                          DateFormat('MMMM dd, yyyy - hh:mm a').format(orderDate!.toDate()),
+                        ),
+                      if (description.isNotEmpty)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Description:',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.secondaryText,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              description,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: AppColors.darkText,
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  _buildDetailSection(
+                    title: 'Factory Information',
+                    icon: Icons.factory,
+                    children: [
+                      _buildDetailRow('Factory Name', factoryName),
+                      _buildDetailRow('Owner Name', ownerName),
+                      _buildDetailRow('Contact Number', contactNumber),
+                      _buildDetailRow('Address', address),
+                      _buildDetailRow('Village/Town', village),
+                      _buildDetailRow('District', district),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  if (orderPhotos.isNotEmpty)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildDetailSection(
+                          title: 'Order Photos',
+                          icon: Icons.photo_library,
+                          children: [
+                            const SizedBox(height: 8),
+                            Text(
+                              'Total ${orderPhotos.length} photo${orderPhotos.length > 1 ? 's' : ''}',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: AppColors.secondaryText,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            GridView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 3,
+                                crossAxisSpacing: 8,
+                                mainAxisSpacing: 8,
+                                childAspectRatio: 1,
+                              ),
+                              itemCount: orderPhotos.length,
+                              itemBuilder: (context, index) {
+                                return ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.network(
+                                    orderPhotos[index],
+                                    fit: BoxFit.cover,
+                                    loadingBuilder: (context, child, loadingProgress) {
+                                      if (loadingProgress == null) return child;
+                                      return Center(
+                                        child: CircularProgressIndicator(
+                                          value: loadingProgress.expectedTotalBytes != null
+                                              ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                              : null,
+                                          color: statusColor,
+                                        ),
+                                      );
+                                    },
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        color: Colors.grey[200],
+                                        child: const Icon(Icons.broken_image, color: Colors.grey),
+                                      );
+                                    },
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+                    ),
+                  
+                  _buildDetailSection(
+                    title: 'Timestamps',
+                    icon: Icons.access_time,
+                    children: [
+                      if (createdAt != null)
+                        _buildDetailRow(
+                          'Created At',
+                          DateFormat('MMMM dd, yyyy - hh:mm a').format(createdAt!.toDate()),
+                        ),
+                      if (updatedAt != null)
+                        _buildDetailRow(
+                          'Updated At',
+                          DateFormat('MMMM dd, yyyy - hh:mm a').format(updatedAt!.toDate()),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 30),
+                  
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => makePhoneCall(contactNumber),
+                          icon: Icon(Icons.phone, color: statusColor),
+                          label: Text(
+                            'Call Factory',
+                            style: TextStyle(
+                              color: statusColor, 
+                              fontWeight: FontWeight.w600
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            side: BorderSide(color: statusColor),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(context);
+                          },
+                          icon: const Icon(Icons.close, color: Colors.white, size: 18),
+                          label: const Text(
+                            'Close',
+                            style: TextStyle(
+                              color: Colors.white, 
+                              fontWeight: FontWeight.w600
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: statusColor,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 2,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailSection({
+    required String title,
+    required IconData icon,
+    required List<Widget> children,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: AppColors.primaryBlue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, size: 18, color: AppColors.primaryBlue),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppColors.darkText,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.background,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            children: children,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              '$label:',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.secondaryText,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppColors.darkText,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRowWithBadge(String label, String value, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              '$label:',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.secondaryText,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: color.withOpacity(0.3)),
+            ),
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getCropColorFromString(String cropType) {
+    switch (cropType.toLowerCase()) {
+      case 'tea':
+        return AppColors.successGreen;
+      case 'cinnamon':
+        return AppColors.warningOrange;
+      case 'both':
+        return AppColors.purpleAccent;
+      default:
+        return AppColors.primaryBlue;
+    }
+  }
+
+  IconData _getOrderStatusIcon(String status) {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return Icons.pending_outlined;
+      case 'factory recived':
+      case 'received factory':
+      case 'factory received':
+        return Icons.factory_rounded;
+      case 'delivered':
+      case 'completed':
+      case 'accepted':
+        return Icons.check_circle_outline_rounded;
+      case 'cancelled':
+      case 'rejected':
+        return Icons.cancel_outlined;
+      default:
+        return Icons.info_outline_rounded;
+    }
+  }
+}
+
 class LandSizeDetailsModal extends StatelessWidget {
   final String? cropType;
   final String? landSize;
@@ -2792,7 +3415,6 @@ class LandSizeDetailsModal extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
                   
-                  // Land Photos Section
                   if (landPhotos.isNotEmpty)
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
