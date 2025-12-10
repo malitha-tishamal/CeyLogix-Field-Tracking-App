@@ -1,4 +1,4 @@
-// factory_owner_orders.dart - FINAL VERSION WITH STATIC HEADER & FOOTER
+// factory_owner_orders.dart - FINAL VERSION WITH TEA & CINNAMON QUANTITIES
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -594,30 +594,28 @@ class _FactoryOwnerOrdersPageState extends State<FactoryOwnerOrdersPage> {
             
             // STATIC FOOTER - Doesn't scroll
             Container(
-  width: double.infinity, // <-- makes it full width
-  padding: EdgeInsets.symmetric(
-    horizontal: screenWidth * 0.04,
-    vertical: screenHeight * 0.015,
-  ),
-  decoration: BoxDecoration(
-    
-    border: Border(
-      top: BorderSide(
-        color: AppColors.border,
-        width: 1,
-      ),
-    ),
-  ),
-  child: Text(
-    'Developed By Malitha Tishamal',
-    textAlign: TextAlign.center,
-    style: TextStyle(
-      color: AppColors.darkText.withOpacity(0.7),
-      fontSize: screenWidth * 0.03,
-    ),
-  ),
-),
-
+              width: double.infinity,
+              padding: EdgeInsets.symmetric(
+                horizontal: screenWidth * 0.04,
+                vertical: screenHeight * 0.015,
+              ),
+              decoration: BoxDecoration(
+                border: Border(
+                  top: BorderSide(
+                    color: AppColors.border,
+                    width: 1,
+                  ),
+                ),
+              ),
+              child: Text(
+                'Developed By Malitha Tishamal',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColors.darkText.withOpacity(0.7),
+                  fontSize: screenWidth * 0.03,
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -1529,6 +1527,10 @@ class _FactoryOwnerOrdersPageState extends State<FactoryOwnerOrdersPage> {
     final description = order['description'] ?? '';
     final orderPhotos = List<String>.from(order['orderPhotos'] ?? []);
     
+    // Get tea and cinnamon quantities
+    final teaQuantity = order['teaQuantity'] ?? 0;
+    final cinnamonQuantity = order['cinnamonQuantity'] ?? 0;
+    
     final statusColor = _getOrderStatusColor(status);
     final cropColor = _getCropColorFromString(cropType);
     final canMarkAsReceived = status.toLowerCase() == 'pending';
@@ -1622,7 +1624,7 @@ class _FactoryOwnerOrdersPageState extends State<FactoryOwnerOrdersPage> {
                   
                   SizedBox(height: screenHeight * 0.01),
                   
-                  // Order details row
+                  // Order details row with tea and cinnamon quantities
                   Row(
                     children: [
                       Container(
@@ -1648,44 +1650,95 @@ class _FactoryOwnerOrdersPageState extends State<FactoryOwnerOrdersPage> {
                       ),
                       SizedBox(width: isSmallScreen ? 8 : 
                               isMediumScreen ? 10 : 12),
-                      Icon(
-                        Icons.scale,
-                        size: isSmallScreen ? 12 : 
-                              isMediumScreen ? 14 : 16,
-                        color: AppColors.secondaryText,
-                      ),
-                      SizedBox(width: isSmallScreen ? 2 : 
-                              isMediumScreen ? 3 : 4),
-                      Text(
-                        '$totalQuantity $unit',
-                        style: TextStyle(
-                          fontSize: isSmallScreen ? 12 : 
-                                  isMediumScreen ? 13 : 14,
-                          color: AppColors.darkText,
+                      
+                      // Display tea quantity if applicable
+                      if ((cropType.toLowerCase() == 'tea' || cropType.toLowerCase() == 'both') && teaQuantity > 0)
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isSmallScreen ? 4 : 6,
+                            vertical: isSmallScreen ? 1 : 2,
+                          ),
+                          margin: EdgeInsets.only(right: isSmallScreen ? 4 : 6),
+                          decoration: BoxDecoration(
+                            color: AppColors.successGreen.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.eco,
+                                size: isSmallScreen ? 8 : 10,
+                                color: AppColors.successGreen,
+                              ),
+                              SizedBox(width: 2),
+                              Text(
+                                '$teaQuantity',
+                                style: TextStyle(
+                                  fontSize: isSmallScreen ? 10 : 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.successGreen,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      Spacer(),
-                      if (orderDate != null)
-                        Row(
+                      
+                      // Display cinnamon quantity if applicable
+                      if ((cropType.toLowerCase() == 'cinnamon' || cropType.toLowerCase() == 'both') && cinnamonQuantity > 0)
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isSmallScreen ? 4 : 6,
+                            vertical: isSmallScreen ? 1 : 2,
+                          ),
+                          margin: EdgeInsets.only(right: isSmallScreen ? 4 : 6),
+                          decoration: BoxDecoration(
+                            color: AppColors.warningOrange.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.forest,
+                                size: isSmallScreen ? 8 : 10,
+                                color: AppColors.warningOrange,
+                              ),
+                              SizedBox(width: 2),
+                              Text(
+                                '$cinnamonQuantity',
+                                style: TextStyle(
+                                  fontSize: isSmallScreen ? 10 : 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.warningOrange,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      
+                      // Display total with unit
+                      Expanded(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
                           children: [
                             Icon(
-                              Icons.calendar_today,
-                              size: isSmallScreen ? 10 : 
-                                    isMediumScreen ? 12 : 14,
-                              color: AppColors.textTertiary,
+                              Icons.scale,
+                              size: isSmallScreen ? 12 : 16,
+                              color: AppColors.secondaryText,
                             ),
-                            SizedBox(width: isSmallScreen ? 2 : 
-                                    isMediumScreen ? 3 : 4),
+                            SizedBox(width: isSmallScreen ? 2 : 4),
                             Text(
-                              DateFormat('MMM dd, HH:mm').format(orderDate),
+                              '$totalQuantity $unit',
                               style: TextStyle(
-                                fontSize: isSmallScreen ? 10 : 
-                                        isMediumScreen ? 11 : 12,
-                                color: AppColors.textTertiary,
+                                fontSize: isSmallScreen ? 12 : 14,
+                                color: AppColors.darkText,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ],
                         ),
+                      ),
                     ],
                   ),
                   
@@ -1918,7 +1971,7 @@ class _FactoryOwnerOrdersPageState extends State<FactoryOwnerOrdersPage> {
   }
 }
 
-// FactoryOrderDetailsModal class (with land and owner details) - Same as before
+// FactoryOrderDetailsModal class (with land and owner details)
 class FactoryOrderDetailsModal extends StatefulWidget {
   final Map<String, dynamic> order;
   final Function(String orderId) onStatusUpdate;
@@ -1997,796 +2050,793 @@ class _FactoryOrderDetailsModalState extends State<FactoryOrderDetailsModal> {
   }
 
   @override
-  @override
-Widget build(BuildContext context) {
-  final screenWidth = MediaQuery.of(context).size.width;
-  final screenHeight = MediaQuery.of(context).size.height;
-  
-  final landOwnerName = widget.order['landOwnerName'] ?? 'Unknown';
-  final status = widget.order['status'] ?? 'Pending';
-  final cropType = widget.order['cropType'] ?? 'N/A';
-  final totalQuantity = widget.order['totalQuantity'] ?? 0;
-  final unit = widget.order['unit'] ?? 'kg';
-  final orderDate = widget.order['orderDate'] as DateTime?;
-  final description = widget.order['description'] ?? '';
-  final orderPhotos = List<String>.from(widget.order['orderPhotos'] ?? []);
-  
-  final statusColor = _getOrderStatusColor(status);
-  final canMarkAsReceived = status.toLowerCase() == 'pending';
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    
+    final landOwnerName = widget.order['landOwnerName'] ?? 'Unknown';
+    final status = widget.order['status'] ?? 'Pending';
+    final cropType = widget.order['cropType'] ?? 'N/A';
+    final totalQuantity = widget.order['totalQuantity'] ?? 0;
+    final unit = widget.order['unit'] ?? 'kg';
+    final orderDate = widget.order['orderDate'] as DateTime?;
+    final description = widget.order['description'] ?? '';
+    final orderPhotos = List<String>.from(widget.order['orderPhotos'] ?? []);
+    
+    // Get tea and cinnamon quantities
+    final teaQuantity = widget.order['teaQuantity'] ?? 0;
+    final cinnamonQuantity = widget.order['cinnamonQuantity'] ?? 0;
+    
+    final statusColor = _getOrderStatusColor(status);
+    final canMarkAsReceived = status.toLowerCase() == 'pending';
 
-  // Responsive calculations
-  final isSmallScreen = screenWidth < 360;
-  final isMediumScreen = screenWidth >= 360 && screenWidth < 600;
-  final isLargeScreen = screenWidth >= 600;
+    // Responsive calculations
+    final isSmallScreen = screenWidth < 360;
+    final isMediumScreen = screenWidth >= 360 && screenWidth < 600;
+    final isLargeScreen = screenWidth >= 600;
 
-  // Calculate dialog width based on screen size
-  final double dialogWidth = isSmallScreen
-      ? screenWidth * 0.95
-      : isMediumScreen
-          ? screenWidth * 0.85
-          : 500; // Max width for large screens
+    // Calculate dialog width based on screen size
+    final double dialogWidth = isSmallScreen
+        ? screenWidth * 0.95
+        : isMediumScreen
+            ? screenWidth * 0.85
+            : 500; // Max width for large screens
 
-  // Calculate dialog height based on screen size
-  final double dialogHeight = screenHeight * (isSmallScreen ? 0.85 : 0.9);
+    // Calculate dialog height based on screen size
+    final double dialogHeight = screenHeight * (isSmallScreen ? 0.85 : 0.9);
 
-  // Calculate font sizes based on screen size
-  final double titleFontSize = isSmallScreen ? 16 : isMediumScreen ? 18 : 20;
-  final double subtitleFontSize = isSmallScreen ? 12 : isMediumScreen ? 14 : 16;
-  final double bodyFontSize = isSmallScreen ? 14 : isMediumScreen ? 16 : 18;
-  final double detailFontSize = isSmallScreen ? 12 : isMediumScreen ? 14 : 16;
-  final double buttonFontSize = isSmallScreen ? 14 : isMediumScreen ? 16 : 18;
+    // Calculate font sizes based on screen size
+    final double titleFontSize = isSmallScreen ? 16 : isMediumScreen ? 18 : 20;
+    final double subtitleFontSize = isSmallScreen ? 12 : isMediumScreen ? 14 : 16;
+    final double bodyFontSize = isSmallScreen ? 14 : isMediumScreen ? 16 : 18;
+    final double detailFontSize = isSmallScreen ? 12 : isMediumScreen ? 14 : 16;
+    final double buttonFontSize = isSmallScreen ? 14 : isMediumScreen ? 16 : 18;
 
-  // Calculate padding based on screen size
-  final double paddingAll = isSmallScreen ? 12 : isMediumScreen ? 16 : 20;
-  final double paddingVertical = isSmallScreen ? 8 : isMediumScreen ? 12 : 16;
-  final double paddingHorizontal = isSmallScreen ? 12 : isMediumScreen ? 16 : 20;
+    // Calculate padding based on screen size
+    final double paddingAll = isSmallScreen ? 12 : isMediumScreen ? 16 : 20;
+    final double paddingVertical = isSmallScreen ? 8 : isMediumScreen ? 12 : 16;
+    final double paddingHorizontal = isSmallScreen ? 12 : isMediumScreen ? 16 : 20;
 
-  // Calculate icon sizes based on screen size
-  final double iconSizeSmall = isSmallScreen ? 16 : isMediumScreen ? 20 : 24;
-  final double iconSizeMedium = isSmallScreen ? 20 : isMediumScreen ? 24 : 28;
-  final double iconSizeLarge = isSmallScreen ? 24 : isMediumScreen ? 28 : 32;
+    // Calculate icon sizes based on screen size
+    final double iconSizeSmall = isSmallScreen ? 16 : isMediumScreen ? 20 : 24;
+    final double iconSizeMedium = isSmallScreen ? 20 : isMediumScreen ? 24 : 28;
+    final double iconSizeLarge = isSmallScreen ? 24 : isMediumScreen ? 28 : 32;
 
-  // Calculate avatar radius based on screen size
-  final double avatarRadius = isSmallScreen ? 20 : isMediumScreen ? 25 : 30;
+    // Calculate avatar radius based on screen size
+    final double avatarRadius = isSmallScreen ? 20 : isMediumScreen ? 25 : 30;
 
-  // Calculate grid columns based on screen size
-  final int gridColumns = isSmallScreen ? 1 : 2;
+    // Calculate grid columns based on screen size
+    final int gridColumns = isSmallScreen ? 1 : 2;
 
-  // Calculate image sizes based on screen size
-  final double landPhotoSize = isSmallScreen ? 60 : isMediumScreen ? 70 : 80;
-  final double orderPhotoSize = isSmallScreen ? 80 : isMediumScreen ? 90 : 100;
+    // Calculate image sizes based on screen size
+    final double landPhotoSize = isSmallScreen ? 60 : isMediumScreen ? 70 : 80;
+    final double orderPhotoSize = isSmallScreen ? 80 : isMediumScreen ? 90 : 100;
 
-  return Dialog(
-    backgroundColor: Colors.transparent,
-    insetPadding: EdgeInsets.symmetric(
-      horizontal: isSmallScreen ? 8 : isMediumScreen ? 16 : 24,
-      vertical: isSmallScreen ? 8 : 16,
-    ),
-    child: Container(
-      constraints: BoxConstraints(
-        maxWidth: dialogWidth,
-        maxHeight: dialogHeight,
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: isSmallScreen ? 8 : isMediumScreen ? 16 : 24,
+        vertical: isSmallScreen ? 8 : 16,
       ),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(isSmallScreen ? 16 : 20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: isSmallScreen ? 20 : 30,
-            spreadRadius: isSmallScreen ? 3 : 5,
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Header
-          Container(
-            padding: EdgeInsets.all(paddingAll),
-            decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.1),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(isSmallScreen ? 16 : 20),
-                topRight: Radius.circular(isSmallScreen ? 16 : 20),
+      child: Container(
+        constraints: BoxConstraints(
+          maxWidth: dialogWidth,
+          maxHeight: dialogHeight,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(isSmallScreen ? 16 : 20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: isSmallScreen ? 20 : 30,
+              spreadRadius: isSmallScreen ? 3 : 5,
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header
+            Container(
+              padding: EdgeInsets.all(paddingAll),
+              decoration: BoxDecoration(
+                color: statusColor.withOpacity(0.1),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(isSmallScreen ? 16 : 20),
+                  topRight: Radius.circular(isSmallScreen ? 16 : 20),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(isSmallScreen ? 8 : 10),
+                    decoration: BoxDecoration(
+                      color: statusColor,
+                      borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
+                    ),
+                    child: Icon(
+                      _getOrderStatusIcon(status),
+                      size: iconSizeMedium,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(width: isSmallScreen ? 12 : 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Order Details',
+                          style: TextStyle(
+                            fontSize: titleFontSize,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.darkText,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        SizedBox(height: isSmallScreen ? 2 : 4),
+                        Text(
+                          'From: $landOwnerName',
+                          style: TextStyle(
+                            fontSize: subtitleFontSize,
+                            color: AppColors.secondaryText,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isSmallScreen ? 8 : 12,
+                      vertical: isSmallScreen ? 4 : 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(isSmallScreen ? 16 : 20),
+                      border: Border.all(color: statusColor.withOpacity(0.4)),
+                    ),
+                    child: Text(
+                      status.length > 10 && isSmallScreen
+                          ? status.substring(0, 10).toUpperCase()
+                          : status.toUpperCase(),
+                      style: TextStyle(
+                        fontSize: isSmallScreen ? 10 : 12,
+                        fontWeight: FontWeight.w700,
+                        color: statusColor,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            child: Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(isSmallScreen ? 8 : 10),
-                  decoration: BoxDecoration(
-                    color: statusColor,
-                    borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
-                  ),
-                  child: Icon(
-                    _getOrderStatusIcon(status),
-                    size: iconSizeMedium,
-                    color: Colors.white,
-                  ),
-                ),
-                SizedBox(width: isSmallScreen ? 12 : 16),
-                Expanded(
+
+            // Content
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Padding(
+                  padding: EdgeInsets.all(paddingAll),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Order Details',
-                        style: TextStyle(
-                          fontSize: titleFontSize,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.darkText,
+                      // Order Information
+                      Container(
+                        padding: EdgeInsets.all(paddingAll),
+                        margin: EdgeInsets.only(bottom: paddingVertical),
+                        decoration: BoxDecoration(
+                          color: AppColors.hover,
+                          borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      SizedBox(height: isSmallScreen ? 2 : 4),
-                      Text(
-                        'From: $landOwnerName',
-                        style: TextStyle(
-                          fontSize: subtitleFontSize,
-                          color: AppColors.secondaryText,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isSmallScreen ? 8 : 12,
-                    vertical: isSmallScreen ? 4 : 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(isSmallScreen ? 16 : 20),
-                    border: Border.all(color: statusColor.withOpacity(0.4)),
-                  ),
-                  child: Text(
-                    status.length > 10 && isSmallScreen
-                        ? status.substring(0, 10).toUpperCase()
-                        : status.toUpperCase(),
-                    style: TextStyle(
-                      fontSize: isSmallScreen ? 10 : 12,
-                      fontWeight: FontWeight.w700,
-                      color: statusColor,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Content
-          Expanded(
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              child: Padding(
-                padding: EdgeInsets.all(paddingAll),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Order Information
-                    Container(
-                      padding: EdgeInsets.all(paddingAll),
-                      margin: EdgeInsets.only(bottom: paddingVertical),
-                      decoration: BoxDecoration(
-                        color: AppColors.hover,
-                        borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'ORDER INFORMATION',
-                            style: TextStyle(
-                              fontSize: isSmallScreen ? 10 : 12,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.secondaryText,
-                              letterSpacing: 1,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'ORDER INFORMATION',
+                              style: TextStyle(
+                                fontSize: isSmallScreen ? 10 : 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.secondaryText,
+                                letterSpacing: 1,
+                              ),
                             ),
-                          ),
-                          SizedBox(height: isSmallScreen ? 8 : 12),
-                          _buildOrderDetailRow(
-                            'Crop Type', 
-                            cropType, 
-                            screenWidth,
-                            fontSize: detailFontSize,
-                          ),
-                          _buildOrderDetailRow(
-                            'Quantity', 
-                            '$totalQuantity $unit', 
-                            screenWidth,
-                            fontSize: detailFontSize,
-                          ),
-                          if (orderDate != null)
+                            SizedBox(height: isSmallScreen ? 8 : 12),
                             _buildOrderDetailRow(
-                              'Order Date', 
-                              DateFormat('MMM dd, yyyy • HH:mm').format(orderDate), 
+                              'Crop Type', 
+                              cropType, 
                               screenWidth,
                               fontSize: detailFontSize,
                             ),
-                          if (widget.order['factoryName'] != null)
+                            
+                            // Tea Quantity (if applicable)
+                            if (teaQuantity > 0)
+                              _buildOrderDetailRow(
+                                'Tea Quantity', 
+                                '$teaQuantity $unit', 
+                                screenWidth,
+                                fontSize: detailFontSize,
+                                textColor: AppColors.successGreen,
+                              ),
+                            
+                            // Cinnamon Quantity (if applicable)
+                            if (cinnamonQuantity > 0)
+                              _buildOrderDetailRow(
+                                'Cinnamon Quantity', 
+                                '$cinnamonQuantity $unit', 
+                                screenWidth,
+                                fontSize: detailFontSize,
+                                textColor: AppColors.warningOrange,
+                              ),
+                            
+                            // Total Quantity
                             _buildOrderDetailRow(
-                              'To Factory', 
-                              widget.order['factoryName'].toString(), 
+                              'Total Quantity', 
+                              '$totalQuantity $unit', 
                               screenWidth,
                               fontSize: detailFontSize,
+                              textColor: AppColors.primaryBlue,
                             ),
-                        ],
+                            
+                            if (orderDate != null)
+                              _buildOrderDetailRow(
+                                'Order Date', 
+                                DateFormat('MMM dd, yyyy • HH:mm').format(orderDate), 
+                                screenWidth,
+                                fontSize: detailFontSize,
+                              ),
+                            if (widget.order['factoryName'] != null)
+                              _buildOrderDetailRow(
+                                'To Factory', 
+                                widget.order['factoryName'].toString(), 
+                                screenWidth,
+                                fontSize: detailFontSize,
+                              ),
+                          ],
+                        ),
                       ),
-                    ),
 
-                    SizedBox(height: paddingVertical),
+                      SizedBox(height: paddingVertical),
 
-                    // Land Owner Details
-                    Container(
-                      padding: EdgeInsets.all(paddingAll),
-                      margin: EdgeInsets.only(bottom: paddingVertical),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.person_outline,
-                                color: AppColors.primaryBlue,
-                                size: iconSizeSmall,
-                              ),
-                              SizedBox(width: isSmallScreen ? 6 : 8),
-                              Text(
-                                'LAND OWNER DETAILS',
-                                style: TextStyle(
-                                  fontSize: isSmallScreen ? 10 : 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.secondaryText,
-                                  letterSpacing: 1,
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: isSmallScreen ? 8 : 12),
-                          
-                          if (_isLoadingLandInfo)
-                            Center(
-                              child: Padding(
-                                padding: EdgeInsets.all(paddingAll),
-                                child: CircularProgressIndicator(
-                                  color: AppColors.primaryBlue,
-                                  strokeWidth: 2,
-                                ),
-                              ),
-                            )
-                          else if (_landInfoError != null)
-                            Center(
-                              child: Padding(
-                                padding: EdgeInsets.all(paddingAll),
-                                child: Column(
-                                  children: [
-                                    Icon(
-                                      Icons.error_outline,
-                                      color: AppColors.accentRed,
-                                      size: iconSizeLarge,
-                                    ),
-                                    SizedBox(height: isSmallScreen ? 6 : 8),
-                                    Text(
-                                      _landInfoError!,
-                                      style: TextStyle(
-                                        fontSize: detailFontSize,
-                                        color: AppColors.secondaryText,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            )
-                          else if (_landOwnerDetails != null)
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                      // Land Owner Details
+                      Container(
+                        padding: EdgeInsets.all(paddingAll),
+                        margin: EdgeInsets.only(bottom: paddingVertical),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
                               children: [
-                                // Owner Profile
-                                Row(
-                                  children: [
-                                    CircleAvatar(
-                                      radius: avatarRadius,
-                                      backgroundImage: _landOwnerDetails!['profileImageUrl'] != null
-                                          ? NetworkImage(_landOwnerDetails!['profileImageUrl']!)
-                                          : null,
-                                      backgroundColor: AppColors.primaryBlue.withOpacity(0.1),
-                                      child: _landOwnerDetails!['profileImageUrl'] == null
-                                          ? Icon(
-                                              Icons.person,
-                                              color: AppColors.primaryBlue,
-                                              size: iconSizeMedium,
-                                            )
-                                          : null,
-                                    ),
-                                    SizedBox(width: isSmallScreen ? 10 : 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            _landOwnerDetails!['name'] ?? 'N/A',
-                                            style: TextStyle(
-                                              fontSize: bodyFontSize,
-                                              fontWeight: FontWeight.bold,
-                                              color: AppColors.darkText,
-                                            ),
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                          SizedBox(height: isSmallScreen ? 2 : 4),
-                                          Text(
-                                            'Land Owner',
-                                            style: TextStyle(
-                                              fontSize: detailFontSize,
-                                              color: AppColors.primaryBlue,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
+                                Icon(
+                                  Icons.person_outline,
+                                  color: AppColors.primaryBlue,
+                                  size: iconSizeSmall,
                                 ),
-                                
-                                SizedBox(height: isSmallScreen ? 10 : 12),
-                                
-                                // Owner Details Grid
-                                GridView.count(
-                                  shrinkWrap: true,
-                                  physics: const NeverScrollableScrollPhysics(),
-                                  crossAxisCount: gridColumns,
-                                  crossAxisSpacing: isSmallScreen ? 6 : 10,
-                                  mainAxisSpacing: isSmallScreen ? 6 : 10,
-                                  childAspectRatio: isSmallScreen ? 3.5 : 3,
-                                  children: [
-                                    _buildOwnerDetailItem(
-                                      icon: Icons.email,
-                                      label: 'Email',
-                                      value: _landOwnerDetails!['email'] ?? 'N/A',
-                                      iconSize: iconSizeSmall,
-                                      fontSize: detailFontSize,
-                                    ),
-                                    _buildOwnerDetailItem(
-                                      icon: Icons.phone,
-                                      label: 'Mobile',
-                                      value: _landOwnerDetails!['mobile'] ?? 'N/A',
-                                      iconSize: iconSizeSmall,
-                                      fontSize: detailFontSize,
-                                    ),
-                                    _buildOwnerDetailItem(
-                                      icon: Icons.badge,
-                                      label: 'NIC',
-                                      value: _landOwnerDetails!['nic'] ?? 'N/A',
-                                      iconSize: iconSizeSmall,
-                                      fontSize: detailFontSize,
-                                    ),
-                                    _buildOwnerDetailItem(
-                                      icon: Icons.calendar_today,
-                                      label: 'Registered',
-                                      value: _landOwnerDetails!['registrationDate'] != null
-                                          ? DateFormat('MMM dd, yyyy').format(
-                                              (_landOwnerDetails!['registrationDate'] as Timestamp).toDate())
-                                          : 'N/A',
-                                      iconSize: iconSizeSmall,
-                                      fontSize: detailFontSize,
-                                    ),
-                                  ],
+                                SizedBox(width: isSmallScreen ? 6 : 8),
+                                Text(
+                                  'LAND OWNER DETAILS',
+                                  style: TextStyle(
+                                    fontSize: isSmallScreen ? 10 : 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.secondaryText,
+                                    letterSpacing: 1,
+                                  ),
                                 ),
                               ],
-                            )
-                          else
-                            Center(
-                              child: Padding(
-                                padding: EdgeInsets.all(paddingAll),
-                                child: Text(
-                                  'Land owner details not found',
-                                  style: TextStyle(
-                                    fontSize: detailFontSize,
-                                    color: AppColors.secondaryText,
+                            ),
+                            SizedBox(height: isSmallScreen ? 8 : 12),
+                            
+                            if (_isLoadingLandInfo)
+                              Center(
+                                child: Padding(
+                                  padding: EdgeInsets.all(paddingAll),
+                                  child: CircularProgressIndicator(
+                                    color: AppColors.primaryBlue,
+                                    strokeWidth: 2,
                                   ),
                                 ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-
-                    // Land Details
-                    if (_landDetails != null && !_isLoadingLandInfo)
-                      Column(
-                        children: [
-                          SizedBox(height: paddingVertical),
-                          Container(
-                            padding: EdgeInsets.all(paddingAll),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
-                              border: Border.all(color: AppColors.border),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.landscape,
-                                      color: AppColors.successGreen,
-                                      size: iconSizeSmall,
-                                    ),
-                                    SizedBox(width: isSmallScreen ? 6 : 8),
-                                    Text(
-                                      'LAND DETAILS',
-                                      style: TextStyle(
-                                        fontSize: isSmallScreen ? 10 : 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.secondaryText,
-                                        letterSpacing: 1,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                SizedBox(height: isSmallScreen ? 8 : 12),
-                                
-                                // Land Name and Crop Type
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        _landDetails!['landName'] ?? 'Unknown Land',
-                                        style: TextStyle(
-                                          fontSize: bodyFontSize,
-                                          fontWeight: FontWeight.bold,
-                                          color: AppColors.darkText,
-                                        ),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: isSmallScreen ? 6 : 8,
-                                        vertical: isSmallScreen ? 3 : 4,
-                                      ),
-                                      margin: EdgeInsets.only(left: isSmallScreen ? 6 : 8),
-                                      decoration: BoxDecoration(
-                                        color: _getCropColorFromString(_landDetails!['cropType'] ?? '').withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(isSmallScreen ? 6 : 8),
-                                      ),
-                                      child: Text(
-                                        _landDetails!['cropType'] ?? 'N/A',
-                                        style: TextStyle(
-                                          fontSize: isSmallScreen ? 10 : 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: _getCropColorFromString(_landDetails!['cropType'] ?? ''),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                
-                                SizedBox(height: isSmallScreen ? 8 : 12),
-                                
-                                // Land Size Details
-                                if (_landDetails!['landSizeDetails'] != null && _landDetails!['landSizeDetails'].toString().isNotEmpty)
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                              )
+                            else if (_landInfoError != null)
+                              Center(
+                                child: Padding(
+                                  padding: EdgeInsets.all(paddingAll),
+                                  child: Column(
                                     children: [
-                                      Text(
-                                        'Land Size Breakdown:',
-                                        style: TextStyle(
-                                          fontSize: detailFontSize,
-                                          fontWeight: FontWeight.w600,
-                                          color: AppColors.secondaryText,
-                                        ),
-                                      ),
-                                      SizedBox(height: isSmallScreen ? 4 : 6),
-                                      Text(
-                                        _landDetails!['landSizeDetails'] ?? '',
-                                        style: TextStyle(
-                                          fontSize: detailFontSize,
-                                          color: AppColors.darkText,
-                                        ),
-                                      ),
-                                      SizedBox(height: isSmallScreen ? 8 : 12),
-                                    ],
-                                  ),
-                                
-                                // Location Details
-                                GridView.count(
-                                  shrinkWrap: true,
-                                  physics: const NeverScrollableScrollPhysics(),
-                                  crossAxisCount: gridColumns,
-                                  crossAxisSpacing: isSmallScreen ? 6 : 10,
-                                  mainAxisSpacing: isSmallScreen ? 6 : 10,
-                                  childAspectRatio: isSmallScreen ? 3.5 : 3,
-                                  children: [
-                                    _buildLandDetailItem(
-                                      icon: Icons.location_on,
-                                      label: 'Address',
-                                      value: _landDetails!['address'] ?? 'N/A',
-                                      iconSize: iconSizeSmall,
-                                      fontSize: detailFontSize,
-                                    ),
-                                    _buildLandDetailItem(
-                                      icon: Icons.location_city,
-                                      label: 'District',
-                                      value: _landDetails!['district'] ?? 'N/A',
-                                      iconSize: iconSizeSmall,
-                                      fontSize: detailFontSize,
-                                    ),
-                                    _buildLandDetailItem(
-                                      icon: Icons.landscape,
-                                      label: 'Village',
-                                      value: _landDetails!['village'] ?? 'N/A',
-                                      iconSize: iconSizeSmall,
-                                      fontSize: detailFontSize,
-                                    ),
-                                    _buildLandDetailItem(
-                                      icon: Icons.agriculture,
-                                      label: 'A/G Division',
-                                      value: _landDetails!['agDivision'] ?? 'N/A',
-                                      iconSize: iconSizeSmall,
-                                      fontSize: detailFontSize,
-                                    ),
-                                  ],
-                                ),
-                                
-                                // Land Photos
-                                if (_landDetails!['landPhotos'] != null && (_landDetails!['landPhotos'] as List).isNotEmpty)
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      SizedBox(height: isSmallScreen ? 8 : 12),
-                                      Text(
-                                        'LAND PHOTOS',
-                                        style: TextStyle(
-                                          fontSize: isSmallScreen ? 10 : 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: AppColors.secondaryText,
-                                        ),
+                                      Icon(
+                                        Icons.error_outline,
+                                        color: AppColors.accentRed,
+                                        size: iconSizeLarge,
                                       ),
                                       SizedBox(height: isSmallScreen ? 6 : 8),
-                                      SizedBox(
-                                        height: landPhotoSize,
-                                        child: ListView.builder(
-                                          scrollDirection: Axis.horizontal,
-                                          itemCount: (_landDetails!['landPhotos'] as List).length,
-                                          itemBuilder: (context, index) {
-                                            return Container(
-                                              margin: EdgeInsets.only(right: isSmallScreen ? 6 : 8),
-                                              width: landPhotoSize,
-                                              height: landPhotoSize,
-                                              decoration: BoxDecoration(
-                                                borderRadius: BorderRadius.circular(isSmallScreen ? 6 : 8),
-                                                border: Border.all(color: AppColors.border),
+                                      Text(
+                                        _landInfoError!,
+                                        style: TextStyle(
+                                          fontSize: detailFontSize,
+                                          color: AppColors.secondaryText,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                            else if (_landOwnerDetails != null)
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Owner Profile
+                                  Row(
+                                    children: [
+                                      CircleAvatar(
+                                        radius: avatarRadius,
+                                        backgroundImage: _landOwnerDetails!['profileImageUrl'] != null
+                                            ? NetworkImage(_landOwnerDetails!['profileImageUrl']!)
+                                            : null,
+                                        backgroundColor: AppColors.primaryBlue.withOpacity(0.1),
+                                        child: _landOwnerDetails!['profileImageUrl'] == null
+                                            ? Icon(
+                                                Icons.person,
+                                                color: AppColors.primaryBlue,
+                                                size: iconSizeMedium,
+                                              )
+                                            : null,
+                                      ),
+                                      SizedBox(width: isSmallScreen ? 10 : 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              _landOwnerDetails!['name'] ?? 'N/A',
+                                              style: TextStyle(
+                                                fontSize: bodyFontSize,
+                                                fontWeight: FontWeight.bold,
+                                                color: AppColors.darkText,
                                               ),
-                                              child: ClipRRect(
-                                                borderRadius: BorderRadius.circular(isSmallScreen ? 6 : 8),
-                                                child: Image.network(
-                                                  _landDetails!['landPhotos'][index],
-                                                  fit: BoxFit.cover,
-                                                  errorBuilder: (context, error, stackTrace) {
-                                                    return Container(
-                                                      color: AppColors.hover,
-                                                      child: Column(
-                                                        mainAxisAlignment: MainAxisAlignment.center,
-                                                        children: [
-                                                          Icon(
-                                                            Icons.broken_image,
-                                                            color: AppColors.textTertiary,
-                                                            size: iconSizeSmall,
-                                                          ),
-                                                          SizedBox(height: 4),
-                                                          Text(
-                                                            'Failed',
-                                                            style: TextStyle(
-                                                              fontSize: isSmallScreen ? 8 : 10,
-                                                              color: AppColors.textTertiary,
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    );
-                                                  },
-                                                ),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            SizedBox(height: isSmallScreen ? 2 : 4),
+                                            Text(
+                                              'Land Owner',
+                                              style: TextStyle(
+                                                fontSize: detailFontSize,
+                                                color: AppColors.primaryBlue,
+                                                fontWeight: FontWeight.w600,
                                               ),
-                                            );
-                                          },
+                                            ),
+                                          ],
                                         ),
                                       ),
                                     ],
                                   ),
-                              ],
-                            ),
-                          ),
-                        ],
+                                  
+                                  SizedBox(height: isSmallScreen ? 10 : 12),
+                                  
+                                  // Owner Details Grid
+                                  GridView.count(
+                                    shrinkWrap: true,
+                                    physics: const NeverScrollableScrollPhysics(),
+                                    crossAxisCount: gridColumns,
+                                    crossAxisSpacing: isSmallScreen ? 6 : 10,
+                                    mainAxisSpacing: isSmallScreen ? 6 : 10,
+                                    childAspectRatio: isSmallScreen ? 3.5 : 3,
+                                    children: [
+                                      _buildOwnerDetailItem(
+                                        icon: Icons.email,
+                                        label: 'Email',
+                                        value: _landOwnerDetails!['email'] ?? 'N/A',
+                                        iconSize: iconSizeSmall,
+                                        fontSize: detailFontSize,
+                                      ),
+                                      _buildOwnerDetailItem(
+                                        icon: Icons.phone,
+                                        label: 'Mobile',
+                                        value: _landOwnerDetails!['mobile'] ?? 'N/A',
+                                        iconSize: iconSizeSmall,
+                                        fontSize: detailFontSize,
+                                      ),
+                                      _buildOwnerDetailItem(
+                                        icon: Icons.badge,
+                                        label: 'NIC',
+                                        value: _landOwnerDetails!['nic'] ?? 'N/A',
+                                        iconSize: iconSizeSmall,
+                                        fontSize: detailFontSize,
+                                      ),
+                                      _buildOwnerDetailItem(
+                                        icon: Icons.calendar_today,
+                                        label: 'Registered',
+                                        value: _landOwnerDetails!['registrationDate'] != null
+                                            ? DateFormat('MMM dd, yyyy').format(
+                                                (_landOwnerDetails!['registrationDate'] as Timestamp).toDate())
+                                            : 'N/A',
+                                        iconSize: iconSizeSmall,
+                                        fontSize: detailFontSize,
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              )
+                            else
+                              Center(
+                                child: Padding(
+                                  padding: EdgeInsets.all(paddingAll),
+                                  child: Text(
+                                    'Land owner details not found',
+                                    style: TextStyle(
+                                      fontSize: detailFontSize,
+                                      color: AppColors.secondaryText,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
 
-                    // Order Description
-                    if (description.isNotEmpty)
-                      Column(
-                        children: [
-                          SizedBox(height: paddingVertical),
-                          Container(
-                            padding: EdgeInsets.all(paddingAll),
-                            decoration: BoxDecoration(
-                              color: AppColors.cardBackground,
-                              borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
-                              border: Border.all(color: AppColors.border),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'ORDER DESCRIPTION',
-                                  style: TextStyle(
-                                    fontSize: isSmallScreen ? 10 : 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.secondaryText,
-                                    letterSpacing: 1,
-                                  ),
-                                ),
-                                SizedBox(height: isSmallScreen ? 6 : 8),
-                                Text(
-                                  description,
-                                  style: TextStyle(
-                                    fontSize: detailFontSize,
-                                    color: AppColors.darkText,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-
-                    // Order Photos
-                    if (orderPhotos.isNotEmpty)
-                      Column(
-                        children: [
-                          SizedBox(height: paddingVertical),
-                          Container(
-                            padding: EdgeInsets.all(paddingAll),
-                            decoration: BoxDecoration(
-                              color: AppColors.cardBackground,
-                              borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
-                              border: Border.all(color: AppColors.border),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'ORDER PHOTOS (${orderPhotos.length})',
-                                  style: TextStyle(
-                                    fontSize: isSmallScreen ? 10 : 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.secondaryText,
-                                    letterSpacing: 1,
-                                  ),
-                                ),
-                                SizedBox(height: isSmallScreen ? 8 : 12),
-                                SizedBox(
-                                  height: orderPhotoSize,
-                                  child: ListView.builder(
-                                    scrollDirection: Axis.horizontal,
-                                    itemCount: orderPhotos.length,
-                                    itemBuilder: (context, index) {
-                                      return Container(
-                                        margin: EdgeInsets.only(right: isSmallScreen ? 8 : 12),
-                                        width: orderPhotoSize,
-                                        height: orderPhotoSize,
-                                        decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
-                                          border: Border.all(color: AppColors.border),
+                      // Land Details
+                      if (_landDetails != null && !_isLoadingLandInfo)
+                        Column(
+                          children: [
+                            SizedBox(height: paddingVertical),
+                            Container(
+                              padding: EdgeInsets.all(paddingAll),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
+                                border: Border.all(color: AppColors.border),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.landscape,
+                                        color: AppColors.successGreen,
+                                        size: iconSizeSmall,
+                                      ),
+                                      SizedBox(width: isSmallScreen ? 6 : 8),
+                                      Text(
+                                        'LAND DETAILS',
+                                        style: TextStyle(
+                                          fontSize: isSmallScreen ? 10 : 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.secondaryText,
+                                          letterSpacing: 1,
                                         ),
-                                        child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
-                                          child: Image.network(
-                                            orderPhotos[index],
-                                            fit: BoxFit.cover,
-                                            errorBuilder: (context, error, stackTrace) {
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(height: isSmallScreen ? 8 : 12),
+                                  
+                                  // Land Name and Crop Type
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          _landDetails!['landName'] ?? 'Unknown Land',
+                                          style: TextStyle(
+                                            fontSize: bodyFontSize,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.darkText,
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: isSmallScreen ? 6 : 8,
+                                          vertical: isSmallScreen ? 3 : 4,
+                                        ),
+                                        margin: EdgeInsets.only(left: isSmallScreen ? 6 : 8),
+                                        decoration: BoxDecoration(
+                                          color: _getCropColorFromString(_landDetails!['cropType'] ?? '').withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(isSmallScreen ? 6 : 8),
+                                        ),
+                                        child: Text(
+                                          _landDetails!['cropType'] ?? 'N/A',
+                                          style: TextStyle(
+                                            fontSize: isSmallScreen ? 10 : 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: _getCropColorFromString(_landDetails!['cropType'] ?? ''),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  
+                                  SizedBox(height: isSmallScreen ? 8 : 12),
+                                  
+                                  // Land Size Details
+                                  if (_landDetails!['landSizeDetails'] != null && _landDetails!['landSizeDetails'].toString().isNotEmpty)
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Land Size Breakdown:',
+                                          style: TextStyle(
+                                            fontSize: detailFontSize,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.secondaryText,
+                                          ),
+                                        ),
+                                        SizedBox(height: isSmallScreen ? 4 : 6),
+                                        Text(
+                                          _landDetails!['landSizeDetails'] ?? '',
+                                          style: TextStyle(
+                                            fontSize: detailFontSize,
+                                            color: AppColors.darkText,
+                                          ),
+                                        ),
+                                        SizedBox(height: isSmallScreen ? 8 : 12),
+                                      ],
+                                    ),
+                                  
+                                  // Location Details
+                                  GridView.count(
+                                    shrinkWrap: true,
+                                    physics: const NeverScrollableScrollPhysics(),
+                                    crossAxisCount: gridColumns,
+                                    crossAxisSpacing: isSmallScreen ? 6 : 10,
+                                    mainAxisSpacing: isSmallScreen ? 6 : 10,
+                                    childAspectRatio: isSmallScreen ? 3.5 : 3,
+                                    children: [
+                                      _buildLandDetailItem(
+                                        icon: Icons.location_on,
+                                        label: 'Address',
+                                        value: _landDetails!['address'] ?? 'N/A',
+                                        iconSize: iconSizeSmall,
+                                        fontSize: detailFontSize,
+                                      ),
+                                      _buildLandDetailItem(
+                                        icon: Icons.location_city,
+                                        label: 'District',
+                                        value: _landDetails!['district'] ?? 'N/A',
+                                        iconSize: iconSizeSmall,
+                                        fontSize: detailFontSize,
+                                      ),
+                                      _buildLandDetailItem(
+                                        icon: Icons.landscape,
+                                        label: 'Village',
+                                        value: _landDetails!['village'] ?? 'N/A',
+                                        iconSize: iconSizeSmall,
+                                        fontSize: detailFontSize,
+                                      ),
+                                      _buildLandDetailItem(
+                                        icon: Icons.agriculture,
+                                        label: 'A/G Division',
+                                        value: _landDetails!['agDivision'] ?? 'N/A',
+                                        iconSize: iconSizeSmall,
+                                        fontSize: detailFontSize,
+                                      ),
+                                    ],
+                                  ),
+                                  
+                                  // Land Photos
+                                  if (_landDetails!['landPhotos'] != null && (_landDetails!['landPhotos'] as List).isNotEmpty)
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        SizedBox(height: isSmallScreen ? 8 : 12),
+                                        Text(
+                                          'LAND PHOTOS',
+                                          style: TextStyle(
+                                            fontSize: isSmallScreen ? 10 : 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.secondaryText,
+                                          ),
+                                        ),
+                                        SizedBox(height: isSmallScreen ? 6 : 8),
+                                        SizedBox(
+                                          height: landPhotoSize,
+                                          child: ListView.builder(
+                                            scrollDirection: Axis.horizontal,
+                                            itemCount: (_landDetails!['landPhotos'] as List).length,
+                                            itemBuilder: (context, index) {
                                               return Container(
-                                                color: AppColors.hover,
-                                                child: Column(
-                                                  mainAxisAlignment: MainAxisAlignment.center,
-                                                  children: [
-                                                    Icon(
-                                                      Icons.broken_image,
-                                                      color: AppColors.textTertiary,
-                                                      size: iconSizeMedium,
-                                                    ),
-                                                    SizedBox(height: 4),
-                                                    Text(
-                                                      'Failed to load',
-                                                      style: TextStyle(
-                                                        fontSize: isSmallScreen ? 8 : 10,
-                                                        color: AppColors.textTertiary,
-                                                      ),
-                                                    ),
-                                                  ],
+                                                margin: EdgeInsets.only(right: isSmallScreen ? 6 : 8),
+                                                width: landPhotoSize,
+                                                height: landPhotoSize,
+                                                decoration: BoxDecoration(
+                                                  borderRadius: BorderRadius.circular(isSmallScreen ? 6 : 8),
+                                                  border: Border.all(color: AppColors.border),
+                                                ),
+                                                child: ClipRRect(
+                                                  borderRadius: BorderRadius.circular(isSmallScreen ? 6 : 8),
+                                                  child: Image.network(
+                                                    _landDetails!['landPhotos'][index],
+                                                    fit: BoxFit.cover,
+                                                    errorBuilder: (context, error, stackTrace) {
+                                                      return Container(
+                                                        color: AppColors.hover,
+                                                        child: Column(
+                                                          mainAxisAlignment: MainAxisAlignment.center,
+                                                          children: [
+                                                            Icon(
+                                                              Icons.broken_image,
+                                                              color: AppColors.textTertiary,
+                                                              size: iconSizeSmall,
+                                                            ),
+                                                            SizedBox(height: 4),
+                                                            Text(
+                                                              'Failed',
+                                                              style: TextStyle(
+                                                                fontSize: isSmallScreen ? 8 : 10,
+                                                                color: AppColors.textTertiary,
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      );
+                                                    },
+                                                  ),
                                                 ),
                                               );
                                             },
                                           ),
                                         ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ],
+                                      ],
+                                    ),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    
-                    // Add bottom padding
-                    SizedBox(height: paddingVertical * 2),
-                  ],
-                ),
-              ),
-            ),
-          ),
+                          ],
+                        ),
 
-          // Action Buttons
-          Container(
-            padding: EdgeInsets.all(paddingAll),
-            decoration: BoxDecoration(
-              border: Border(
-                top: BorderSide(
-                  color: AppColors.border,
-                  width: 1,
-                ),
-              ),
-            ),
-            child: Row(
-              children: [
-                // Close Button
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.secondaryText,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(
-                        vertical: isSmallScreen ? 12 : 14,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
-                      ),
-                    ),
-                    child: Text(
-                      'Close',
-                      style: TextStyle(
-                        fontSize: buttonFontSize,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                      // Order Description
+                      if (description.isNotEmpty)
+                        Column(
+                          children: [
+                            SizedBox(height: paddingVertical),
+                            Container(
+                              padding: EdgeInsets.all(paddingAll),
+                              decoration: BoxDecoration(
+                                color: AppColors.cardBackground,
+                                borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
+                                border: Border.all(color: AppColors.border),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'ORDER DESCRIPTION',
+                                    style: TextStyle(
+                                      fontSize: isSmallScreen ? 10 : 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.secondaryText,
+                                      letterSpacing: 1,
+                                    ),
+                                  ),
+                                  SizedBox(height: isSmallScreen ? 6 : 8),
+                                  Text(
+                                    description,
+                                    style: TextStyle(
+                                      fontSize: detailFontSize,
+                                      color: AppColors.darkText,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+
+                      // Order Photos
+                      if (orderPhotos.isNotEmpty)
+                        Column(
+                          children: [
+                            SizedBox(height: paddingVertical),
+                            Container(
+                              padding: EdgeInsets.all(paddingAll),
+                              decoration: BoxDecoration(
+                                color: AppColors.cardBackground,
+                                borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
+                                border: Border.all(color: AppColors.border),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'ORDER PHOTOS (${orderPhotos.length})',
+                                    style: TextStyle(
+                                      fontSize: isSmallScreen ? 10 : 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.secondaryText,
+                                      letterSpacing: 1,
+                                    ),
+                                  ),
+                                  SizedBox(height: isSmallScreen ? 8 : 12),
+                                  SizedBox(
+                                    height: orderPhotoSize,
+                                    child: ListView.builder(
+                                      scrollDirection: Axis.horizontal,
+                                      itemCount: orderPhotos.length,
+                                      itemBuilder: (context, index) {
+                                        return Container(
+                                          margin: EdgeInsets.only(right: isSmallScreen ? 8 : 12),
+                                          width: orderPhotoSize,
+                                          height: orderPhotoSize,
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
+                                            border: Border.all(color: AppColors.border),
+                                          ),
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
+                                            child: Image.network(
+                                              orderPhotos[index],
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (context, error, stackTrace) {
+                                                return Container(
+                                                  color: AppColors.hover,
+                                                  child: Column(
+                                                    mainAxisAlignment: MainAxisAlignment.center,
+                                                    children: [
+                                                      Icon(
+                                                        Icons.broken_image,
+                                                        color: AppColors.textTertiary,
+                                                        size: iconSizeMedium,
+                                                      ),
+                                                      SizedBox(height: 4),
+                                                      Text(
+                                                        'Failed to load',
+                                                        style: TextStyle(
+                                                          fontSize: isSmallScreen ? 8 : 10,
+                                                          color: AppColors.textTertiary,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      
+                      // Add bottom padding
+                      SizedBox(height: paddingVertical * 2),
+                    ],
                   ),
                 ),
-                
-                if (canMarkAsReceived) SizedBox(width: isSmallScreen ? 8 : 12),
-                
-                // Mark as Received Button
-                if (canMarkAsReceived)
+              ),
+            ),
+
+            // Action Buttons
+            Container(
+              padding: EdgeInsets.all(paddingAll),
+              decoration: BoxDecoration(
+                border: Border(
+                  top: BorderSide(
+                    color: AppColors.border,
+                    width: 1,
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  // Close Button
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () {
-                        widget.onStatusUpdate(widget.order['id']);
-                        Navigator.of(context).pop();
-                      },
+                      onPressed: () => Navigator.of(context).pop(),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.successGreen,
+                        backgroundColor: AppColors.secondaryText,
                         foregroundColor: Colors.white,
                         padding: EdgeInsets.symmetric(
                           vertical: isSmallScreen ? 12 : 14,
@@ -2796,170 +2846,200 @@ Widget build(BuildContext context) {
                         ),
                       ),
                       child: Text(
-                        isSmallScreen ? 'Mark Received' : 'Mark as Received',
+                        'Close',
                         style: TextStyle(
                           fontSize: buttonFontSize,
                           fontWeight: FontWeight.w600,
                         ),
-                        textAlign: TextAlign.center,
                       ),
                     ),
                   ),
-              ],
+                  
+                  if (canMarkAsReceived) SizedBox(width: isSmallScreen ? 8 : 12),
+                  
+                  // Mark as Received Button
+                  if (canMarkAsReceived)
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          widget.onStatusUpdate(widget.order['id']);
+                          Navigator.of(context).pop();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.successGreen,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(
+                            vertical: isSmallScreen ? 12 : 14,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
+                          ),
+                        ),
+                        child: Text(
+                          isSmallScreen ? 'Mark Received' : 'Mark as Received',
+                          style: TextStyle(
+                            fontSize: buttonFontSize,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOrderDetailRow(String title, String value, double screenWidth, 
+      {double fontSize = 14, Color? textColor}) {
+    final isSmallScreen = screenWidth < 360;
+    
+    return Container(
+      padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 6 : 8),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: AppColors.border,
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: fontSize,
+                fontWeight: FontWeight.w500,
+                color: AppColors.secondaryText,
+              ),
+            ),
+          ),
+          SizedBox(width: isSmallScreen ? 12 : 16),
+          Expanded(
+            flex: 2,
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: fontSize,
+                fontWeight: FontWeight.w600,
+                color: textColor ?? AppColors.darkText, // Use custom color if provided
+              ),
+              textAlign: TextAlign.right,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
       ),
-    ),
-  );
-}
+    );
+  }
 
-Widget _buildOrderDetailRow(String title, String value, double screenWidth, {double fontSize = 14}) {
-  final isSmallScreen = screenWidth < 360;
-  
-  return Container(
-    padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 6 : 8),
-    decoration: BoxDecoration(
-      border: Border(
-        bottom: BorderSide(
-          color: AppColors.border,
-          width: 1,
-        ),
-      ),
-    ),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildOwnerDetailItem({
+    required IconData icon,
+    required String label,
+    required String value,
+    required double iconSize,
+    required double fontSize,
+  }) {
+    return Row(
       children: [
-        Expanded(
-          child: Text(
-            title,
-            style: TextStyle(
-              fontSize: fontSize,
-              fontWeight: FontWeight.w500,
-              color: AppColors.secondaryText,
-            ),
+        Container(
+          padding: EdgeInsets.all(iconSize * 0.375), // 6 for 16px, 7.5 for 20px
+          decoration: BoxDecoration(
+            color: AppColors.primaryBlue.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Icon(
+            icon,
+            size: iconSize,
+            color: AppColors.primaryBlue,
           ),
         ),
-        SizedBox(width: isSmallScreen ? 12 : 16),
+        SizedBox(width: 8),
         Expanded(
-          flex: 2,
-          child: Text(
-            value,
-            style: TextStyle(
-              fontSize: fontSize,
-              fontWeight: FontWeight.w600,
-              color: AppColors.darkText,
-            ),
-            textAlign: TextAlign.right,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: fontSize * 0.833, // 10 for 12px, 11.67 for 14px
+                  color: AppColors.secondaryText,
+                ),
+              ),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: fontSize,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.darkText,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
         ),
       ],
-    ),
-  );
-}
+    );
+  }
 
-Widget _buildOwnerDetailItem({
-  required IconData icon,
-  required String label,
-  required String value,
-  required double iconSize,
-  required double fontSize,
-}) {
-  return Row(
-    children: [
-      Container(
-        padding: EdgeInsets.all(iconSize * 0.375), // 6 for 16px, 7.5 for 20px
-        decoration: BoxDecoration(
-          color: AppColors.primaryBlue.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(6),
+  Widget _buildLandDetailItem({
+    required IconData icon,
+    required String label,
+    required String value,
+    required double iconSize,
+    required double fontSize,
+  }) {
+    return Row(
+      children: [
+        Container(
+          padding: EdgeInsets.all(iconSize * 0.375),
+          decoration: BoxDecoration(
+            color: AppColors.successGreen.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Icon(
+            icon,
+            size: iconSize,
+            color: AppColors.successGreen,
+          ),
         ),
-        child: Icon(
-          icon,
-          size: iconSize,
-          color: AppColors.primaryBlue,
-        ),
-      ),
-      SizedBox(width: 8),
-      Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: fontSize * 0.833, // 10 for 12px, 11.67 for 14px
-                color: AppColors.secondaryText,
+        SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: fontSize * 0.833,
+                  color: AppColors.secondaryText,
+                ),
               ),
-            ),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: fontSize,
-                fontWeight: FontWeight.w600,
-                color: AppColors.darkText,
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: fontSize,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.darkText,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
-    ],
-  );
-}
-
-Widget _buildLandDetailItem({
-  required IconData icon,
-  required String label,
-  required String value,
-  required double iconSize,
-  required double fontSize,
-}) {
-  return Row(
-    children: [
-      Container(
-        padding: EdgeInsets.all(iconSize * 0.375),
-        decoration: BoxDecoration(
-          color: AppColors.successGreen.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Icon(
-          icon,
-          size: iconSize,
-          color: AppColors.successGreen,
-        ),
-      ),
-      SizedBox(width: 8),
-      Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: fontSize * 0.833,
-                color: AppColors.secondaryText,
-              ),
-            ),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: fontSize,
-                fontWeight: FontWeight.w600,
-                color: AppColors.darkText,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
-    ],
-  );
-}
-
+      ],
+    );
+  }
 
   Color _getOrderStatusColor(String status) {
     switch (status.toLowerCase()) {

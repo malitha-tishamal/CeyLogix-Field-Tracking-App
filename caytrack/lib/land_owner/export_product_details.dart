@@ -7,6 +7,70 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'land_owner_drawer.dart';
 
 // -----------------------------------------------------------------------------
+// --- RESPONSIVE UTILITIES ---
+enum ScreenSize { 
+  small,   // < 360
+  medium,  // 360-600
+  large,   // 600-900
+  xlarge   // > 900
+}
+
+ScreenSize getScreenSize(double width) {
+  if (width < 360) return ScreenSize.small;
+  if (width < 600) return ScreenSize.medium;
+  if (width < 900) return ScreenSize.large;
+  return ScreenSize.xlarge;
+}
+
+double getResponsivePadding(BuildContext context) {
+  final width = MediaQuery.of(context).size.width;
+  if (width < 360) return 12.0;
+  if (width < 600) return 16.0;
+  if (width < 900) return 20.0;
+  return 24.0;
+}
+
+double getResponsiveFontSize(BuildContext context, 
+    {double small = 12.0, double medium = 14.0, 
+     double large = 16.0, double xlarge = 18.0}) {
+  final width = MediaQuery.of(context).size.width;
+  if (width < 360) return small;
+  if (width < 600) return medium;
+  if (width < 900) return large;
+  return xlarge;
+}
+
+// -----------------------------------------------------------------------------
+// --- IMAGE URL HELPER ---
+List<String> parseImageUrls(dynamic photosData) {
+  final List<String> urls = [];
+  
+  if (photosData == null) return urls;
+  
+  if (photosData is String) {
+    // Handle single URL string
+    final trimmedUrl = photosData.trim();
+    if (trimmedUrl.isNotEmpty && 
+        (trimmedUrl.startsWith('http://') || trimmedUrl.startsWith('https://'))) {
+      urls.add(trimmedUrl);
+    }
+  } else if (photosData is List) {
+    // Handle list of URLs
+    for (var item in photosData) {
+      if (item is String) {
+        final trimmedUrl = item.trim();
+        if (trimmedUrl.isNotEmpty && 
+            (trimmedUrl.startsWith('http://') || trimmedUrl.startsWith('https://'))) {
+          urls.add(trimmedUrl);
+        }
+      }
+    }
+  }
+  
+  return urls;
+}
+
+// -----------------------------------------------------------------------------
 // --- MODERN COLOR PALETTE ---
 class AppColors {
   static const Color background = Color(0xFFF8FAFC);
@@ -218,8 +282,7 @@ class _OrderDetailsModalState extends State<OrderDetailsModal> {
             ),
           ),
         ],
-      ),
-    );
+      ));
   }
 
   String _formatDate(Timestamp? timestamp) {
@@ -386,18 +449,21 @@ class _OrderDetailsModalState extends State<OrderDetailsModal> {
     final cinnamonQuantity = widget.orderData['cinnamonQuantity']?.toString() ?? '0';
     final description = widget.orderData['description'] ?? '';
     final unit = widget.orderData['unit'] ?? 'kg';
-    final orderPhotos = (widget.orderData['orderPhotos'] as List<dynamic>?) ?? [];
+    
+    // FIXED: Use parseImageUrls helper to handle both string and list
+    final orderPhotos = parseImageUrls(widget.orderData['orderPhotos']);
+    
     final orderDate = widget.orderData['orderDate'] as Timestamp?;
     final createdAt = widget.orderData['createdAt'] as Timestamp?;
     final updatedAt = widget.orderData['updatedAt'] as Timestamp?;
 
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(20),
+      insetPadding: EdgeInsets.all(getResponsivePadding(context)),
       child: Container(
-        constraints: const BoxConstraints(
-          maxWidth: 500,
-          maxHeight: 600,
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.9,
+          maxHeight: MediaQuery.of(context).size.height * 0.9,
         ),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -415,7 +481,7 @@ class _OrderDetailsModalState extends State<OrderDetailsModal> {
           children: [
             // Header
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.all(getResponsivePadding(context)),
               decoration: BoxDecoration(
                 color: statusColor.withOpacity(0.1),
                 borderRadius: const BorderRadius.only(
@@ -461,7 +527,7 @@ class _OrderDetailsModalState extends State<OrderDetailsModal> {
                             Text(
                               'Order Details',
                               style: TextStyle(
-                                fontSize: 18,
+                                fontSize: getResponsiveFontSize(context, small: 16, medium: 18, large: 20, xlarge: 22),
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.textPrimary,
                               ),
@@ -470,7 +536,7 @@ class _OrderDetailsModalState extends State<OrderDetailsModal> {
                             Text(
                               'ID: ${widget.orderId.substring(0, 8)}',
                               style: TextStyle(
-                                fontSize: 14,
+                                fontSize: getResponsiveFontSize(context, small: 12, medium: 14, large: 14, xlarge: 14),
                                 color: AppColors.textSecondary,
                               ),
                             ),
@@ -490,7 +556,7 @@ class _OrderDetailsModalState extends State<OrderDetailsModal> {
                                     Text(
                                       'Products received by factory',
                                       style: TextStyle(
-                                        fontSize: 12,
+                                        fontSize: getResponsiveFontSize(context, small: 10, medium: 12, large: 12, xlarge: 12),
                                         color: statusColor,
                                         fontWeight: FontWeight.w600,
                                       ),
@@ -519,7 +585,7 @@ class _OrderDetailsModalState extends State<OrderDetailsModal> {
                         child: Text(
                           displayStatus.toUpperCase(),
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: getResponsiveFontSize(context, small: 10, medium: 12, large: 12, xlarge: 12),
                             fontWeight: FontWeight.w700,
                             color: statusColor,
                             letterSpacing: 1,
@@ -542,7 +608,7 @@ class _OrderDetailsModalState extends State<OrderDetailsModal> {
             Expanded(
               child: SingleChildScrollView(
                 child: Padding(
-                  padding: const EdgeInsets.all(20),
+                  padding: EdgeInsets.all(getResponsivePadding(context)),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -564,7 +630,7 @@ class _OrderDetailsModalState extends State<OrderDetailsModal> {
                             Text(
                               'ORDER SUMMARY',
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: getResponsiveFontSize(context, small: 10, medium: 12, large: 12, xlarge: 12),
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.textSecondary,
                                 letterSpacing: 1,
@@ -591,7 +657,7 @@ class _OrderDetailsModalState extends State<OrderDetailsModal> {
                                   child: Text(
                                     cropType,
                                     style: TextStyle(
-                                      fontSize: 14,
+                                      fontSize: getResponsiveFontSize(context, small: 12, medium: 14, large: 14, xlarge: 14),
                                       fontWeight: FontWeight.w600,
                                       color: cropType == 'Tea'
                                           ? AppColors.teaGreen
@@ -605,7 +671,7 @@ class _OrderDetailsModalState extends State<OrderDetailsModal> {
                                 Text(
                                   'TOTAL: $totalQuantity $unit',
                                   style: TextStyle(
-                                    fontSize: 18,
+                                    fontSize: getResponsiveFontSize(context, small: 16, medium: 18, large: 18, xlarge: 18),
                                     fontWeight: FontWeight.w700,
                                     color: AppColors.primary,
                                   ),
@@ -656,7 +722,7 @@ class _OrderDetailsModalState extends State<OrderDetailsModal> {
                             Text(
                               'ORDER INFORMATION',
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: getResponsiveFontSize(context, small: 10, medium: 12, large: 12, xlarge: 12),
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.textSecondary,
                                 letterSpacing: 1,
@@ -687,7 +753,7 @@ class _OrderDetailsModalState extends State<OrderDetailsModal> {
                               Text(
                                 'DESCRIPTION',
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: getResponsiveFontSize(context, small: 10, medium: 12, large: 12, xlarge: 12),
                                   fontWeight: FontWeight.w600,
                                   color: AppColors.textSecondary,
                                   letterSpacing: 1,
@@ -697,7 +763,7 @@ class _OrderDetailsModalState extends State<OrderDetailsModal> {
                               Text(
                                 description,
                                 style: TextStyle(
-                                  fontSize: 14,
+                                  fontSize: getResponsiveFontSize(context, small: 12, medium: 14, large: 14, xlarge: 14),
                                   color: AppColors.textPrimary,
                                 ),
                               ),
@@ -722,7 +788,7 @@ class _OrderDetailsModalState extends State<OrderDetailsModal> {
                               Text(
                                 'ORDER PHOTOS (${orderPhotos.length})',
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: getResponsiveFontSize(context, small: 10, medium: 12, large: 12, xlarge: 12),
                                   fontWeight: FontWeight.w600,
                                   color: AppColors.textSecondary,
                                   letterSpacing: 1,
@@ -759,7 +825,7 @@ class _OrderDetailsModalState extends State<OrderDetailsModal> {
                                           ),
                                           errorWidget: (context, url, error) => Container(
                                             color: AppColors.hover,
-                                            child: const Column(
+                                            child: Column(
                                               mainAxisAlignment: MainAxisAlignment.center,
                                               children: [
                                                 Icon(
@@ -767,11 +833,11 @@ class _OrderDetailsModalState extends State<OrderDetailsModal> {
                                                   color: AppColors.textTertiary,
                                                   size: 32,
                                                 ),
-                                                SizedBox(height: 8),
+                                                const SizedBox(height: 8),
                                                 Text(
                                                   'Failed to load',
                                                   style: TextStyle(
-                                                    fontSize: 10,
+                                                    fontSize: getResponsiveFontSize(context, small: 8, medium: 10, large: 10, xlarge: 10),
                                                     color: AppColors.textTertiary,
                                                   ),
                                                 ),
@@ -795,7 +861,7 @@ class _OrderDetailsModalState extends State<OrderDetailsModal> {
 
             // Close Button
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(getResponsivePadding(context)),
               decoration: BoxDecoration(
                 border: Border(
                   top: BorderSide(
@@ -816,10 +882,10 @@ class _OrderDetailsModalState extends State<OrderDetailsModal> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text(
+                  child: Text(
                     'Close',
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: getResponsiveFontSize(context, small: 14, medium: 16, large: 16, xlarge: 16),
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -1000,8 +1066,8 @@ Widget _buildFactorySection(String factoryName, String factoryId) {
           ),
         ),
       ],
-    ),
-  );
+    ));
+  }
 }
 
   Widget _buildQuantityPill({
@@ -1041,6 +1107,64 @@ Widget _buildFactorySection(String factoryName, String factoryId) {
       ),
     );
   }
+
+// -----------------------------------------------------------------------------
+// --- STATIC FOOTER WIDGET ---
+Widget _buildStaticFooter(BuildContext context) {
+  final screenSize = getScreenSize(MediaQuery.of(context).size.width);
+  final padding = getResponsivePadding(context);
+  
+  return Container(
+    padding: EdgeInsets.symmetric(
+      horizontal: padding,
+      vertical: padding * 0.5,
+    ),
+    decoration: BoxDecoration(
+      color: AppColors.surface,
+      border: Border(
+        top: BorderSide(
+          color: AppColors.border,
+          width: 1,
+        ),
+      ),
+    ),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        if (screenSize == ScreenSize.xlarge || screenSize == ScreenSize.large)
+          Text(
+            '© ${DateTime.now().year} Export Management System',
+            style: TextStyle(
+              color: AppColors.textTertiary,
+              fontSize: getResponsiveFontSize(
+                context,
+                small: 10.0,
+                medium: 11.0,
+                large: 12.0,
+                xlarge: 13.0,
+              ),
+            ),
+          ),
+        Expanded(
+          child: Text(
+            'Developed by Malitha Tishamal',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AppColors.textTertiary,
+              fontSize: getResponsiveFontSize(
+                context,
+                small: 10.0,
+                medium: 11.0,
+                large: 12.0,
+                xlarge: 13.0,
+              ),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 // -----------------------------------------------------------------------------
@@ -1063,10 +1187,6 @@ class _ExportProductsHistoryPageState extends State<ExportProductsHistoryPage> {
   String _landName = 'Loading...';
   String _userRole = 'Land Owner';
   String? _profileImageUrl;
-  
-  // Responsive variables
-  late double _screenWidth;
-  late double _screenHeight;
   
   // Filter and search variables
   String _filterStatus = 'All';
@@ -1124,18 +1244,6 @@ class _ExportProductsHistoryPageState extends State<ExportProductsHistoryPage> {
   void initState() {
     super.initState();
     _fetchHeaderData();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _updateScreenDimensions();
-  }
-
-  void _updateScreenDimensions() {
-    final mediaQuery = MediaQuery.of(context);
-    _screenWidth = mediaQuery.size.width;
-    _screenHeight = mediaQuery.size.height;
   }
 
   void _handleDrawerNavigate(String routeName) {
@@ -1386,14 +1494,6 @@ class _ExportProductsHistoryPageState extends State<ExportProductsHistoryPage> {
     return true;
   }
 
-  // Format currency
-  String _formatCurrency(double amount) {
-    return NumberFormat.currency(
-      symbol: 'LKR ',
-      decimalDigits: 0,
-    ).format(amount);
-  }
-
   // Show order details modal
   void _showOrderDetails(BuildContext context, String orderId, Map<String, dynamic> orderData) {
     showDialog(
@@ -1409,8 +1509,9 @@ class _ExportProductsHistoryPageState extends State<ExportProductsHistoryPage> {
   }
 
   // Show sort dialog
-  void _showSortDialog() {
-    final isSmallScreen = _screenWidth < 360;
+  void _showSortDialog(BuildContext context) {
+    final screenSize = getScreenSize(MediaQuery.of(context).size.width);
+    final padding = getResponsivePadding(context);
     
     showModalBottomSheet(
       context: context,
@@ -1419,7 +1520,7 @@ class _ExportProductsHistoryPageState extends State<ExportProductsHistoryPage> {
       ),
       builder: (context) {
         return Container(
-          padding: EdgeInsets.all(isSmallScreen ? 16.0 : 20.0),
+          padding: EdgeInsets.all(padding),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -1431,16 +1532,16 @@ class _ExportProductsHistoryPageState extends State<ExportProductsHistoryPage> {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              SizedBox(height: isSmallScreen ? 12.0 : 16.0),
+              SizedBox(height: padding * 0.8),
               Text(
                 'Sort Orders',
                 style: TextStyle(
-                  fontSize: isSmallScreen ? 16.0 : 18.0,
+                  fontSize: getResponsiveFontSize(context, small: 16, medium: 18, large: 18, xlarge: 20),
                   fontWeight: FontWeight.w700,
                   color: AppColors.textPrimary,
                 ),
               ),
-              SizedBox(height: isSmallScreen ? 16.0 : 20.0),
+              SizedBox(height: padding),
               ..._sortOptions.map((option) {
                 return ListTile(
                   contentPadding: EdgeInsets.zero,
@@ -1459,7 +1560,7 @@ class _ExportProductsHistoryPageState extends State<ExportProductsHistoryPage> {
                   title: Text(
                     option,
                     style: TextStyle(
-                      fontSize: isSmallScreen ? 14.0 : 16.0,
+                      fontSize: getResponsiveFontSize(context, small: 14, medium: 16, large: 16, xlarge: 16),
                       fontWeight: FontWeight.w600,
                       color: AppColors.textPrimary,
                     ),
@@ -1478,7 +1579,7 @@ class _ExportProductsHistoryPageState extends State<ExportProductsHistoryPage> {
                   },
                 );
               }).toList(),
-              SizedBox(height: isSmallScreen ? 16.0 : 20.0),
+              SizedBox(height: padding),
             ],
           ),
         );
@@ -1503,9 +1604,8 @@ class _ExportProductsHistoryPageState extends State<ExportProductsHistoryPage> {
 
   @override
   Widget build(BuildContext context) {
-    _updateScreenDimensions();
-    final isSmallScreen = _screenWidth < 360;
-    final isMediumScreen = _screenWidth >= 360 && _screenWidth < 400;
+    final screenSize = getScreenSize(MediaQuery.of(context).size.width);
+    final padding = getResponsivePadding(context);
     
     if (_currentUser == null) {
       return Scaffold(
@@ -1517,87 +1617,100 @@ class _ExportProductsHistoryPageState extends State<ExportProductsHistoryPage> {
       key: _scaffoldKey,
       backgroundColor: AppColors.background,
       drawer: LandOwnerDrawer(
-        onLogout: () {
-          Navigator.of(context).pop();
-        },
+        onLogout: () => Navigator.of(context).pop(),
         onNavigate: _handleDrawerNavigate,
       ),
-      body: Column(
-        children: [
-          // 🌟 FIXED HEADER - Responsive
-          _buildDashboardHeader(context, isSmallScreen, isMediumScreen),
-          
-          // 🌟 SCROLLABLE CONTENT ONLY with Footer
-          Expanded(
-            child: Column(
-              children: [
-                // Scrollable content
-                Expanded(
-                  child: StreamBuilder<QuerySnapshot>(
-                    stream: _firestore
-                        .collection('land_orders')
-                        .where('landOwnerId', isEqualTo: _currentUser?.uid)
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return _buildLoadingScreen();
-                      }
-                      
-                      if (snapshot.hasError) {
-                        return _buildErrorScreen(snapshot.error.toString());
-                      }
-                      
-                      final orders = snapshot.data?.docs ?? [];
-                      final stats = _calculateStatistics(orders);
-                      _statistics = stats;
-                      
-                      final filteredOrders = orders.where((order) => _shouldShowOrder(order.data() as Map<String, dynamic>)).toList();
-                      final sortedOrders = _sortOrders(filteredOrders);
-                      
-                      return SingleChildScrollView(
-                        physics: const BouncingScrollPhysics(),
-                        child: Column(
-                          children: [
-                            // Statistics
-                            _buildStatistics(stats, isSmallScreen, isMediumScreen),
-                            
-                            // Search and Filters
-                            _buildSearchFilters(isSmallScreen, isMediumScreen),
-                            
-                            // Orders List
-                            sortedOrders.isEmpty
-                                ? _buildEmptyState(isSmallScreen, isMediumScreen)
-                                : Column(
-                                    children: sortedOrders.map((order) => 
-                                      _buildOrderCard(order, isSmallScreen, isMediumScreen)
-                                    ).toList(),
-                                  ),
-                            
-                            const SizedBox(height: 20),
-                          ],
+      body: SafeArea(
+        child: Column(
+          children: [
+            // HEADER - Responsive
+            _buildDashboardHeader(context),
+            
+            // MAIN CONTENT
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
+                stream: _firestore
+                    .collection('land_orders')
+                    .where('landOwnerId', isEqualTo: _currentUser?.uid)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return _buildLoadingScreen();
+                  }
+                  
+                  if (snapshot.hasError) {
+                    return _buildErrorScreen(snapshot.error.toString());
+                  }
+                  
+                  final orders = snapshot.data?.docs ?? [];
+                  final stats = _calculateStatistics(orders);
+                  _statistics = stats;
+                  
+                  final filteredOrders = orders.where((order) => _shouldShowOrder(order.data() as Map<String, dynamic>)).toList();
+                  final sortedOrders = _sortOrders(filteredOrders);
+                  
+                  return RefreshIndicator(
+                    onRefresh: () async => setState(() {}),
+                    child: CustomScrollView(
+                      slivers: [
+                        // Statistics section
+                        SliverToBoxAdapter(
+                          child: _buildStatistics(stats, context),
                         ),
-                      );
-                    },
-                  ),
-                ),
-                
-                // Footer (Fixed at bottom of content area)
-                Container(
-                  padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
-                  child: Text(
-                    'Developed by Malitha Tishamal',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: AppColors.textPrimary.withOpacity(0.7),
-                      fontSize: isSmallScreen ? 11 : 12,
+                        
+                        // Search filters
+                        SliverToBoxAdapter(
+                          child: _buildSearchFilters(context),
+                        ),
+                        
+                        // Orders list/grid based on screen size
+                        if (sortedOrders.isEmpty)
+                          SliverToBoxAdapter(
+                            child: _buildEmptyState(context),
+                          )
+                        else if (screenSize == ScreenSize.xlarge || screenSize == ScreenSize.large)
+                          // Grid view for large screens
+                          SliverGrid(
+                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: screenSize == ScreenSize.xlarge ? 2 : 1,
+                              crossAxisSpacing: padding,
+                              mainAxisSpacing: padding * 0.5,
+                              childAspectRatio: screenSize == ScreenSize.xlarge ? 1.6 : 2.0,
+                            ),
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) => _buildOrderCard(sortedOrders[index], context),
+                              childCount: sortedOrders.length,
+                            ),
+                          )
+                        else
+                          // List view for small/medium screens
+                          SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) => _buildOrderCard(sortedOrders[index], context),
+                              childCount: sortedOrders.length,
+                            ),
+                          ),
+                      ],
                     ),
-                  ),
-                ),
-              ],
+                  );
+                },
+              ),
             ),
-          ),
-        ],
+            
+            // STATIC FOOTER (outside scrollable content)
+            _buildStaticFooter(context),
+          ],
+        ),
       ),
+      
+      // Floating Action Button for small screens
+      floatingActionButton: screenSize == ScreenSize.small
+          ? FloatingActionButton(
+              backgroundColor: AppColors.primary,
+              onPressed: () => _showSortDialog(context),
+              child: const Icon(Icons.filter_alt, color: Colors.white),
+            )
+          : null,
     );
   }
 
@@ -1677,22 +1790,42 @@ class _ExportProductsHistoryPageState extends State<ExportProductsHistoryPage> {
     );
   }
 
-  // 🌟 FIXED HEADER - Responsive version
-  Widget _buildDashboardHeader(BuildContext context, bool isSmallScreen, bool isMediumScreen) {
+  // 🌟 ENHANCED HEADER - Fully Responsive
+  Widget _buildDashboardHeader(BuildContext context) {
+    final screenSize = getScreenSize(MediaQuery.of(context).size.width);
     final topPadding = MediaQuery.of(context).padding.top + 10;
-    final horizontalPadding = isSmallScreen ? 16.0 : 20.0;
-    final profileSize = isSmallScreen ? 60.0 : 70.0;
-    final menuIconSize = isSmallScreen ? 24.0 : 28.0;
-    final nameFontSize = isSmallScreen ? 16.0 : 20.0;
-    final landFontSize = isSmallScreen ? 14.0 : 16.0;
-    final titleFontSize = isSmallScreen ? 14.0 : 16.0;
+    final padding = getResponsivePadding(context);
+    
+    // Responsive dimensions
+    final profileSize = switch(screenSize) {
+      ScreenSize.small => 48.0,
+      ScreenSize.medium => 56.0,
+      ScreenSize.large => 64.0,
+      ScreenSize.xlarge => 72.0,
+    };
+    
+    final nameFontSize = getResponsiveFontSize(
+      context,
+      small: 14.0,
+      medium: 16.0,
+      large: 18.0,
+      xlarge: 20.0,
+    );
+    
+    final titleFontSize = getResponsiveFontSize(
+      context,
+      small: 16.0,
+      medium: 18.0,
+      large: 20.0,
+      xlarge: 22.0,
+    );
 
     return Container(
       padding: EdgeInsets.only(
         top: topPadding,
-        left: horizontalPadding,
-        right: horizontalPadding,
-        bottom: isSmallScreen ? 16.0 : 20.0,
+        left: padding,
+        right: padding,
+        bottom: 16.0,
       ),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -1719,24 +1852,35 @@ class _ExportProductsHistoryPageState extends State<ExportProductsHistoryPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
-                icon: Icon(Icons.menu, color: AppColors.textPrimary, size: menuIconSize),
-                onPressed: () {
-                  _scaffoldKey.currentState?.openDrawer();
-                },
-                padding: EdgeInsets.zero,
-                constraints: BoxConstraints(
-                  minWidth: menuIconSize + 16,
-                  minHeight: menuIconSize + 16,
+                icon: Icon(Icons.menu, 
+                  color: AppColors.textPrimary, 
+                  size: profileSize * 0.4,
                 ),
+                onPressed: () => _scaffoldKey.currentState?.openDrawer(),
               ),
+              
+              // Additional icons for larger screens
+              if (screenSize == ScreenSize.xlarge || screenSize == ScreenSize.large)
+                Row(
+                  children: [
+                    IconButton(
+                      icon: Icon(Icons.refresh, color: AppColors.textPrimary, size: profileSize * 0.35),
+                      onPressed: () => setState(() {}),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.download, color: AppColors.textPrimary, size: profileSize * 0.35),
+                      onPressed: () {},
+                    ),
+                  ],
+                ),
             ],
           ),
           
-          SizedBox(height: isSmallScreen ? 8.0 : 10.0),
+          SizedBox(height: screenSize == ScreenSize.small ? 8.0 : 12.0),
           
           Row(
             children: [
-              // Profile Picture with Firebase image
+              // Profile Picture
               Container(
                 width: profileSize,
                 height: profileSize,
@@ -1751,12 +1895,12 @@ class _ExportProductsHistoryPageState extends State<ExportProductsHistoryPage> {
                     : null,
                   border: Border.all(
                     color: Colors.white, 
-                    width: isSmallScreen ? 2.0 : 3.0
+                    width: screenSize == ScreenSize.small ? 2.0 : 3.0
                   ),
                   boxShadow: [
                     BoxShadow(
                       color: AppColors.primary.withOpacity(0.3),
-                      blurRadius: isSmallScreen ? 8.0 : 10.0,
+                      blurRadius: 8.0,
                       offset: const Offset(0, 3),
                     ),
                   ],
@@ -1770,20 +1914,20 @@ class _ExportProductsHistoryPageState extends State<ExportProductsHistoryPage> {
                 child: _profileImageUrl == null
                     ? Icon(
                         Icons.person, 
-                        size: isSmallScreen ? 32.0 : 40.0, 
+                        size: profileSize * 0.5, 
                         color: Colors.white
                       )
                     : null,
               ),
               
-              SizedBox(width: isSmallScreen ? 12.0 : 15.0),
+              SizedBox(width: screenSize == ScreenSize.small ? 8.0 : 12.0),
               
-              // User Info Display from Firebase
+              // User Info
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 1. Land Owner Name
+                    // User name
                     Text(
                       _loggedInUserName,
                       style: TextStyle(
@@ -1791,86 +1935,146 @@ class _ExportProductsHistoryPageState extends State<ExportProductsHistoryPage> {
                         fontWeight: FontWeight.bold,
                         color: AppColors.textPrimary,
                       ),
-                      maxLines: 1,
+                      maxLines: screenSize == ScreenSize.small ? 1 : 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    //Land Name Name and Role
-                    Text(
-                      'Land: $_landName\n($_userRole)', 
-                      style: TextStyle(
-                        fontSize: landFontSize,
-                        color: AppColors.textPrimary.withOpacity(0.7),
+                    
+                    SizedBox(height: screenSize == ScreenSize.small ? 2.0 : 4.0),
+                    
+                    // Land name and role
+                    if (screenSize == ScreenSize.small)
+                      Text(
+                        '$_landName ($_userRole)',
+                        style: TextStyle(
+                          fontSize: nameFontSize * 0.8,
+                          color: AppColors.textPrimary.withOpacity(0.7),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      )
+                    else
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Land: $_landName',
+                            style: TextStyle(
+                              fontSize: nameFontSize * 0.8,
+                              color: AppColors.textPrimary.withOpacity(0.7),
+                            ),
+                          ),
+                          Text(
+                            'Role: $_userRole',
+                            style: TextStyle(
+                              fontSize: nameFontSize * 0.8,
+                              color: AppColors.textPrimary.withOpacity(0.7),
+                            ),
+                          ),
+                        ],
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
                   ],
                 ),
               ),
             ],
           ),
           
-          SizedBox(height: isSmallScreen ? 20.0 : 25.0), 
+          SizedBox(height: screenSize == ScreenSize.small ? 12.0 : 16.0),
           
-          // Page Title
-          Text(
-            'Export History',
-            style: TextStyle(
-              fontSize: titleFontSize,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
+          // Page Title with responsive layout
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Export History',
+                style: TextStyle(
+                  fontSize: titleFontSize,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              
+              // Quick stats for larger screens
+              if (screenSize == ScreenSize.xlarge)
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${_statistics['totalOrders']} Orders',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: nameFontSize * 0.8,
+                    ),
+                  ),
+                ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildStatistics(Map<String, dynamic> stats, bool isSmallScreen, bool isMediumScreen) {
-    final horizontalPadding = isSmallScreen ? 12.0 : 16.0;
-    final verticalPadding = isSmallScreen ? 20.0 : 25.0;
-
+  Widget _buildStatistics(Map<String, dynamic> stats, BuildContext context) {
+    final screenSize = getScreenSize(MediaQuery.of(context).size.width);
+    final padding = getResponsivePadding(context);
+    
     return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: horizontalPadding,
-        vertical: verticalPadding,
-      ),
+      padding: EdgeInsets.all(padding),
       child: Container(
-        padding: EdgeInsets.all(isSmallScreen ? 16.0 : 20.0),
+        padding: EdgeInsets.all(padding),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(isSmallScreen ? 16.0 : 20.0),
+          borderRadius: BorderRadius.circular(padding * 1.2),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.05),
-              blurRadius: isSmallScreen ? 10.0 : 20.0,
+              blurRadius: 10,
               offset: const Offset(0, 4),
             ),
           ],
         ),
         child: Column(
           children: [
+            // Header
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   'Export Overview',
                   style: TextStyle(
-                    fontSize: isSmallScreen ? 16.0 : 18.0,
+                    fontSize: getResponsiveFontSize(
+                      context,
+                      small: 14.0,
+                      medium: 16.0,
+                      large: 18.0,
+                      xlarge: 20.0,
+                    ),
                     fontWeight: FontWeight.w700,
                     color: AppColors.textPrimary,
                   ),
                 ),
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: isSmallScreen ? 10.0 : 12.0, vertical: isSmallScreen ? 4.0 : 6.0),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: padding * 0.8,
+                    vertical: padding * 0.4,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.primaryLight,
-                    borderRadius: BorderRadius.circular(isSmallScreen ? 10.0 : 12.0),
+                    borderRadius: BorderRadius.circular(padding * 0.8),
                   ),
                   child: Text(
                     '${stats['totalOrders']} orders',
                     style: TextStyle(
-                      fontSize: isSmallScreen ? 12.0 : 14.0,
+                      fontSize: getResponsiveFontSize(
+                        context,
+                        small: 11.0,
+                        medium: 12.0,
+                        large: 13.0,
+                        xlarge: 14.0,
+                      ),
                       fontWeight: FontWeight.w600,
                       color: AppColors.primary,
                     ),
@@ -1878,92 +2082,100 @@ class _ExportProductsHistoryPageState extends State<ExportProductsHistoryPage> {
                 ),
               ],
             ),
-            SizedBox(height: isSmallScreen ? 16.0 : 20.0),
             
-            // Status Statistics
-            Container(
-              padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
-              decoration: BoxDecoration(
-                color: AppColors.hover,
-                borderRadius: BorderRadius.circular(isSmallScreen ? 12.0 : 16.0),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Order Status Breakdown',
-                    style: TextStyle(
-                      fontSize: isSmallScreen ? 14.0 : 16.0,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  SizedBox(height: isSmallScreen ? 8.0 : 12.0),
-                  Wrap(
-                    spacing: isSmallScreen ? 8.0 : 12.0,
-                    runSpacing: isSmallScreen ? 8.0 : 12.0,
-                    children: [
-                      _buildStatusStatItem(
-                        count: stats['pendingCount'],
-                        label: 'Pending',
-                        color: getStatusColor('pending'),
-                        isSmallScreen: isSmallScreen,
-                      ),
-                      _buildStatusStatItem(
-                        count: stats['factoryReceivedCount'],
-                        label: 'Factory Received',
-                        color: getStatusColor('factory_received'),
-                        isSmallScreen: isSmallScreen,
-                      ),
-                      _buildStatusStatItem(
-                        count: stats['completedCount'],
-                        label: 'Completed',
-                        color: getStatusColor('completed'),
-                        isSmallScreen: isSmallScreen,
-                      ),
-                      _buildStatusStatItem(
-                        count: stats['cancelledCount'],
-                        label: 'Cancelled',
-                        color: getStatusColor('cancelled'),
-                        isSmallScreen: isSmallScreen,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: isSmallScreen ? 16.0 : 20.0),
+            SizedBox(height: padding),
             
-            // Quantity Statistics
-            Row(
+            // Status Stats Grid
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: screenSize == ScreenSize.small ? 2 : 4,
+              childAspectRatio: screenSize == ScreenSize.small ? 2.5 : 3.0,
+              mainAxisSpacing: padding * 0.8,
+              crossAxisSpacing: padding * 0.2,
               children: [
-                Expanded(
-                  child: _buildStatItem(
+                _buildStatusStatItem(
+                  count: stats['pendingCount'],
+                  label: 'Pending',
+                  color: getStatusColor('pending'),
+                  context: context,
+                ),
+                _buildStatusStatItem(
+                  count: stats['factoryReceivedCount'],
+                  label: 'Factory\nReceived',
+                  color: getStatusColor('factory_received'),
+                  context: context,
+                ),
+                _buildStatusStatItem(
+                  count: stats['completedCount'],
+                  label: 'Completed',
+                  color: getStatusColor('completed'),
+                  context: context,
+                ),
+                _buildStatusStatItem(
+                  count: stats['cancelledCount'],
+                  label: 'Cancelled',
+                  color: getStatusColor('cancelled'),
+                  context: context,
+                ),
+              ],
+            ),
+            
+            SizedBox(height: padding),
+            
+            // Quantity Stats - Responsive layout
+            if (screenSize == ScreenSize.small)
+              Column(
+                children: [
+                  _buildQuantityStatItem(
                     icon: Icons.emoji_food_beverage_rounded,
                     label: 'Tea Exported',
                     value: '${stats['totalTea'].toStringAsFixed(1)} kg',
                     color: AppColors.teaGreen,
                     today: stats['todayTea'],
                     week: stats['weekTea'],
-                    isSmallScreen: isSmallScreen,
-                    isMediumScreen: isMediumScreen,
+                    context: context,
                   ),
-                ),
-                SizedBox(width: isSmallScreen ? 12.0 : 16.0),
-                Expanded(
-                  child: _buildStatItem(
+                  SizedBox(height: padding * 0.8),
+                  _buildQuantityStatItem(
                     icon: Icons.spa_rounded,
                     label: 'Cinnamon Exported',
                     value: '${stats['totalCinnamon'].toStringAsFixed(1)} kg',
                     color: AppColors.cinnamonBrown,
                     today: stats['todayCinnamon'],
                     week: stats['weekCinnamon'],
-                    isSmallScreen: isSmallScreen,
-                    isMediumScreen: isMediumScreen,
+                    context: context,
                   ),
-                ),
-              ],
-            ),
+                ],
+              )
+            else
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildQuantityStatItem(
+                      icon: Icons.emoji_food_beverage_rounded,
+                      label: 'Tea Exported',
+                      value: '${stats['totalTea'].toStringAsFixed(1)} kg',
+                      color: AppColors.teaGreen,
+                      today: stats['todayTea'],
+                      week: stats['weekTea'],
+                      context: context,
+                    ),
+                  ),
+                  SizedBox(width: padding),
+                  Expanded(
+                    child: _buildQuantityStatItem(
+                      icon: Icons.spa_rounded,
+                      label: 'Cinnamon Exported',
+                      value: '${stats['totalCinnamon'].toStringAsFixed(1)} kg',
+                      color: AppColors.cinnamonBrown,
+                      today: stats['todayCinnamon'],
+                      week: stats['weekCinnamon'],
+                      context: context,
+                    ),
+                  ),
+                ],
+              ),
           ],
         ),
       ),
@@ -1974,40 +2186,50 @@ class _ExportProductsHistoryPageState extends State<ExportProductsHistoryPage> {
     required int count,
     required String label,
     required Color color,
-    required bool isSmallScreen,
+    required BuildContext context,
   }) {
+    final screenSize = getScreenSize(MediaQuery.of(context).size.width);
+    final padding = getResponsivePadding(context);
+    
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: isSmallScreen ? 12.0 : 16.0, vertical: isSmallScreen ? 6.0 : 8.0),
+      padding: EdgeInsets.symmetric(
+        horizontal: padding * 0.8,
+        vertical: padding * 0.6,
+      ),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(isSmallScreen ? 12.0 : 16.0),
+        borderRadius: BorderRadius.circular(padding * 0.8),
         border: Border.all(color: color.withOpacity(0.2)),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            width: isSmallScreen ? 8.0 : 10.0,
-            height: isSmallScreen ? 8.0 : 10.0,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-            ),
-          ),
-          SizedBox(width: isSmallScreen ? 6.0 : 8.0),
           Text(
             '$count',
             style: TextStyle(
-              fontSize: isSmallScreen ? 14.0 : 16.0,
+              fontSize: getResponsiveFontSize(
+                context,
+                small: 16.0,
+                medium: 18.0,
+                large: 20.0,
+                xlarge: 22.0,
+              ),
               fontWeight: FontWeight.w700,
               color: color,
             ),
           ),
-          SizedBox(width: isSmallScreen ? 4.0 : 6.0),
+          SizedBox(height: padding * 0.2),
           Text(
             label,
+            textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: isSmallScreen ? 12.0 : 14.0,
+              fontSize: getResponsiveFontSize(
+                context,
+                small: 10.0,
+                medium: 11.0,
+                large: 12.0,
+                xlarge: 13.0,
+              ),
               color: color,
               fontWeight: FontWeight.w600,
             ),
@@ -2017,21 +2239,22 @@ class _ExportProductsHistoryPageState extends State<ExportProductsHistoryPage> {
     );
   }
 
-  Widget _buildStatItem({
+  Widget _buildQuantityStatItem({
     required IconData icon,
     required String label,
     required String value,
     required Color color,
     required double today,
     required double week,
-    required bool isSmallScreen,
-    required bool isMediumScreen,
+    required BuildContext context,
   }) {
+    final padding = getResponsivePadding(context);
+    
     return Container(
-      padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
+      padding: EdgeInsets.all(padding),
       decoration: BoxDecoration(
         color: color.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(isSmallScreen ? 12.0 : 16.0),
+        borderRadius: BorderRadius.circular(padding),
         border: Border.all(color: color.withOpacity(0.1)),
       ),
       child: Column(
@@ -2040,14 +2263,14 @@ class _ExportProductsHistoryPageState extends State<ExportProductsHistoryPage> {
           Row(
             children: [
               Container(
-                padding: EdgeInsets.all(isSmallScreen ? 6.0 : 8.0),
+                padding: EdgeInsets.all(padding * 0.5),
                 decoration: BoxDecoration(
                   color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(isSmallScreen ? 8.0 : 12.0),
+                  borderRadius: BorderRadius.circular(padding * 0.6),
                 ),
                 child: Icon(
                   icon,
-                  size: isSmallScreen ? 16.0 : 20.0,
+                  size: padding,
                   color: color,
                 ),
               ),
@@ -2055,23 +2278,35 @@ class _ExportProductsHistoryPageState extends State<ExportProductsHistoryPage> {
               Text(
                 value,
                 style: TextStyle(
-                  fontSize: isSmallScreen ? 14.0 : 18.0,
+                  fontSize: getResponsiveFontSize(
+                    context,
+                    small: 14.0,
+                    medium: 16.0,
+                    large: 18.0,
+                    xlarge: 20.0,
+                  ),
                   fontWeight: FontWeight.w700,
                   color: color,
                 ),
               ),
             ],
           ),
-          SizedBox(height: isSmallScreen ? 8.0 : 12.0),
+          SizedBox(height: padding * 0.6),
           Text(
             label,
             style: TextStyle(
-              fontSize: isSmallScreen ? 12.0 : 14.0,
+              fontSize: getResponsiveFontSize(
+                context,
+                small: 11.0,
+                medium: 12.0,
+                large: 13.0,
+                xlarge: 14.0,
+              ),
               fontWeight: FontWeight.w600,
               color: AppColors.textSecondary,
             ),
           ),
-          SizedBox(height: isSmallScreen ? 6.0 : 8.0),
+          SizedBox(height: padding * 0.4),
           Row(
             children: [
               Expanded(
@@ -2081,15 +2316,27 @@ class _ExportProductsHistoryPageState extends State<ExportProductsHistoryPage> {
                     Text(
                       'Today',
                       style: TextStyle(
-                        fontSize: isSmallScreen ? 10.0 : 12.0,
+                        fontSize: getResponsiveFontSize(
+                          context,
+                          small: 9.0,
+                          medium: 10.0,
+                          large: 11.0,
+                          xlarge: 12.0,
+                        ),
                         color: AppColors.textTertiary,
                       ),
                     ),
-                    SizedBox(height: isSmallScreen ? 1.0 : 2.0),
+                    SizedBox(height: 2),
                     Text(
                       '${today.toStringAsFixed(1)} kg',
                       style: TextStyle(
-                        fontSize: isSmallScreen ? 12.0 : 14.0,
+                        fontSize: getResponsiveFontSize(
+                          context,
+                          small: 11.0,
+                          medium: 12.0,
+                          large: 13.0,
+                          xlarge: 14.0,
+                        ),
                         fontWeight: FontWeight.w600,
                         color: color,
                       ),
@@ -2104,15 +2351,27 @@ class _ExportProductsHistoryPageState extends State<ExportProductsHistoryPage> {
                     Text(
                       'This Week',
                       style: TextStyle(
-                        fontSize: isSmallScreen ? 10.0 : 12.0,
+                        fontSize: getResponsiveFontSize(
+                          context,
+                          small: 9.0,
+                          medium: 10.0,
+                          large: 11.0,
+                          xlarge: 12.0,
+                        ),
                         color: AppColors.textTertiary,
                       ),
                     ),
-                    SizedBox(height: isSmallScreen ? 1.0 : 2.0),
+                    SizedBox(height: 2),
                     Text(
                       '${week.toStringAsFixed(1)} kg',
                       style: TextStyle(
-                        fontSize: isSmallScreen ? 12.0 : 14.0,
+                        fontSize: getResponsiveFontSize(
+                          context,
+                          small: 11.0,
+                          medium: 12.0,
+                          large: 13.0,
+                          xlarge: 14.0,
+                        ),
                         fontWeight: FontWeight.w600,
                         color: color,
                       ),
@@ -2127,19 +2386,20 @@ class _ExportProductsHistoryPageState extends State<ExportProductsHistoryPage> {
     );
   }
 
-  Widget _buildSearchFilters(bool isSmallScreen, bool isMediumScreen) {
-    final horizontalPadding = isSmallScreen ? 12.0 : 16.0;
+  Widget _buildSearchFilters(BuildContext context) {
+    final screenSize = getScreenSize(MediaQuery.of(context).size.width);
+    final padding = getResponsivePadding(context);
     
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+      padding: EdgeInsets.symmetric(horizontal: padding, vertical: padding * 0.5),
       child: Column(
         children: [
           // Search Bar
           Container(
-            height: isSmallScreen ? 48.0 : 52.0,
+            height: screenSize == ScreenSize.small ? 44 : 48,
             decoration: BoxDecoration(
               color: AppColors.surface,
-              borderRadius: BorderRadius.circular(isSmallScreen ? 12.0 : 16.0),
+              borderRadius: BorderRadius.circular(padding),
               border: Border.all(color: AppColors.border),
               boxShadow: [
                 BoxShadow(
@@ -2151,267 +2411,151 @@ class _ExportProductsHistoryPageState extends State<ExportProductsHistoryPage> {
             ),
             child: Row(
               children: [
-                SizedBox(width: isSmallScreen ? 12.0 : 16.0),
+                SizedBox(width: padding * 0.8),
                 Icon(
                   Icons.search_rounded,
                   color: AppColors.textTertiary,
-                  size: isSmallScreen ? 18.0 : 20.0,
+                  size: padding,
                 ),
-                SizedBox(width: isSmallScreen ? 8.0 : 12.0),
+                SizedBox(width: padding * 0.6),
                 Expanded(
                   child: TextField(
-                    onChanged: (value) {
-                      setState(() {
-                        _searchQuery = value;
-                      });
-                    },
+                    onChanged: (value) => setState(() => _searchQuery = value),
                     decoration: InputDecoration(
                       hintText: 'Search orders...',
                       border: InputBorder.none,
                       hintStyle: TextStyle(
                         color: AppColors.textTertiary,
-                        fontSize: isSmallScreen ? 13.0 : 14.0,
+                        fontSize: getResponsiveFontSize(
+                          context,
+                          small: 12.0,
+                          medium: 13.0,
+                          large: 14.0,
+                          xlarge: 15.0,
+                        ),
                       ),
                     ),
                   ),
                 ),
                 if (_searchQuery.isNotEmpty)
                   IconButton(
-                    icon: Icon(
-                      Icons.close_rounded,
-                      color: AppColors.textTertiary,
-                      size: isSmallScreen ? 18.0 : 20.0,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _searchQuery = '';
-                      });
-                    },
+                    icon: Icon(Icons.close, size: padding * 0.8),
+                    onPressed: () => setState(() => _searchQuery = ''),
                   ),
-                SizedBox(width: isSmallScreen ? 6.0 : 8.0),
               ],
             ),
           ),
-          SizedBox(height: isSmallScreen ? 12.0 : 16.0),
           
-          // Status Filter Chips
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: _statusOptions.map((status) {
-                final isSelected = _filterStatus == status;
-                final color = getStatusColor(status);
-                
-                return GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _filterStatus = status;
-                    });
-                  },
-                  child: Container(
-                    margin: EdgeInsets.only(right: isSmallScreen ? 8.0 : 12.0),
-                    padding: EdgeInsets.symmetric(
-                      horizontal: isSmallScreen ? 16.0 : 20.0,
-                      vertical: isSmallScreen ? 8.0 : 10.0,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isSelected ? color : color.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(isSmallScreen ? 16.0 : 20.0),
-                      border: Border.all(
-                        color: isSelected ? color : color.withOpacity(0.3),
-                        width: isSelected ? 2 : 1,
-                      ),
-                      boxShadow: isSelected
-                          ? [
-                              BoxShadow(
-                                color: color.withOpacity(0.3),
-                                blurRadius: 6,
-                                offset: const Offset(0, 2),
-                              ),
-                            ]
-                          : null,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (status != 'All')
-                          Icon(
-                            getStatusIcon(status),
-                            size: isSmallScreen ? 16.0 : 18.0,
-                            color: isSelected ? Colors.white : color,
-                          ),
-                        if (status != 'All') SizedBox(width: isSmallScreen ? 6.0 : 8.0),
-                        Text(
-                          status,
-                          style: TextStyle(
-                            fontSize: isSmallScreen ? 13.0 : 14.0,
-                            fontWeight: FontWeight.w600,
-                            color: isSelected ? Colors.white : color,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
+          SizedBox(height: padding * 0.8),
+          
+          // Filter Chips - Wrap on small screens, horizontal scroll on larger
+          if (screenSize == ScreenSize.small)
+            Wrap(
+              spacing: padding * 0.5,
+              runSpacing: padding * 0.5,
+              children: _statusOptions.map((status) => 
+                _buildFilterChip(status, context)
+              ).toList(),
+            )
+          else
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: _statusOptions.map((status) => 
+                  _buildFilterChip(status, context)
+                ).toList(),
+              ),
             ),
-          ),
           
-          SizedBox(height: isSmallScreen ? 12.0 : 16.0),
-          
-          // Crop Type and Factory Filters
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
+          // Additional filters for medium+ screens
+          if (screenSize != ScreenSize.small) ...[
+            SizedBox(height: padding * 0.8),
+            Row(
               children: [
                 // Crop Type Filter
-                Container(
-                  padding: EdgeInsets.all(isSmallScreen ? 2.0 : 4.0),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(isSmallScreen ? 10.0 : 12.0),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Row(
-                    children: [
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: isSmallScreen ? 6.0 : 8.0),
-                        child: Icon(
-                          Icons.category_rounded,
-                          size: isSmallScreen ? 14.0 : 16.0,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      ..._cropTypeOptions.map((cropType) {
-                        final isSelected = _filterCropType == cropType;
-                        final color = cropType == 'Tea'
-                            ? AppColors.teaGreen
-                            : cropType == 'Cinnamon'
-                                ? AppColors.cinnamonBrown
-                                : AppColors.primary;
-                        
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _filterCropType = cropType;
-                            });
-                          },
-                          child: Container(
-                            margin: EdgeInsets.only(right: isSmallScreen ? 3.0 : 4.0),
-                            padding: EdgeInsets.symmetric(
-                              horizontal: isSmallScreen ? 10.0 : 12.0,
-                              vertical: isSmallScreen ? 4.0 : 6.0,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isSelected ? color : Colors.transparent,
-                              borderRadius: BorderRadius.circular(isSmallScreen ? 6.0 : 8.0),
-                            ),
-                            child: Text(
-                              cropType,
-                              style: TextStyle(
-                                fontSize: isSmallScreen ? 11.0 : 13.0,
-                                fontWeight: FontWeight.w600,
-                                color: isSelected ? Colors.white : AppColors.textSecondary,
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ],
-                  ),
-                ),
-                
-                SizedBox(width: isSmallScreen ? 8.0 : 12.0),
-                
-                // Factory Filter
-                if (_allFactories.length > 1)
-                  Container(
-                    padding: EdgeInsets.all(isSmallScreen ? 2.0 : 4.0),
+                Expanded(
+                  child: Container(
+                    padding: EdgeInsets.all(padding * 0.5),
                     decoration: BoxDecoration(
                       color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(isSmallScreen ? 10.0 : 12.0),
+                      borderRadius: BorderRadius.circular(padding),
                       border: Border.all(color: AppColors.border),
                     ),
                     child: Row(
                       children: [
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: isSmallScreen ? 6.0 : 8.0),
-                          child: Icon(
-                            Icons.factory_rounded,
-                            size: isSmallScreen ? 14.0 : 16.0,
-                            color: AppColors.textSecondary,
-                          ),
+                        Icon(
+                          Icons.category,
+                          size: padding * 0.8,
+                          color: AppColors.textSecondary,
                         ),
-                        DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: _selectedFactory ?? 'All',
-                            icon: Icon(
-                              Icons.arrow_drop_down_rounded,
-                              size: isSmallScreen ? 16.0 : 20.0,
-                              color: AppColors.textSecondary,
-                            ),
-                            style: TextStyle(
-                              fontSize: isSmallScreen ? 12.0 : 14.0,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary,
-                            ),
-                            onChanged: (String? newValue) {
-                              setState(() {
-                                _selectedFactory = newValue;
-                              });
-                            },
-                            items: _allFactories.map<DropdownMenuItem<String>>((String value) {
-                              return DropdownMenuItem<String>(
-                                value: value,
-                                child: Text(
-                                  value.length > 20 ? '${value.substring(0, 20)}...' : value,
-                                  style: TextStyle(
-                                    fontSize: isSmallScreen ? 11.0 : 13.0,
+                        SizedBox(width: padding * 0.4),
+                        Expanded(
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: _filterCropType,
+                              onChanged: (value) => 
+                                setState(() => _filterCropType = value!),
+                              items: _cropTypeOptions.map((type) => 
+                                DropdownMenuItem(
+                                  value: type,
+                                  child: Text(
+                                    type,
+                                    style: TextStyle(
+                                      fontSize: getResponsiveFontSize(
+                                        context,
+                                        small: 11.0,
+                                        medium: 12.0,
+                                        large: 13.0,
+                                        xlarge: 14.0,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              );
-                            }).toList(),
+                                )
+                              ).toList(),
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
+                ),
                 
-                SizedBox(width: isSmallScreen ? 8.0 : 12.0),
+                SizedBox(width: padding * 0.8),
                 
                 // Sort Button
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isSmallScreen ? 12.0 : 16.0,
-                    vertical: isSmallScreen ? 8.0 : 10.0,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(isSmallScreen ? 10.0 : 12.0),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: GestureDetector(
-                    onTap: _showSortDialog,
+                GestureDetector(
+                  onTap: () => _showSortDialog(context),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: padding,
+                      vertical: padding * 0.5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(padding),
+                      border: Border.all(color: AppColors.border),
+                    ),
                     child: Row(
                       children: [
                         Icon(
-                          Icons.sort_rounded,
-                          size: isSmallScreen ? 16.0 : 18.0,
+                          Icons.sort,
+                          size: padding * 0.8,
                           color: AppColors.textSecondary,
                         ),
-                        SizedBox(width: isSmallScreen ? 6.0 : 8.0),
+                        SizedBox(width: padding * 0.4),
                         Text(
                           _sortBy,
                           style: TextStyle(
-                            fontSize: isSmallScreen ? 13.0 : 14.0,
+                            fontSize: getResponsiveFontSize(
+                              context,
+                              small: 11.0,
+                              medium: 12.0,
+                              large: 13.0,
+                              xlarge: 14.0,
+                            ),
                             fontWeight: FontWeight.w600,
                             color: AppColors.textSecondary,
                           ),
-                        ),
-                        Icon(
-                          Icons.arrow_drop_down_rounded,
-                          size: isSmallScreen ? 16.0 : 18.0,
-                          color: AppColors.textSecondary,
                         ),
                       ],
                     ),
@@ -2419,466 +2563,406 @@ class _ExportProductsHistoryPageState extends State<ExportProductsHistoryPage> {
                 ),
               ],
             ),
-          ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildOrderCard(QueryDocumentSnapshot order, bool isSmallScreen, bool isMediumScreen) {
-    final data = order.data() as Map<String, dynamic>;
-    final status = data['status']?.toString() ?? 'Pending';
-    final displayStatus = getDisplayStatus(status);
-    final statusColor = getStatusColor(status);
-    final normalizedStatus = normalizeStatus(status);
-    final cropType = data['cropType'] ?? 'Both';
-    final factoryName = data['factoryName'] ?? 'Unknown Factory';
-    final factoryId = data['factoryId'] ?? '';
-    final totalQuantity = _getQuantity(data['totalQuantity']);
-    final teaQuantity = _getQuantity(data['teaQuantity']);
-    final cinnamonQuantity = _getQuantity(data['cinnamonQuantity']);
-    final description = data['description'] ?? '';
-    final orderPhotos = (data['orderPhotos'] as List<dynamic>?) ?? [];
-    final orderDate = data['orderDate'] as Timestamp?;
-    final unit = data['unit'] ?? 'kg';
-    final horizontalPadding = isSmallScreen ? 12.0 : 16.0;
+  Widget _buildFilterChip(String status, BuildContext context) {
+    final isSelected = _filterStatus == status;
+    final color = getStatusColor(status);
     
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: horizontalPadding,
-        vertical: isSmallScreen ? 8.0 : 12.0,
-      ),
-      child: GestureDetector(
-        onTap: () {
-          _showOrderDetails(context, order.id, data);
-        },
-        child: Container(
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(isSmallScreen ? 16.0 : 20.0),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: isSmallScreen ? 8.0 : 10.0,
-                offset: const Offset(0, 2),
+    return GestureDetector(
+      onTap: () => setState(() => _filterStatus = status),
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: getResponsivePadding(context) * 0.8,
+          vertical: 6,
+        ),
+        decoration: BoxDecoration(
+          color: isSelected ? color : color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? color : color.withOpacity(0.3),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (status != 'All')
+              Icon(
+                getStatusIcon(status),
+                size: 14,
+                color: isSelected ? Colors.white : color,
               ),
-            ],
-            border: Border.all(
-              color: statusColor.withOpacity(0.2),
-              width: 1,
+            if (status != 'All') const SizedBox(width: 4),
+            Text(
+              status,
+              style: TextStyle(
+                fontSize: getResponsiveFontSize(
+                  context,
+                  small: 11.0,
+                  medium: 12.0,
+                  large: 13.0,
+                  xlarge: 14.0,
+                ),
+                color: isSelected ? Colors.white : color,
+              ),
             ),
-          ),
-          child: Column(
-            children: [
-              // Enhanced Order Header with status
-              Container(
-                padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
-                decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.08),
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(isSmallScreen ? 16.0 : 20.0),
-                    topRight: Radius.circular(isSmallScreen ? 16.0 : 20.0),
-                  ),
-                  border: Border(
-                    bottom: BorderSide(
-                      color: statusColor.withOpacity(0.1),
-                      width: 1,
-                    ),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    // Status Indicator
-                    Container(
-                      padding: EdgeInsets.all(isSmallScreen ? 8.0 : 10.0),
-                      decoration: BoxDecoration(
-                        color: statusColor,
-                        borderRadius: BorderRadius.circular(isSmallScreen ? 8.0 : 12.0),
-                        boxShadow: [
-                          BoxShadow(
-                            color: statusColor.withOpacity(0.4),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        getStatusIcon(status),
-                        size: isSmallScreen ? 16.0 : 20.0,
-                        color: Colors.white,
-                      ),
-                    ),
-                    
-                    SizedBox(width: isSmallScreen ? 10.0 : 12.0),
-                    
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  factoryName,
-                                  style: TextStyle(
-                                    fontSize: isSmallScreen ? 14.0 : 16.0,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              // Status Badge
-                              Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: isSmallScreen ? 10.0 : 12.0, 
-                                  vertical: isSmallScreen ? 4.0 : 6.0
-                                ),
-                                decoration: BoxDecoration(
-                                  color: statusColor.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(isSmallScreen ? 16.0 : 20.0),
-                                  border: Border.all(
-                                    color: statusColor.withOpacity(0.4),
-                                    width: 1,
-                                  ),
-                                ),
-                                child: Text(
-                                  displayStatus.toUpperCase(),
-                                  style: TextStyle(
-                                    fontSize: isSmallScreen ? 10.0 : 12.0,
-                                    fontWeight: FontWeight.w700,
-                                    color: statusColor,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: isSmallScreen ? 2.0 : 4.0),
-                          
-                          // Status-specific message
-                          if (normalizedStatus == 'factory_received')
-                            Text(
-                              'Your products have been received by the factory',
-                              style: TextStyle(
-                                fontSize: isSmallScreen ? 11.0 : 12.0,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          
-                          // Factory ID
-                          if (factoryId.isNotEmpty)
-                            Text(
-                              'ID: $factoryId',
-                              style: TextStyle(
-                                fontSize: isSmallScreen ? 11.0 : 12.0,
-                                color: AppColors.textTertiary,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              
-              // Order Details
-              Padding(
-                padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Crop and Quantity
-                    Row(
-                      children: [
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: isSmallScreen ? 10.0 : 12.0, 
-                            vertical: isSmallScreen ? 4.0 : 6.0
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.hover,
-                            borderRadius: BorderRadius.circular(isSmallScreen ? 8.0 : 12.0),
-                          ),
-                          child: Text(
-                            cropType,
-                            style: TextStyle(
-                              fontSize: isSmallScreen ? 12.0 : 14.0,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        const Spacer(),
-                        Text(
-                          '${totalQuantity.toStringAsFixed(1)} $unit',
-                          style: TextStyle(
-                            fontSize: isSmallScreen ? 18.0 : 24.0,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                    
-                    SizedBox(height: isSmallScreen ? 12.0 : 16.0),
-                    
-                    // Quantity Breakdown
-                    if (cropType == 'Both' && (teaQuantity > 0 || cinnamonQuantity > 0))
-                      Container(
-                        padding: EdgeInsets.all(isSmallScreen ? 10.0 : 12.0),
-                        decoration: BoxDecoration(
-                          color: AppColors.hover,
-                          borderRadius: BorderRadius.circular(isSmallScreen ? 10.0 : 12.0),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            if (teaQuantity > 0)
-                              _buildQuantityPill(
-                                label: 'Tea',
-                                value: teaQuantity,
-                                unit: unit,
-                                color: AppColors.teaGreen,
-                                isSmallScreen: isSmallScreen,
-                                isMediumScreen: isMediumScreen,
-                              ),
-                            if (cinnamonQuantity > 0)
-                              _buildQuantityPill(
-                                label: 'Cinnamon',
-                                value: cinnamonQuantity,
-                                unit: unit,
-                                color: AppColors.cinnamonBrown,
-                                isSmallScreen: isSmallScreen,
-                                isMediumScreen: isMediumScreen,
-                              ),
-                          ],
-                        ),
-                      ),
-                    
-                    SizedBox(height: isSmallScreen ? 12.0 : 16.0),
-                    
-                    // Description preview
-                    if (description.isNotEmpty)
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Description',
-                            style: TextStyle(
-                              fontSize: isSmallScreen ? 12.0 : 14.0,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                          SizedBox(height: isSmallScreen ? 4.0 : 6.0),
-                          Text(
-                            description.length > 100 
-                                ? '${description.substring(0, 100)}...' 
-                                : description,
-                            style: TextStyle(
-                              fontSize: isSmallScreen ? 12.0 : 14.0,
-                              color: AppColors.textPrimary,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    
-                    // Photos preview
-                    if (orderPhotos.isNotEmpty)
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SizedBox(height: isSmallScreen ? 12.0 : 16.0),
-                          Text(
-                            'Photos (${orderPhotos.length})',
-                            style: TextStyle(
-                              fontSize: isSmallScreen ? 12.0 : 14.0,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                          SizedBox(height: isSmallScreen ? 6.0 : 8.0),
-                          SizedBox(
-                            height: isSmallScreen ? 60.0 : 80.0,
-                            child: ListView.builder(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: orderPhotos.length > 3 ? 3 : orderPhotos.length,
-                              itemBuilder: (context, index) {
-                                return Container(
-                                  margin: EdgeInsets.only(right: isSmallScreen ? 6.0 : 8.0),
-                                  width: isSmallScreen ? 60.0 : 80.0,
-                                  height: isSmallScreen ? 60.0 : 80.0,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(isSmallScreen ? 8.0 : 12.0),
-                                    image: DecorationImage(
-                                      image: NetworkImage(orderPhotos[index]),
-                                      fit: BoxFit.cover,
-                                    ),
-                                  ),
-                                  child: index == 2 && orderPhotos.length > 3
-                                      ? Container(
-                                          decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(isSmallScreen ? 8.0 : 12.0),
-                                            color: Colors.black.withOpacity(0.5),
-                                          ),
-                                          child: Center(
-                                            child: Text(
-                                              '+${orderPhotos.length - 3}',
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ),
-                                        )
-                                      : null,
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    
-                    // Timestamp
-                    if (orderDate != null)
-                      Padding(
-                        padding: EdgeInsets.only(top: isSmallScreen ? 12.0 : 16.0),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.access_time_rounded,
-                              size: isSmallScreen ? 14.0 : 16.0,
-                              color: AppColors.textTertiary,
-                            ),
-                            SizedBox(width: isSmallScreen ? 4.0 : 6.0),
-                            Text(
-                              DateFormat('MMM dd, yyyy • HH:mm').format(orderDate.toDate()),
-                              style: TextStyle(
-                                fontSize: isSmallScreen ? 11.0 : 13.0,
-                                color: AppColors.textTertiary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    
-                    // Click hint
-                    Padding(
-                      padding: EdgeInsets.only(top: isSmallScreen ? 12.0 : 16.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.touch_app,
-                            size: isSmallScreen ? 14.0 : 16.0,
-                            color: AppColors.primary,
-                          ),
-                          SizedBox(width: isSmallScreen ? 4.0 : 6.0),
-                          Text(
-                            'Tap to view full details',
-                            style: TextStyle(
-                              fontSize: isSmallScreen ? 11.0 : 12.0,
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildQuantityPill({
-    required String label,
-    required double value,
-    required String unit,
-    required Color color,
-    required bool isSmallScreen,
-    required bool isMediumScreen,
-  }) {
+  Widget _buildOrderCard(QueryDocumentSnapshot order, BuildContext context) {
+    final screenSize = getScreenSize(MediaQuery.of(context).size.width);
+    final padding = getResponsivePadding(context);
+    final data = order.data() as Map<String, dynamic>;
+    
+    final status = data['status']?.toString() ?? 'Pending';
+    final displayStatus = getDisplayStatus(status);
+    final statusColor = getStatusColor(status);
+    final cropType = data['cropType'] ?? 'Both';
+    final factoryName = data['factoryName'] ?? 'Unknown Factory';
+    final totalQuantity = _getQuantity(data['totalQuantity']);
+    final unit = data['unit'] ?? 'kg';
+    final orderPhotos = parseImageUrls(data['orderPhotos']);
+    final orderDate = data['orderDate'] as Timestamp?;
+    
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: isSmallScreen ? 12.0 : 16.0, 
-        vertical: isSmallScreen ? 6.0 : 8.0
+      margin: EdgeInsets.symmetric(
+        horizontal: padding,
+        vertical: padding * 0.5,
       ),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(isSmallScreen ? 16.0 : 20.0),
-        border: Border.all(color: color.withOpacity(0.2)),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(padding * 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+        border: Border.all(
+          color: statusColor.withOpacity(0.2),
+          width: 1,
+        ),
       ),
-      child: Row(
+      child: Column(
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: isSmallScreen ? 11.0 : 13.0,
-              fontWeight: FontWeight.w600,
-              color: color,
+          // Header
+          Container(
+            padding: EdgeInsets.all(padding),
+            decoration: BoxDecoration(
+              color: statusColor.withOpacity(0.08),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(padding * 1.2),
+                topRight: Radius.circular(padding * 1.2),
+              ),
+            ),
+            child: Row(
+              children: [
+                // Status icon
+                Container(
+                  padding: EdgeInsets.all(padding * 0.6),
+                  decoration: BoxDecoration(
+                    color: statusColor,
+                    borderRadius: BorderRadius.circular(padding * 0.8),
+                  ),
+                  child: Icon(
+                    getStatusIcon(status),
+                    size: padding * 1.2,
+                    color: Colors.white,
+                  ),
+                ),
+                
+                SizedBox(width: padding * 0.8),
+                
+                // Factory info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              factoryName,
+                              style: TextStyle(
+                                fontSize: getResponsiveFontSize(
+                                  context,
+                                  small: 13.0,
+                                  medium: 14.0,
+                                  large: 15.0,
+                                  xlarge: 16.0,
+                                ),
+                                fontWeight: FontWeight.w700,
+                              ),
+                              maxLines: screenSize == ScreenSize.small ? 1 : 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          
+                          // Status badge
+                          if (screenSize != ScreenSize.small)
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: padding * 0.8,
+                                vertical: padding * 0.3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: statusColor.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                displayStatus,
+                                style: TextStyle(
+                                  fontSize: getResponsiveFontSize(
+                                    context,
+                                    small: 10.0,
+                                    medium: 11.0,
+                                    large: 12.0,
+                                    xlarge: 13.0,
+                                  ),
+                                  fontWeight: FontWeight.w600,
+                                  color: statusColor,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      
+                      SizedBox(height: padding * 0.2),
+                      
+                      // Quantity and crop info
+                      Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: padding * 0.6,
+                              vertical: padding * 0.2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: cropType == 'Tea'
+                                  ? AppColors.teaGreen.withOpacity(0.1)
+                                  : cropType == 'Cinnamon'
+                                      ? AppColors.cinnamonBrown.withOpacity(0.1)
+                                      : AppColors.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              cropType,
+                              style: TextStyle(
+                                fontSize: getResponsiveFontSize(
+                                  context,
+                                  small: 10.0,
+                                  medium: 11.0,
+                                  large: 12.0,
+                                  xlarge: 13.0,
+                                ),
+                                fontWeight: FontWeight.w600,
+                                color: cropType == 'Tea'
+                                    ? AppColors.teaGreen
+                                    : cropType == 'Cinnamon'
+                                        ? AppColors.cinnamonBrown
+                                        : AppColors.primary,
+                              ),
+                            ),
+                          ),
+                          
+                          const Spacer(),
+                          
+                          Text(
+                            '${totalQuantity.toStringAsFixed(1)} $unit',
+                            style: TextStyle(
+                              fontSize: getResponsiveFontSize(
+                                context,
+                                small: 14.0,
+                                medium: 16.0,
+                                large: 18.0,
+                                xlarge: 20.0,
+                              ),
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
-          SizedBox(width: isSmallScreen ? 6.0 : 8.0),
-          Text(
-            '${value.toStringAsFixed(1)} $unit',
-            style: TextStyle(
-              fontSize: isSmallScreen ? 12.0 : 14.0,
-              fontWeight: FontWeight.w700,
-              color: color,
+          
+          // Photos section for medium+ screens
+          if (orderPhotos.isNotEmpty && screenSize != ScreenSize.small)
+            Container(
+              padding: EdgeInsets.all(padding),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Photos (${orderPhotos.length})',
+                    style: TextStyle(
+                      fontSize: getResponsiveFontSize(
+                        context,
+                        small: 11.0,
+                        medium: 12.0,
+                        large: 13.0,
+                        xlarge: 14.0,
+                      ),
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  
+                  SizedBox(height: padding * 0.5),
+                  
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: screenSize == ScreenSize.medium ? 2 : 3,
+                      crossAxisSpacing: padding * 0.5,
+                      mainAxisSpacing: padding * 0.5,
+                      childAspectRatio: 1.0,
+                    ),
+                    itemCount: orderPhotos.length > 6 ? 6 : orderPhotos.length,
+                    itemBuilder: (context, index) {
+                      return Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          image: DecorationImage(
+                            image: NetworkImage(orderPhotos[index]),
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          
+          // Timestamp and action button
+          Container(
+            padding: EdgeInsets.all(padding),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                if (orderDate != null)
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.access_time_rounded,
+                        size: padding,
+                        color: AppColors.textTertiary,
+                      ),
+                      SizedBox(width: padding * 0.4),
+                      Text(
+                        DateFormat('MMM dd, yyyy').format(orderDate.toDate()),
+                        style: TextStyle(
+                          fontSize: getResponsiveFontSize(
+                            context,
+                            small: 10.0,
+                            medium: 11.0,
+                            large: 12.0,
+                            xlarge: 13.0,
+                          ),
+                          color: AppColors.textTertiary,
+                        ),
+                      ),
+                    ],
+                  ),
+                
+                ElevatedButton(
+                  onPressed: () => _showOrderDetails(context, order.id, data),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color.fromARGB(255, 37, 92, 230),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: padding,
+                      vertical: padding * 0.5,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text(
+                    'View Details',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: getResponsiveFontSize(
+                        context,
+                        small: 11.0,
+                        medium: 12.0,
+                        large: 13.0,
+                        xlarge: 14.0,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
-      )
+      ),
     );
   }
 
-  Widget _buildEmptyState(bool isSmallScreen, bool isMediumScreen) {
-    final horizontalPadding = isSmallScreen ? 12.0 : 16.0;
-    final verticalPadding = isSmallScreen ? 40.0 : 60.0;
-
+  Widget _buildEmptyState(BuildContext context) {
+    final screenSize = getScreenSize(MediaQuery.of(context).size.width);
+    final padding = getResponsivePadding(context);
+    
     return Padding(
       padding: EdgeInsets.symmetric(
-        horizontal: horizontalPadding,
-        vertical: verticalPadding,
+        horizontal: padding,
+        vertical: 60.0,
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
             Icons.inventory_2_outlined,
-            size: isSmallScreen ? 60.0 : 80.0,
+            size: screenSize == ScreenSize.small ? 60.0 : 80.0,
             color: AppColors.textTertiary.withOpacity(0.3),
           ),
-          SizedBox(height: isSmallScreen ? 16.0 : 20.0),
+          SizedBox(height: screenSize == ScreenSize.small ? 16.0 : 20.0),
           Text(
             'No orders found',
             style: TextStyle(
-              fontSize: isSmallScreen ? 16.0 : 18.0,
+              fontSize: getResponsiveFontSize(
+                context,
+                small: 16.0,
+                medium: 18.0,
+                large: 20.0,
+                xlarge: 22.0,
+              ),
               fontWeight: FontWeight.w600,
               color: AppColors.textSecondary,
             ),
           ),
-          SizedBox(height: isSmallScreen ? 6.0 : 8.0),
+          SizedBox(height: screenSize == ScreenSize.small ? 6.0 : 8.0),
           Text(
             _searchQuery.isNotEmpty || _filterStatus != 'All' || _filterCropType != 'All' || (_selectedFactory != null && _selectedFactory != 'All')
                 ? 'Try adjusting your filters'
                 : 'Start exporting your products to see history',
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: isSmallScreen ? 12.0 : 14.0,
+              fontSize: getResponsiveFontSize(
+                context,
+                small: 12.0,
+                medium: 14.0,
+                large: 14.0,
+                xlarge: 16.0,
+              ),
               color: AppColors.textTertiary,
             ),
           ),
-          SizedBox(height: isSmallScreen ? 20.0 : 24.0),
+          SizedBox(height: screenSize == ScreenSize.small ? 20.0 : 24.0),
           if (_searchQuery.isNotEmpty || _filterStatus != 'All' || _filterCropType != 'All' || (_selectedFactory != null && _selectedFactory != 'All'))
             ElevatedButton(
               onPressed: () {
@@ -2892,17 +2976,23 @@ class _ExportProductsHistoryPageState extends State<ExportProductsHistoryPage> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(isSmallScreen ? 10.0 : 12.0),
+                  borderRadius: BorderRadius.circular(padding * 0.8),
                 ),
                 padding: EdgeInsets.symmetric(
-                  horizontal: isSmallScreen ? 20.0 : 24.0, 
-                  vertical: isSmallScreen ? 10.0 : 12.0
+                  horizontal: padding * 1.5,
+                  vertical: padding * 0.8,
                 ),
               ),
               child: Text(
                 'Clear All Filters',
                 style: TextStyle(
-                  fontSize: isSmallScreen ? 14.0 : 16.0,
+                  fontSize: getResponsiveFontSize(
+                    context,
+                    small: 14.0,
+                    medium: 16.0,
+                    large: 16.0,
+                    xlarge: 18.0,
+                  ),
                   fontWeight: FontWeight.w600,
                   color: Colors.white,
                 ),

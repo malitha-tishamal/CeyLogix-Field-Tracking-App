@@ -1,11 +1,11 @@
-// factory_owner_dashboard.dart - UPDATED VERSION WITH COMPLETE ORDER DETAILS MODAL
+// factory_owner_dashboard.dart - COMPLETE UPDATED VERSION WITH TEA & CINNAMON QUANTITIES
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'factory_owner_drawer.dart';
 import 'land_details.dart';
-import 'factory_owner_orders.dart'; // නව import එක - FactoryOrderDetailsModal සඳහා
+import 'factory_owner_orders.dart'; // Import FactoryOrderDetailsModal from orders page
 
 // Reusing AppColors locally
 class AppColors {
@@ -887,40 +887,82 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
                   isMediumScreen ? 6 : 8,
         ),
 
-        // Crop Breakdown
-        Container(
-          padding: EdgeInsets.all(isSmallScreen ? 10 : 
-                  isMediumScreen ? 11 : 12),
-          decoration: BoxDecoration(
-            color: AppColors.background,
-            borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                height: isSmallScreen ? 6 : 
-                        isMediumScreen ? 7 : 8,
-              ),
-              if (_ordersStatistics['teaQuantity'] > 0)
-                _buildCropProgress(
-                  label: 'Tea',
-                  value: _ordersStatistics['teaQuantity'],
-                  total: _ordersStatistics['totalQuantity'],
-                  color: AppColors.successGreen,
-                  screenWidth: screenWidth,
+        // Crop Breakdown with actual quantities
+        if (_ordersStatistics['teaQuantity'] > 0 || _ordersStatistics['cinnamonQuantity'] > 0)
+          Container(
+            padding: EdgeInsets.all(isSmallScreen ? 10 : 
+                    isMediumScreen ? 11 : 12),
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Crop Breakdown',
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 11 : 
+                            isMediumScreen ? 12 : 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.darkText,
+                  ),
                 ),
-              if (_ordersStatistics['cinnamonQuantity'] > 0)
-                _buildCropProgress(
-                  label: 'Cinnamon',
-                  value: _ordersStatistics['cinnamonQuantity'],
-                  total: _ordersStatistics['totalQuantity'],
-                  color: AppColors.warningOrange,
-                  screenWidth: screenWidth,
-                ),
-            ],
+                SizedBox(height: isSmallScreen ? 6 : 
+                        isMediumScreen ? 7 : 8),
+                if (_ordersStatistics['teaQuantity'] > 0)
+                  _buildCropQuantityItem(
+                    label: 'Tea',
+                    quantity: _ordersStatistics['teaQuantity'],
+                    unit: 'kg',
+                    color: AppColors.successGreen,
+                    screenWidth: screenWidth,
+                  ),
+                if (_ordersStatistics['cinnamonQuantity'] > 0)
+                  _buildCropQuantityItem(
+                    label: 'Cinnamon',
+                    quantity: _ordersStatistics['cinnamonQuantity'],
+                    unit: 'kg',
+                    color: AppColors.warningOrange,
+                    screenWidth: screenWidth,
+                  ),
+                if (_ordersStatistics['teaQuantity'] > 0 && _ordersStatistics['cinnamonQuantity'] > 0)
+                  Container(
+                    margin: EdgeInsets.only(top: isSmallScreen ? 4 : 
+                            isMediumScreen ? 5 : 6),
+                    padding: EdgeInsets.all(isSmallScreen ? 6 : 
+                            isMediumScreen ? 7 : 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryBlue.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(isSmallScreen ? 6 : 8),
+                      border: Border.all(color: AppColors.primaryBlue.withOpacity(0.1)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Total Received:',
+                          style: TextStyle(
+                            fontSize: isSmallScreen ? 10 : 
+                                    isMediumScreen ? 11 : 12,
+                            color: AppColors.secondaryText,
+                          ),
+                        ),
+                        Text(
+                          '${(_ordersStatistics['teaQuantity'] + _ordersStatistics['cinnamonQuantity']).toStringAsFixed(1)} kg',
+                          style: TextStyle(
+                            fontSize: isSmallScreen ? 11 : 
+                                    isMediumScreen ? 12 : 13,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primaryBlue,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
           ),
-        ),
 
         SizedBox(
           height: isSmallScreen ? 10 : 
@@ -950,117 +992,166 @@ class _FactoryOwnerDashboardState extends State<FactoryOwnerDashboard> {
     );
   }
 
+  Widget _buildCropQuantityItem({
+    required String label,
+    required double quantity,
+    required String unit,
+    required Color color,
+    required double screenWidth,
+  }) {
+    final isSmallScreen = screenWidth < 360;
+    final isMediumScreen = screenWidth >= 360 && screenWidth < 400;
+    
+    return Padding(
+      padding: EdgeInsets.only(bottom: isSmallScreen ? 6 : 
+              isMediumScreen ? 7 : 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Icon(
+                label == 'Tea' ? Icons.eco : Icons.forest,
+                size: isSmallScreen ? 12 : 
+                      isMediumScreen ? 14 : 16,
+                color: color,
+              ),
+              SizedBox(width: isSmallScreen ? 4 : 
+                      isMediumScreen ? 5 : 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: isSmallScreen ? 10 : 
+                          isMediumScreen ? 11 : 12,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+          Text(
+            '${quantity.toStringAsFixed(1)} $unit',
+            style: TextStyle(
+              fontSize: isSmallScreen ? 10 : 
+                      isMediumScreen ? 11 : 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.darkText,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildResponsiveStatsRow(double screenWidth, double screenHeight) {
     final isSmallScreen = screenWidth < 360;
     final isMediumScreen = screenWidth >= 360 && screenWidth < 400;
     final horizontalSpacing = isSmallScreen ? 6.0 : isMediumScreen ? 8.0 : 12.0;
     final verticalSpacing = isSmallScreen ? 6.0 : isMediumScreen ? 8.0 : 12.0;
 
-return Padding(
-  padding: EdgeInsets.only(
-    bottom: isSmallScreen ? 10 : isMediumScreen ? 12 : 16,
-  ),
-  child: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      // --- Top Row ---
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8.0),
-        child: Text(
-          "Overall Orders",
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: AppColors.darkText,
-          ),
-        ),
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: isSmallScreen ? 10 : isMediumScreen ? 12 : 16,
       ),
-// --- Top Row ---
-Row(
-  children: [
-    Expanded(
-      child: _buildOrderStatCard(
-        title: 'Total Orders',
-        value: _ordersStatistics['totalOrders'].toString(),
-        icon: Icons.shopping_cart_checkout,
-        color: AppColors.primaryBlue,
-        screenWidth: screenWidth,
-      ),
-    ),
-    SizedBox(width: horizontalSpacing),
-    Expanded(
-      child: _buildOrderStatCard(
-        title: 'Received Completed',
-        value: _ordersStatistics['deliveredOrders'].toString(),
-        icon: Icons.check_circle,
-        color: AppColors.successGreen,
-        screenWidth: screenWidth,
-      ),
-    ),
-  ],
-),
-
-SizedBox(height: verticalSpacing),
-
-// --- Centered Single Card Row ---
-Row(
-  mainAxisAlignment: MainAxisAlignment.center, // <-- center the content
-  children: [
-    SizedBox(
-      width: screenWidth / 3 - horizontalSpacing / 3, // make width similar to one of the top cards
-      child: _buildOrderStatCard(
-        title: 'Pending',
-        value: _ordersStatistics['pendingOrders'].toString(),
-        icon: Icons.pending,
-        color: const Color.fromARGB(255, 255, 8, 0),
-        screenWidth: screenWidth,
-      ),
-    ),
-  ],
-),
-
-
-      SizedBox(height: verticalSpacing),
-
-      // --- Bottom Row ---
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8.0),
-        child: Text(
-          "Recent",
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: AppColors.darkText,
-          ),
-        ),
-      ),
-      Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: _buildOrderStatCard(
-              title: 'Today Received',
-              value: _ordersStatistics['todayOrders'].toString(),
-              icon: Icons.today,
-              color: AppColors.accentTeal,
-              screenWidth: screenWidth,
+          // --- Top Row ---
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: Text(
+              "Overall Orders",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.darkText,
+              ),
             ),
           ),
-          SizedBox(width: horizontalSpacing),
-          Expanded(
-            child: _buildOrderStatCard(
-              title: 'This Week',
-              value: _ordersStatistics['weekOrders'].toString(),
-              icon: Icons.calendar_today,
-              color: AppColors.purpleAccent,
-              screenWidth: screenWidth,
+          // --- Top Row ---
+          Row(
+            children: [
+              Expanded(
+                child: _buildOrderStatCard(
+                  title: 'Total Orders',
+                  value: _ordersStatistics['totalOrders'].toString(),
+                  icon: Icons.shopping_cart_checkout,
+                  color: AppColors.primaryBlue,
+                  screenWidth: screenWidth,
+                ),
+              ),
+              SizedBox(width: horizontalSpacing),
+              Expanded(
+                child: _buildOrderStatCard(
+                  title: 'Received Completed',
+                  value: _ordersStatistics['deliveredOrders'].toString(),
+                  icon: Icons.check_circle,
+                  color: AppColors.successGreen,
+                  screenWidth: screenWidth,
+                ),
+              ),
+            ],
+          ),
+
+          SizedBox(height: verticalSpacing),
+
+          // --- Centered Single Card Row ---
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: screenWidth / 3 - horizontalSpacing / 3,
+                child: _buildOrderStatCard(
+                  title: 'Pending',
+                  value: _ordersStatistics['pendingOrders'].toString(),
+                  icon: Icons.pending,
+                  color: const Color.fromARGB(255, 255, 8, 0),
+                  screenWidth: screenWidth,
+                ),
+              ),
+            ],
+          ),
+
+          SizedBox(height: verticalSpacing),
+
+          // --- Bottom Row ---
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: Text(
+              "Recent",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.darkText,
+              ),
             ),
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: _buildOrderStatCard(
+                  title: 'Today Received',
+                  value: _ordersStatistics['todayOrders'].toString(),
+                  icon: Icons.today,
+                  color: AppColors.accentTeal,
+                  screenWidth: screenWidth,
+                ),
+              ),
+              SizedBox(width: horizontalSpacing),
+              Expanded(
+                child: _buildOrderStatCard(
+                  title: 'This Week',
+                  value: _ordersStatistics['weekOrders'].toString(),
+                  icon: Icons.calendar_today,
+                  color: AppColors.purpleAccent,
+                  screenWidth: screenWidth,
+                ),
+              ),
+            ],
           ),
         ],
       ),
-    ],
-  ),
-);
-
+    );
   }
 
   Widget _buildOrderStatCard({
@@ -1082,10 +1173,10 @@ Row(
       width: cardWidth,
       height: cardHeight,
       padding: EdgeInsets.fromLTRB(
-        isSmallScreen ? 8 : isMediumScreen ? 10 : 8, // left
-        isSmallScreen ? 8 : isMediumScreen ? 6 : 2, // top
-        isSmallScreen ? 8 : isMediumScreen ? 10 : 12, // right
-        isSmallScreen ? 12 : isMediumScreen ? 4 : 0, // bottom padding increased
+        isSmallScreen ? 8 : isMediumScreen ? 10 : 8,
+        isSmallScreen ? 8 : isMediumScreen ? 6 : 2,
+        isSmallScreen ? 8 : isMediumScreen ? 10 : 12,
+        isSmallScreen ? 12 : isMediumScreen ? 4 : 0,
       ),
       decoration: BoxDecoration(
         color: color.withOpacity(0.05),
@@ -1132,60 +1223,6 @@ Row(
     );
   }
 
-  Widget _buildCropProgress({
-    required String label,
-    required double value,
-    required double total,
-    required Color color,
-    required double screenWidth,
-  }) {
-    final isSmallScreen = screenWidth < 360;
-    final isMediumScreen = screenWidth >= 360 && screenWidth < 400;
-    
-    final percentage = total > 0 ? (value / total) * 100 : 0;
-    
-    return Padding(
-      padding: EdgeInsets.only(bottom: isSmallScreen ? 6 : 
-              isMediumScreen ? 7 : 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: isSmallScreen ? 10 : 
-                          isMediumScreen ? 11 : 12,
-                  fontWeight: FontWeight.w600,
-                  color: color,
-                ),
-              ),
-              Text(
-                '${value.toStringAsFixed(0)} kg (${percentage.toStringAsFixed(0)}%)',
-                style: TextStyle(
-                  fontSize: isSmallScreen ? 9 : 
-                          isMediumScreen ? 10 : 11,
-                  color: AppColors.secondaryText,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: isSmallScreen ? 3 : 
-                  isMediumScreen ? 4 : 5),
-          LinearProgressIndicator(
-            value: total > 0 ? value / total : 0,
-            backgroundColor: color.withOpacity(0.2),
-            valueColor: AlwaysStoppedAnimation<Color>(color),
-            minHeight: isSmallScreen ? 4 : 6,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildOrderPreviewItem(Map<String, dynamic> order, double screenWidth, double screenHeight) {
     final isSmallScreen = screenWidth < 360;
     final isMediumScreen = screenWidth >= 360 && screenWidth < 400;
@@ -1196,6 +1233,10 @@ Row(
     final cropType = order['cropType'] ?? 'N/A';
     final orderDate = order['orderDate'] as DateTime?;
     final unit = order['unit'] ?? 'kg';
+    
+    // Get tea and cinnamon quantities
+    final teaQuantity = order['teaQuantity'] ?? 0;
+    final cinnamonQuantity = order['cinnamonQuantity'] ?? 0;
 
     final statusColor = _getOrderStatusColor(status);
     
@@ -1211,113 +1252,180 @@ Row(
           borderRadius: BorderRadius.circular(isSmallScreen ? 8 : 10),
           border: Border.all(color: AppColors.border),
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: EdgeInsets.all(isSmallScreen ? 4 : 
-                      isMediumScreen ? 5 : 6),
-              decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(isSmallScreen ? 6 : 8),
-              ),
-              child: Icon(
-                _getOrderStatusIcon(status),
-                size: isSmallScreen ? 12 : 
-                      isMediumScreen ? 14 : 16,
-                color: statusColor,
-              ),
-            ),
-            SizedBox(width: isSmallScreen ? 6 : 
-                    isMediumScreen ? 8 : 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    landOwnerName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: isSmallScreen ? 11 : 
-                              isMediumScreen ? 12 : 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.darkText,
-                    ),
-                  ),
-                  SizedBox(height: isSmallScreen ? 2 : 
-                          isMediumScreen ? 3 : 4),
-                  Row(
+            // Header row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Row(
                     children: [
-                      Text(
-                        '$totalQuantity $unit • ',
-                        style: TextStyle(
-                          fontSize: isSmallScreen ? 9 : 
-                                  isMediumScreen ? 10 : 11,
-                          color: AppColors.secondaryText,
+                      Container(
+                        padding: EdgeInsets.all(isSmallScreen ? 4 : 
+                                isMediumScreen ? 5 : 6),
+                        decoration: BoxDecoration(
+                          color: statusColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(isSmallScreen ? 6 : 8),
+                        ),
+                        child: Icon(
+                          _getOrderStatusIcon(status),
+                          size: isSmallScreen ? 12 : 
+                                isMediumScreen ? 14 : 16,
+                          color: statusColor,
                         ),
                       ),
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: isSmallScreen ? 4 : 6,
-                          vertical: isSmallScreen ? 1 : 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _getCropColorFromString(cropType).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(isSmallScreen ? 3 : 4),
-                        ),
+                      SizedBox(width: isSmallScreen ? 6 : 
+                              isMediumScreen ? 8 : 12),
+                      Expanded(
                         child: Text(
-                          cropType.length > 6 && isSmallScreen 
-                            ? cropType.substring(0, 6) 
-                            : cropType,
+                          landOwnerName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: isSmallScreen ? 7 : 
-                                    isMediumScreen ? 8 : 9,
+                            fontSize: isSmallScreen ? 11 : 
+                                    isMediumScreen ? 12 : 14,
                             fontWeight: FontWeight.w600,
-                            color: _getCropColorFromString(cropType),
+                            color: AppColors.darkText,
                           ),
                         ),
                       ),
                     ],
                   ),
-                  if (orderDate != null)
-                    Padding(
-                      padding: EdgeInsets.only(top: isSmallScreen ? 1 : 
-                              isMediumScreen ? 2 : 3),
-                      child: Text(
-                        DateFormat('MMM dd, HH:mm').format(orderDate),
+                ),
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isSmallScreen ? 6 : 
+                              isMediumScreen ? 7 : 8,
+                    vertical: isSmallScreen ? 2 : 
+                              isMediumScreen ? 3 : 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
+                  ),
+                  child: Text(
+                    status.length > 8 && isSmallScreen 
+                      ? status.substring(0, 8)
+                      : status,
+                    style: TextStyle(
+                      fontSize: isSmallScreen ? 7 : 
+                              isMediumScreen ? 8 : 9,
+                      fontWeight: FontWeight.w600,
+                      color: statusColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            
+            SizedBox(height: isSmallScreen ? 4 : 
+                    isMediumScreen ? 5 : 6),
+            
+            // Crop type and quantities row
+            Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isSmallScreen ? 4 : 6,
+                    vertical: isSmallScreen ? 1 : 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _getCropColorFromString(cropType).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(isSmallScreen ? 3 : 4),
+                  ),
+                  child: Text(
+                    cropType.length > 6 && isSmallScreen 
+                      ? cropType.substring(0, 6) 
+                      : cropType,
+                    style: TextStyle(
+                      fontSize: isSmallScreen ? 7 : 
+                              isMediumScreen ? 8 : 9,
+                      fontWeight: FontWeight.w600,
+                      color: _getCropColorFromString(cropType),
+                    ),
+                  ),
+                ),
+                SizedBox(width: isSmallScreen ? 4 : 
+                        isMediumScreen ? 5 : 6),
+                
+                // Tea quantity (if applicable)
+                if ((cropType.toLowerCase() == 'tea' || cropType.toLowerCase() == 'both') && teaQuantity > 0)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.eco,
+                        size: isSmallScreen ? 8 : 10,
+                        color: AppColors.successGreen,
+                      ),
+                      SizedBox(width: 2),
+                      Text(
+                        '$teaQuantity',
                         style: TextStyle(
-                          fontSize: isSmallScreen ? 8 : 
-                                  isMediumScreen ? 9 : 10,
-                          color: AppColors.textTertiary,
+                          fontSize: isSmallScreen ? 9 : 
+                                  isMediumScreen ? 10 : 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.successGreen,
                         ),
                       ),
-                    ),
-                ],
-              ),
+                      SizedBox(width: isSmallScreen ? 2 : 
+                              isMediumScreen ? 3 : 4),
+                    ],
+                  ),
+                
+                // Cinnamon quantity (if applicable)
+                if ((cropType.toLowerCase() == 'cinnamon' || cropType.toLowerCase() == 'both') && cinnamonQuantity > 0)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.forest,
+                        size: isSmallScreen ? 8 : 10,
+                        color: AppColors.warningOrange,
+                      ),
+                      SizedBox(width: 2),
+                      Text(
+                        '$cinnamonQuantity',
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 9 : 
+                                  isMediumScreen ? 10 : 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.warningOrange,
+                        ),
+                      ),
+                    ],
+                  ),
+                
+                Spacer(),
+                
+                // Total quantity
+                Text(
+                  '$totalQuantity $unit',
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 9 : 
+                            isMediumScreen ? 10 : 11,
+                    color: AppColors.secondaryText,
+                  ),
+                ),
+              ],
             ),
-            Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: isSmallScreen ? 6 : 
-                          isMediumScreen ? 7 : 8,
-                vertical: isSmallScreen ? 2 : 
-                          isMediumScreen ? 3 : 4,
-              ),
-              decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
-              ),
-              child: Text(
-                status.length > 8 && isSmallScreen 
-                  ? status.substring(0, 8)
-                  : status,
-                style: TextStyle(
-                  fontSize: isSmallScreen ? 7 : 
-                          isMediumScreen ? 8 : 9,
-                  fontWeight: FontWeight.w600,
-                  color: statusColor,
+            
+            // Date row
+            if (orderDate != null)
+              Padding(
+                padding: EdgeInsets.only(top: isSmallScreen ? 2 : 
+                        isMediumScreen ? 3 : 4),
+                child: Text(
+                  DateFormat('MMM dd, HH:mm').format(orderDate),
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 8 : 
+                            isMediumScreen ? 9 : 10,
+                    color: AppColors.textTertiary,
+                  ),
                 ),
               ),
-            ),
           ],
         ),
       ),
@@ -1773,7 +1881,7 @@ Row(
                   onPressed: () {
                     _navigateToCategoryDetails(
                       categoryTitle: title,
-                      lands: lands, // Pass ALL lands (already sorted newest first)
+                      lands: lands,
                       categoryType: _getCategoryTypeFromTitle(title),
                       icon: icon,
                       color: color,
@@ -2160,6 +2268,487 @@ Row(
       default:
         return Icons.info_outline_rounded;
     }
+  }
+
+  Color _getCropColorFromString(String cropType) {
+    switch (cropType.toLowerCase()) {
+      case 'tea':
+        return AppColors.successGreen;
+      case 'cinnamon':
+        return AppColors.warningOrange;
+      case 'both':
+        return AppColors.accentTeal;
+      default:
+        return AppColors.primaryBlue;
+    }
+  }
+}
+
+// Factory Owner Land Details Modal (Keep this if you need it for land details)
+class FactoryOwnerLandDetailsModal extends StatelessWidget {
+  final Map<String, dynamic> land;
+
+  const FactoryOwnerLandDetailsModal({super.key, required this.land});
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    
+    // Extract land details
+    final landName = land['landName'] ?? 'Unknown Land';
+    final ownerName = land['ownerName'] ?? 'Unknown Owner';
+    final cropType = land['cropType'] ?? 'N/A';
+    final landSize = land['landSize'] ?? 'N/A';
+    final landSizeUnit = land['landSizeUnit'] ?? 'ha';
+    final address = land['address'] ?? 'N/A';
+    final district = land['district'] ?? 'N/A';
+    final village = land['village'] ?? 'N/A';
+    final agDivision = land['agDivision'] ?? 'N/A';
+    final landPhotos = List<String>.from(land['landPhotos'] ?? []);
+    final ownerMobile = land['ownerMobile'] ?? 'N/A';
+    final ownerEmail = land['ownerEmail'] ?? 'N/A';
+    final ownerNic = land['ownerNic'] ?? 'N/A';
+    final ownerProfileImageUrl = land['ownerProfileImageUrl'];
+
+    final cropColor = _getCropColorFromString(cropType);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+      ),
+      constraints: BoxConstraints(
+        maxHeight: screenHeight * 0.9,
+      ),
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: EdgeInsets.all(screenWidth * 0.05),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Land Details',
+                      style: TextStyle(
+                        fontSize: screenWidth * 0.06,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.darkText,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.close, size: screenWidth * 0.06),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+
+              SizedBox(height: screenHeight * 0.02),
+
+              // Land Name
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: screenWidth * 0.04,
+                  vertical: screenHeight * 0.015,
+                ),
+                decoration: BoxDecoration(
+                  color: cropColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: cropColor.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.landscape,
+                      color: cropColor,
+                      size: screenWidth * 0.06,
+                    ),
+                    SizedBox(width: screenWidth * 0.03),
+                    Expanded(
+                      child: Text(
+                        landName,
+                        style: TextStyle(
+                          fontSize: screenWidth * 0.055,
+                          fontWeight: FontWeight.bold,
+                          color: cropColor,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: screenWidth * 0.04,
+                        vertical: screenHeight * 0.008,
+                      ),
+                      decoration: BoxDecoration(
+                        color: cropColor,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        cropType,
+                        style: TextStyle(
+                          fontSize: screenWidth * 0.04,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              SizedBox(height: screenHeight * 0.02),
+
+              // Owner Details
+              _buildOwnerDetailsSection(screenWidth, screenHeight),
+
+              SizedBox(height: screenHeight * 0.02),
+
+              // Land Details
+              _buildLandDetailsSection(screenWidth, screenHeight),
+
+              SizedBox(height: screenHeight * 0.02),
+
+              // Land Photos
+              if (landPhotos.isNotEmpty)
+                _buildLandPhotosSection(screenWidth, screenHeight, landPhotos),
+
+              SizedBox(height: screenHeight * 0.02),
+
+              // Close Button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    'Close',
+                    style: TextStyle(fontSize: screenWidth * 0.045),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryBlue,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(
+                      vertical: screenHeight * 0.02,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOwnerDetailsSection(double screenWidth, double screenHeight) {
+    final ownerName = land['ownerName'] ?? 'Unknown Owner';
+    final ownerMobile = land['ownerMobile'] ?? 'N/A';
+    final ownerEmail = land['ownerEmail'] ?? 'N/A';
+    final ownerNic = land['ownerNic'] ?? 'N/A';
+    final ownerProfileImageUrl = land['ownerProfileImageUrl'];
+
+    return Container(
+      padding: EdgeInsets.all(screenWidth * 0.04),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.person_outline,
+                color: AppColors.primaryBlue,
+                size: screenWidth * 0.055,
+              ),
+              SizedBox(width: screenWidth * 0.03),
+              Text(
+                'LAND OWNER',
+                style: TextStyle(
+                  fontSize: screenWidth * 0.04,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.secondaryText,
+                  letterSpacing: 1,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: screenHeight * 0.015),
+          Row(
+            children: [
+              CircleAvatar(
+                radius: screenWidth * 0.06,
+                backgroundImage: ownerProfileImageUrl != null && ownerProfileImageUrl.isNotEmpty
+                    ? NetworkImage(ownerProfileImageUrl)
+                    : null,
+                backgroundColor: AppColors.primaryBlue.withOpacity(0.1),
+                child: ownerProfileImageUrl == null || ownerProfileImageUrl.isEmpty
+                    ? Icon(
+                        Icons.person,
+                        color: AppColors.primaryBlue,
+                        size: screenWidth * 0.06,
+                      )
+                    : null,
+              ),
+              SizedBox(width: screenWidth * 0.04),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      ownerName,
+                      style: TextStyle(
+                        fontSize: screenWidth * 0.045,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.darkText,
+                      ),
+                    ),
+                    SizedBox(height: screenHeight * 0.005),
+                    if (ownerMobile != 'N/A')
+                      Text(
+                        '📱 $ownerMobile',
+                        style: TextStyle(
+                          fontSize: screenWidth * 0.035,
+                          color: AppColors.secondaryText,
+                        ),
+                      ),
+                    if (ownerEmail != 'N/A')
+                      Text(
+                        '📧 $ownerEmail',
+                        style: TextStyle(
+                          fontSize: screenWidth * 0.035,
+                          color: AppColors.secondaryText,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (ownerNic != 'N/A')
+            Padding(
+              padding: EdgeInsets.only(top: screenHeight * 0.01),
+              child: Text(
+                'NIC: $ownerNic',
+                style: TextStyle(
+                  fontSize: screenWidth * 0.035,
+                  color: AppColors.secondaryText,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLandDetailsSection(double screenWidth, double screenHeight) {
+    final landSize = land['landSize'] ?? 'N/A';
+    final landSizeUnit = land['landSizeUnit'] ?? 'ha';
+    final address = land['address'] ?? 'N/A';
+    final district = land['district'] ?? 'N/A';
+    final village = land['village'] ?? 'N/A';
+    final agDivision = land['agDivision'] ?? 'N/A';
+
+    return Container(
+      padding: EdgeInsets.all(screenWidth * 0.04),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.info_outline,
+                color: AppColors.successGreen,
+                size: screenWidth * 0.055,
+              ),
+              SizedBox(width: screenWidth * 0.03),
+              Text(
+                'LAND INFORMATION',
+                style: TextStyle(
+                  fontSize: screenWidth * 0.04,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.secondaryText,
+                  letterSpacing: 1,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: screenHeight * 0.015),
+          _buildLandDetailItem(
+            icon: Icons.square_foot,
+            label: 'Land Size',
+            value: '$landSize $landSizeUnit',
+            screenWidth: screenWidth,
+          ),
+          _buildLandDetailItem(
+            icon: Icons.location_on,
+            label: 'Address',
+            value: address,
+            screenWidth: screenWidth,
+          ),
+          _buildLandDetailItem(
+            icon: Icons.location_city,
+            label: 'District',
+            value: district,
+            screenWidth: screenWidth,
+          ),
+          _buildLandDetailItem(
+            icon: Icons.house,
+            label: 'Village',
+            value: village,
+            screenWidth: screenWidth,
+          ),
+          _buildLandDetailItem(
+            icon: Icons.agriculture,
+            label: 'A/G Division',
+            value: agDivision,
+            screenWidth: screenWidth,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLandDetailItem({
+    required IconData icon,
+    required String label,
+    required String value,
+    required double screenWidth,
+  }) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: screenWidth * 0.015),
+      child: Row(
+        children: [
+          Container(
+            padding: EdgeInsets.all(screenWidth * 0.025),
+            decoration: BoxDecoration(
+              color: AppColors.successGreen.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: screenWidth * 0.045, color: AppColors.successGreen),
+          ),
+          SizedBox(width: screenWidth * 0.03),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: screenWidth * 0.035,
+                    color: AppColors.secondaryText,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: screenWidth * 0.04,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.darkText,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLandPhotosSection(double screenWidth, double screenHeight, List<String> landPhotos) {
+    return Container(
+      padding: EdgeInsets.all(screenWidth * 0.04),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.photo_camera_back,
+                color: AppColors.purpleAccent,
+                size: screenWidth * 0.055,
+              ),
+              SizedBox(width: screenWidth * 0.03),
+              Text(
+                'LAND PHOTOS (${landPhotos.length})',
+                style: TextStyle(
+                  fontSize: screenWidth * 0.04,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.secondaryText,
+                  letterSpacing: 1,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: screenHeight * 0.015),
+          SizedBox(
+            height: screenHeight * 0.2,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: landPhotos.length,
+              itemBuilder: (context, index) {
+                return Container(
+                  margin: EdgeInsets.only(right: screenWidth * 0.03),
+                  width: screenWidth * 0.35,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    image: DecorationImage(
+                      image: NetworkImage(landPhotos[index]),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Color _getCropColorFromString(String cropType) {
