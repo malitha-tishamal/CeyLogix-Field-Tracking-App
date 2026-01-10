@@ -24,6 +24,7 @@ dependencies:
   geocoding: ^3.0.0
   flutter_screenutil: ^5.9.0
   clipboard: ^0.1.3 
+  vibration: ^2.0.0
 
   # Media
   image_picker: ^1.1.2

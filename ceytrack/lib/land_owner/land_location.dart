@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -8,6 +9,7 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher_string.dart';
+import 'package:vibration/vibration.dart';
 import 'land_owner_drawer.dart';
 
 class LocationSelectionPage extends StatefulWidget {
@@ -82,6 +84,18 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
   late bool _isPortrait;
   late double _screenWidth;
   late double _screenHeight;
+
+  // Real-time tracking variables
+  bool _isTracking = false;
+  StreamSubscription<Position>? _positionStreamSubscription;
+  List<LatLng> _locationHistory = [];
+  Position? _lastPosition;
+  DateTime? _lastVibrationTime;
+  double _totalDistance = 0.0;
+  int _locationUpdateCount = 0;
+
+  // Address cache to avoid repeated API calls
+  final Map<String, String> _addressCache = {};
 
   @override
   void initState() {
@@ -230,6 +244,7 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
     _manualLatController.dispose();
     _manualLngController.dispose();
     _searchController.dispose();
+    _stopRealtimeTracking();
     super.dispose();
   }
 
@@ -295,45 +310,137 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
   
   Future<void> _getAddressFromLatLng(LatLng latLng) async {
     try {
-      final placemarks = await placemarkFromCoordinates(
-        latLng.latitude,
-        latLng.longitude,
-      );
-
-      if (placemarks.isNotEmpty) {
-        final placemark = placemarks.first;
-        final address = [
-          placemark.street,
-          placemark.locality,
-          placemark.administrativeArea,
-          placemark.country
-        ].where((part) => part != null && part.isNotEmpty).join(', ');
-
-        if (mounted) {
-          setState(() {
-            _address = address.isNotEmpty ? address : 'Address not available';
-            _latitude = latLng.latitude.toStringAsFixed(6);
-            _longitude = latLng.longitude.toStringAsFixed(6);
-          });
-        }
-      } else {
-         if (mounted) {
-          setState(() {
-            _address = 'Address not found for coordinates';
-            _latitude = latLng.latitude.toStringAsFixed(6);
-            _longitude = latLng.longitude.toStringAsFixed(6);
-          });
-        }
-      }
-    } catch (e) {
+      // Update coordinates immediately
       if (mounted) {
         setState(() {
-          _address = 'Lat: ${latLng.latitude.toStringAsFixed(6)}, Lng: ${latLng.longitude.toStringAsFixed(6)}';
           _latitude = latLng.latitude.toStringAsFixed(6);
           _longitude = latLng.longitude.toStringAsFixed(6);
         });
       }
+      
+      // Check cache first
+      final cacheKey = '${latLng.latitude.toStringAsFixed(6)}_${latLng.longitude.toStringAsFixed(6)}';
+      if (_addressCache.containsKey(cacheKey)) {
+        if (mounted) {
+          setState(() {
+            _address = _addressCache[cacheKey]!;
+          });
+        }
+        return;
+      }
+      
+      // Try to get address from coordinates using better reverse geocoding
+      String address = '';
+      
+      // Method 1: Try using geocoding package first
+      try {
+        final placemarks = await placemarkFromCoordinates(
+          latLng.latitude,
+          latLng.longitude,
+        ).timeout(const Duration(seconds: 5));
+
+        if (placemarks.isNotEmpty) {
+          final placemark = placemarks.first;
+          final parts = [
+            placemark.street,
+            placemark.subLocality,
+            placemark.locality,
+            placemark.subAdministrativeArea,
+            placemark.administrativeArea,
+            placemark.country
+          ].where((part) => part != null && part.isNotEmpty).toList();
+          
+          if (parts.isNotEmpty) {
+            address = parts.join(', ');
+          }
+        }
+      } catch (e) {
+        print('Geocoding package error: $e');
+      }
+      
+      // Method 2: If geocoding package fails, try OpenStreetMap Nominatim API
+      if (address.isEmpty || address.contains('null')) {
+        try {
+          address = await _getAddressFromNominatim(latLng);
+        } catch (e) {
+          print('Nominatim API error: $e');
+        }
+      }
+      
+      // Method 3: If both methods fail, show coordinates
+      if (address.isEmpty) {
+        address = 'Lat: ${latLng.latitude.toStringAsFixed(6)}, Lng: ${latLng.longitude.toStringAsFixed(6)}';
+      }
+      
+      // Cache the address
+      _addressCache[cacheKey] = address;
+      
+      if (_addressCache.length > 50) {
+        // Remove oldest entry if cache gets too large
+        final firstKey = _addressCache.keys.first;
+        _addressCache.remove(firstKey);
+      }
+      
+      if (mounted) {
+        setState(() {
+          _address = address;
+        });
+      }
+      
+    } catch (e) {
+      print('Address fetching error: $e');
+      if (mounted) {
+        setState(() {
+          _address = 'Lat: ${latLng.latitude.toStringAsFixed(6)}, Lng: ${latLng.longitude.toStringAsFixed(6)}';
+        });
+      }
     }
+  }
+  
+  Future<String> _getAddressFromNominatim(LatLng latLng) async {
+    try {
+      final response = await http.get(
+        Uri.parse(
+          'https://nominatim.openstreetmap.org/reverse?format=json&lat=${latLng.latitude}&lon=${latLng.longitude}&zoom=18&addressdetails=1'
+        ),
+        headers: {
+          'User-Agent': 'LocationSelectorApp/1.0',
+          'Accept': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        
+        if (data['display_name'] != null) {
+          return data['display_name'] as String;
+        } else if (data['address'] != null) {
+          final address = data['address'] as Map<String, dynamic>;
+          
+          // Build address from components
+          final parts = [
+            address['road'],
+            address['neighbourhood'],
+            address['suburb'],
+            address['city'],
+            address['town'],
+            address['village'],
+            address['county'],
+            address['state'],
+            address['country']
+          ].where((part) => part != null).toList();
+          
+          if (parts.isNotEmpty) {
+            return parts.join(', ');
+          }
+        }
+      }
+    } catch (e) {
+      print('Nominatim error: $e');
+      rethrow;
+    }
+    
+    return '';
   }
 
   void _onMapTap(TapPosition tapPosition, LatLng latLng) {
@@ -341,6 +448,7 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
     setState(() {
       _selectedLocation = latLng;
       _selectedLocationType = 'manual';
+      _stopRealtimeTracking();
     });
     _getAddressFromLatLng(latLng);
   }
@@ -370,6 +478,7 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
         setState(() {
           _selectedLocation = newLocation;
           _selectedLocationType = 'manual';
+          _stopRealtimeTracking();
         });
         _getAddressFromLatLng(newLocation);
         _mapController.move(newLocation, _zoomLevel);
@@ -406,9 +515,12 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
     try {
       final response = await http.get(
         Uri.parse(
-          'https://nominatim.openstreetmap.org/search?format=json&q=${Uri.encodeComponent(_searchController.text)}&limit=1',
+          'https://nominatim.openstreetmap.org/search?format=json&q=${Uri.encodeComponent(_searchController.text)}&limit=1&addressdetails=1',
         ),
-      );
+        headers: {
+          'User-Agent': 'LocationSelectorApp/1.0',
+        },
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final List<dynamic> results = json.decode(response.body);
@@ -421,8 +533,9 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
             setState(() {
               _selectedLocation = newLocation;
               _selectedLocationType = 'manual';
+              _stopRealtimeTracking();
             });
-            _getAddressFromLatLng(newLocation);
+            await _getAddressFromLatLng(newLocation);
             _mapController.move(newLocation, _zoomLevel);
             
             ScaffoldMessenger.of(context).showSnackBar(
@@ -530,6 +643,312 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
+  }
+
+  // ==================== REAL-TIME TRACKING METHODS ====================
+  
+  Future<void> _startRealtimeTracking() async {
+    try {
+      // Check permissions
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        _showErrorDialog('Location Service Disabled', 'Please enable location services for real-time tracking.');
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+          _showErrorDialog('Location Permission Required', 'This app needs location permission for real-time tracking.');
+          return;
+        }
+      }
+
+      // Start tracking
+      setState(() {
+        _isTracking = true;
+        _locationHistory.clear();
+        _totalDistance = 0.0;
+        _locationUpdateCount = 0;
+      });
+
+      // Request high accuracy location updates
+      _positionStreamSubscription = Geolocator.getPositionStream(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.bestForNavigation,
+          distanceFilter: 5,
+          timeLimit: null,
+        ),
+      ).listen((Position position) {
+        if (!mounted) return;
+        
+        final newLocation = LatLng(position.latitude, position.longitude);
+        
+        setState(() {
+          _currentLocation = newLocation;
+          _selectedLocation = newLocation;
+          _selectedLocationType = 'auto';
+          _locationUpdateCount++;
+          
+          // Add to history
+          _locationHistory.add(newLocation);
+          if (_locationHistory.length > 100) {
+            _locationHistory.removeAt(0);
+          }
+          
+          // Calculate distance moved
+          if (_lastPosition != null) {
+            final distance = Geolocator.distanceBetween(
+              _lastPosition!.latitude,
+              _lastPosition!.longitude,
+              position.latitude,
+              position.longitude,
+            );
+            _totalDistance += distance;
+          }
+          _lastPosition = position;
+        });
+
+        // Update address and map in real-time
+        _getAddressFromLatLng(newLocation);
+        _mapController.move(newLocation, _zoomLevel);
+        
+        // Vibration feedback
+        if (_locationUpdateCount % 5 == 0 || 
+            (_lastVibrationTime == null || 
+             DateTime.now().difference(_lastVibrationTime!).inSeconds > 30)) {
+          _vibratePhone();
+          _lastVibrationTime = DateTime.now();
+        }
+
+        // Show notification for significant movement
+        if (_totalDistance > 100 && _locationUpdateCount % 10 == 0) {
+          _showTrackingNotification();
+        }
+      });
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Real-time tracking started! Phone will vibrate on updates.'),
+          backgroundColor: _secondaryColor,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+
+    } catch (e) {
+      print('Tracking error: $e');
+      setState(() {
+        _isTracking = false;
+      });
+      _showErrorDialog('Tracking Error', 'Failed to start real-time tracking: $e');
+    }
+  }
+
+  void _stopRealtimeTracking() {
+    if (_positionStreamSubscription != null) {
+      _positionStreamSubscription!.cancel();
+      _positionStreamSubscription = null;
+    }
+    
+    if (mounted) {
+      setState(() {
+        _isTracking = false;
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Tracking stopped. Total distance: ${_totalDistance.toStringAsFixed(2)} meters'),
+          backgroundColor: _accentRed,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  Future<void> _vibratePhone() async {
+    if (await Vibration.hasVibrator() ?? false) {
+      // Pattern: vibrate for 200ms, pause for 100ms, vibrate for 200ms
+      Vibration.vibrate(pattern: [200, 100, 200]);
+      
+      // Also show a visual feedback
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('📍 Location updated!\nLat: ${_latitude}, Lng: ${_longitude}'),
+            backgroundColor: _primaryBlue.withOpacity(0.8),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(10),
+          ),
+        );
+      }
+    }
+  }
+
+  void _showTrackingNotification() {
+    if (!mounted) return;
+    
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.track_changes, color: Colors.green),
+            SizedBox(width: 10),
+            Text('Live Tracking Active'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('📍 Updates: $_locationUpdateCount'),
+            Text('📏 Distance: ${_totalDistance.toStringAsFixed(2)} m'),
+            Text('📍 Lat: $_latitude'),
+            Text('📍 Lng: $_longitude'),
+            if (_address.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Text('🏠 Address: $_address'),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _stopRealtimeTracking();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _accentRed,
+            ),
+            child: const Text('Stop Tracking', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTrackingControls() {
+    final isSmallScreen = _screenWidth < 360;
+    
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(isSmallScreen ? 10.0 : 12.0),
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Real-time Tracking',
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 14.0 : 16.0,
+                    fontWeight: FontWeight.bold,
+                    color: _primaryBlue,
+                  ),
+                ),
+                Switch(
+                  value: _isTracking,
+                  onChanged: (value) {
+                    if (value) {
+                      _startRealtimeTracking();
+                    } else {
+                      _stopRealtimeTracking();
+                    }
+                  },
+                  activeColor: _secondaryColor,
+                  activeTrackColor: _secondaryColor.withOpacity(0.5),
+                ),
+              ],
+            ),
+            
+            SizedBox(height: isSmallScreen ? 8.0 : 12.0),
+            
+            if (_isTracking)
+              Column(
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.timeline, color: _accentTeal, size: 18),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Live tracking active - Phone vibrating on updates',
+                          style: TextStyle(
+                            fontSize: isSmallScreen ? 12.0 : 14.0,
+                            color: _accentTeal,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 8),
+                  _buildDetailRow('Updates', '$_locationUpdateCount', isSmallScreen),
+                  _buildDetailRow('Distance', '${_totalDistance.toStringAsFixed(2)} m', isSmallScreen),
+                  _buildDetailRow('History', '${_locationHistory.length} points', isSmallScreen),
+                  
+                  SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        _showTrackingNotification();
+                      },
+                      icon: Icon(Icons.notifications_active, size: 18),
+                      label: Text('Show Live Data', style: TextStyle(fontSize: 14)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _accentTeal,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            else
+              Column(
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.info, color: Colors.orange, size: 18),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Enable real-time tracking for live updates with vibration',
+                          style: TextStyle(
+                            fontSize: isSmallScreen ? 12.0 : 13.0,
+                            color: Colors.orange[800],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    '• Updates every 5 meters\n• Phone vibrates on location change\n• High accuracy GPS',
+                    style: TextStyle(
+                      fontSize: isSmallScreen ? 11.0 : 12.0,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildExistingLocationDisplay() {
@@ -1172,7 +1591,7 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Map',
+                  'Interactive Map',
                   style: TextStyle(
                     fontSize: isSmallScreen ? 14.0 : 16.0,
                     fontWeight: FontWeight.bold,
@@ -1265,6 +1684,16 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
                 ],
               ),
             ),
+            SizedBox(height: isSmallScreen ? 8.0 : 12.0),
+            Text(
+              'Tap anywhere on the map to select a location',
+              style: TextStyle(
+                fontSize: isSmallScreen ? 11.0 : 12.0,
+                color: Colors.grey[600],
+                fontStyle: FontStyle.italic,
+              ),
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),
@@ -1285,19 +1714,54 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Current Selection (Changes on Map Tap)',
-              style: TextStyle(
-                fontSize: isSmallScreen ? 14.0 : 16.0,
-                fontWeight: FontWeight.bold,
-                color: _primaryBlue,
-              ),
+            Row(
+              children: [
+                Icon(
+                  Icons.location_on,
+                  color: _primaryBlue,
+                  size: isSmallScreen ? 18.0 : 20.0,
+                ),
+                SizedBox(width: 8),
+                Text(
+                  'Current Selection (Live Updates)',
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 14.0 : 16.0,
+                    fontWeight: FontWeight.bold,
+                    color: _primaryBlue,
+                  ),
+                ),
+              ],
             ),
             SizedBox(height: isSmallScreen ? 8.0 : 12.0),
-            _buildDetailRow('Location Type', _selectedLocationType == 'auto' ? 'Auto-detected' : 'Manual', isSmallScreen),
-            _buildDetailRow('Address', _address.isNotEmpty ? _address : 'Not selected', isSmallScreen),
-            _buildDetailRow('Latitude', _latitude.isNotEmpty ? _latitude : '--', isSmallScreen),
-            _buildDetailRow('Longitude', _longitude.isNotEmpty ? _longitude : '--', isSmallScreen),
+            _buildLiveDetailRow('Location Type', _selectedLocationType == 'auto' ? 'Auto-detected' : 'Manual', isSmallScreen),
+            _buildLiveDetailRow('Address', _address.isNotEmpty ? _address : 'Not selected', isSmallScreen),
+            _buildLiveDetailRow('Latitude', _latitude.isNotEmpty ? _latitude : '--', isSmallScreen),
+            _buildLiveDetailRow('Longitude', _longitude.isNotEmpty ? _longitude : '--', isSmallScreen),
+            SizedBox(height: isSmallScreen ? 8.0 : 12.0),
+            if (_isTracking)
+              Container(
+                padding: EdgeInsets.all(isSmallScreen ? 8.0 : 10.0),
+                decoration: BoxDecoration(
+                  color: _accentTeal.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: _accentTeal.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.timeline, color: _accentTeal, size: 16),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Live tracking: $_locationUpdateCount updates, ${_totalDistance.toStringAsFixed(1)}m moved',
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 11.0 : 12.0,
+                          color: _accentTeal,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
@@ -1341,6 +1805,44 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
     );
   }
 
+  Widget _buildLiveDetailRow(String title, String value, bool isSmallScreen) {
+    final titleWidth = isSmallScreen ? 90.0 : 120.0;
+    final titleFontSize = isSmallScreen ? 13.0 : 14.0;
+    final valueFontSize = isSmallScreen ? 13.0 : 14.0;
+
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 3.0 : 4.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: titleWidth,
+            child: Text(
+              '$title:',
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                fontSize: titleFontSize,
+                color: Colors.grey[700],
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: valueFontSize,
+                color: Colors.black87,
+                fontWeight: value.contains('Lat:') ? FontWeight.normal : FontWeight.w500,
+              ),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     _updateScreenDimensions();
@@ -1351,7 +1853,20 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
       return Scaffold(
         backgroundColor: _backgroundColor,
         body: Center(
-          child: CircularProgressIndicator(color: _primaryBlue),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: _primaryBlue),
+              SizedBox(height: 20),
+              Text(
+                'Loading location data...',
+                style: TextStyle(
+                  color: _primaryBlue,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -1390,6 +1905,10 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
                         
                         SizedBox(height: isSmallScreen ? 12.0 : 16.0),
                         
+                        _buildTrackingControls(),
+                        
+                        SizedBox(height: isSmallScreen ? 12.0 : 16.0),
+                        
                         _buildMapCard(),
                         
                         SizedBox(height: isSmallScreen ? 12.0 : 16.0),
@@ -1400,13 +1919,14 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
                         
                         SizedBox(
                           width: double.infinity,
-                          child: ElevatedButton(
+                          child: ElevatedButton.icon(
                             onPressed: _isSaving ? null : _saveToFirebase,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: _primaryBlue,
                               foregroundColor: Colors.white,
                               padding: EdgeInsets.symmetric(
                                 vertical: isSmallScreen ? 14.0 : 16.0,
+                                horizontal: 20,
                               ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(
@@ -1415,7 +1935,7 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
                               ),
                               elevation: 4,
                             ),
-                            child: _isSaving
+                            icon: _isSaving
                                 ? SizedBox(
                                     height: isSmallScreen ? 18.0 : 20.0,
                                     width: isSmallScreen ? 18.0 : 20.0,
@@ -1424,6 +1944,9 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
                                       valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
                                     ),
                                   )
+                                : Icon(Icons.save, size: isSmallScreen ? 18 : 20),
+                            label: _isSaving
+                                ? Text('Saving...', style: TextStyle(fontSize: isSmallScreen ? 14.0 : 16.0))
                                 : Text(
                                     (widget.existingData != null || _fetchedExistingData != null)
                                         ? 'Update Location'
