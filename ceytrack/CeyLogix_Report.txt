@@ -1,0 +1,106 @@
+CeyLogix Field Tracking App (CayTrack) - Comprehensive Detailed Report
+
+The CeyLogix Field Tracking App (CayTrack) is a sophisticated, role-based mobile application built with Flutter, designed to streamline the agricultural supply chain in Ceylon. It connects Land Owners (Farmers) with Factory Owners, specifically facilitating the management and tracking of Tea and Cinnamon crops.
+
+This report covers the technology stack, architecture, and a comprehensive breakdown of features for all user roles.
+
+---
+
+1. TECHNOLOGY STACK
+
+Core Framework & Language:
+- Framework: Flutter (SDK >=3.0.0 <4.0.0)
+- Language: Dart
+- Architecture: Modular, Role-Based MVC (Model-View-Controller) pattern.
+
+Backend & Cloud Services (Firebase):
+- Authentication: `firebase_auth` for secure email/password login and session management.
+- Database: `cloud_firestore` for real-time data storage (Users, Orders, Lands, Factories).
+- Storage: `firebase_storage` & Cloudinary (hybrid approach) for storing high-quality crop images and profile photos.
+- Core: `firebase_core` for app initialization.
+
+Location & Mapping:
+- Maps: `google_maps_flutter` and `flutter_map` for rendering interactive maps.
+- Geolocation: `geolocator` and `latlong2` for real-time GPS tracking and coordinate management.
+- Geocoding: `geocoding` for converting coordinates to addresses.
+
+UI & Experience:
+- Design System: Custom `AppColors` palette (Primary Blue #2764E7, Background #EEEBFF) and 'Inter' Google Font.
+- Responsiveness: `flutter_screenutil` and `MediaQuery` logic to support various screen sizes (Mobile, Tablet).
+- Assets: `cached_network_image` for efficient image loading, `font_awesome_flutter` & `cupertino_icons` for iconography.
+- Interactivity: `vibration` for haptic feedback, `url_launcher` for making phone calls directly from the app.
+
+---
+
+2. USER ROLES & ARCHITECTURE
+
+The application is split into two distinct workflows based on the user's role found in the `users` Firestore collection:
+
+A. Factory Owner: Manages incoming stock, orders, and monitors associated lands.
+B. Land Owner (Farmer): Manages land data, creates export orders, and tracks production history.
+
+Code Structure:
+- `lib/Auth`: Handles unauthenticated flows (Login, Signup, Forgot Password).
+- `lib/factory_owner`: Specific screens and logic for factory operations.
+- `lib/land_owner`: Specific screens and logic for farmer operations.
+
+---
+
+3. DETAILED FEATURE BREAKDOWN
+
+A. Authentication & Onboarding
+- Smart Routing: The `main.dart` entry point checks for an active session. If logged in, it automatically directs the user to their specific dashboard (`FactoryOwnerDashboard` or `LandOwnerDashboard`).
+- Secure Login: Email & Password authentication with error handling.
+- Agreement: User Agreement page ensures compliance before distinct app usage.
+
+B. Factory Owner Features
+- Interactive Dashboard:
+    * Header: Displays Profile Image, Factory Name, and Operational ID.
+    * Real-time Stats: Visual cards for Total Orders, Tea Quantity, Cinnamon Quantity, and Pending vs. Delivered status.
+    * Recent Activity: A feed of the 5 most recent orders with status indicators.
+    
+- Order Management:
+    * Order Listing: View all incoming orders from linked farmers.
+    * Order Details: Deep dive into specific orders provided by farmers, including crop photos, quantity (kg), and description.
+    * Status Updates: Ability to mark orders as "Factory Received" to confirm delivery.
+
+- Land Monitoring:
+    * Associated Lands: A categorized list (Tea, Cinnamon, Multi-Crop) of all farmers supplying the factory.
+    * Land Profile: View detailed farmer info (Name, Mobile, NIC) and land metrics (Total Acreage).
+    * Map View: Interactive map visualizing the location of all associated lands (`lands_map.dart`).
+
+- Factory Profile: Management of factory details and personal owner information.
+
+C. Land Owner (Farmer) Features
+- Farmer Dashboard:
+    * Land Summary: Metrics showing total land area split by crop type (e.g., "5 Acres Tea, 2 Acres Cinnamon").
+    * Factory Links: List of "Associated Factories" the farmer is registered to supply.
+    * Call Integration: One-tap button to call factory owners directly.
+
+- Create New Order (Export):
+    * Factory Selection: Dropdown to choose which associated factory to supply.
+    * Crop Support: Handles Tea, Cinnamon, or Both.
+    * Data Entry: Input specifically for quantities (kg), export date, and notes.
+    * Photo Evidence: Integration with `image_picker` to capture and upload multiple photos of the harvest before sending.
+    * Validation: Ensures no orders are sent without critical data (e.g., prevent sending Tea to a Cinnamon-only factory).
+
+- Export History:
+    * Product Logs: A dedicated view (`export_product_details.dart`) to track the history of all sent stocks and their current status (Pending/Received).
+
+D. Utilities & Helpers
+- Phone Integration: Direct dialing to connect farmers and factory owners (`_makePhoneCall`).
+- Loading States: Custom skeleton loaders and circular progress indicators for smooth UX during data fetches.
+- Error Handling: "Snackbar" notifications for success/failure feedback (e.g., "Order submitted successfully", "No internet connection").
+
+---
+
+4. DESIGN & AESTHETICS
+
+- Theme: "Deep Midnight" & "Primary Blue" aesthetic.
+- Visuals:
+    * Glassmorphism: Subtle use of gradients and shadows on cards.
+    * Gradients: Header backgrounds flow from #869AEC to #F7FAFF.
+- Components: Custom-built stat cards, profile image avatars with status rings, and highly styled form input fields.
+
+---
+Report Generated: 2026-01-12
