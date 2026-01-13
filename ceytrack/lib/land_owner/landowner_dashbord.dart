@@ -1528,7 +1528,7 @@ class _LandOwnerDashboardState extends State<LandOwnerDashboard> {
                       );
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
                       decoration: BoxDecoration(
                         color: AppColors.primaryBlue.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(20),
@@ -1538,7 +1538,7 @@ class _LandOwnerDashboardState extends State<LandOwnerDashboard> {
                           Text(
                             'View All',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 10,
                               fontWeight: FontWeight.w600,
                               color: AppColors.primaryBlue,
                             ),
@@ -1555,7 +1555,7 @@ class _LandOwnerDashboardState extends State<LandOwnerDashboard> {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -1642,7 +1642,7 @@ class _LandOwnerDashboardState extends State<LandOwnerDashboard> {
     required Color color,
   }) {
     return Container(
-      width: 100,
+      width: 90,
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: color.withOpacity(0.05),

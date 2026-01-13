@@ -914,7 +914,7 @@ class _StatsCard extends StatelessWidget {
   left: 30,
   right: 16,
   top: 4,
-  bottom: 2,
+  bottom: 0,
 ),
       decoration: BoxDecoration(
         color: Colors.white,
