@@ -1,6 +1,6 @@
-CeyLogix Field Tracking App (CayTrack) - Comprehensive Detailed Report
+CeyLogix Field Tracking App (CeyTrack) - Comprehensive Detailed Report
 
-The CeyLogix Field Tracking App (CayTrack) is a sophisticated, role-based mobile application built with Flutter, designed to streamline the agricultural supply chain in Ceylon. It connects Land Owners (Farmers) with Factory Owners, specifically facilitating the management and tracking of Tea and Cinnamon crops.
+The CeyLogix Field Tracking App (CeyTrack) is a sophisticated, role-based mobile application built with Flutter, designed to streamline the agricultural supply chain in Ceylon. It connects Land Owners (Farmers) with Factory Owners, specifically facilitating the management and tracking of Tea and Cinnamon crops.
 
 This report covers the technology stack, architecture, and a comprehensive breakdown of features for all user roles.
 
