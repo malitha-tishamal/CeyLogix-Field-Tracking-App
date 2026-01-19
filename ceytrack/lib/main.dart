@@ -51,7 +51,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     // This widget is the root of your application.
     return MaterialApp(
-      title: 'CayTrack', // Updated title
+      title: 'CeyTrack', // Updated title
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         // Set a theme based on the primary blue color using the merged constant
