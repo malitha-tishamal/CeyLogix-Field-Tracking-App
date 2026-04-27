@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'land_details.dart'; // Import Land Details page
-import 'landowner_dashbord.dart'; // Import the Dashboard page
-import 'user_profile.dart'; // Import the User Profile page (Contains UserDetails)
-import 'developer_info.dart'; // Import the Developer Info page
+import 'land_details.dart';
+import 'landowner_dashbord.dart';
+import 'user_profile.dart';
+import 'developer_info.dart';
 import 'land_location.dart';
-import '../Auth/login_page.dart'; // Import the Login page
-import 'add_new_order.dart'; // Import the Login page
-import 'export_product_details.dart'; // Import the Login page
+import '../Auth/login_page.dart';
+import 'add_new_order.dart';
+import 'export_product_details.dart';
 
-
-// --- Hardcoded Colors for Simplicity (Replace with AppColors if available) ---
+// --- Hardcoded Colors for Simplicity ---
 const Color _primaryBlue = Color(0xFF2764E7);
 const Color _darkText = Color(0xFF2C2A3A);
 const Color _backgroundColor = Color(0xFFEEEBFF);
@@ -94,8 +93,110 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
     }
   }
 
-  // New method to handle logout
+  // Enhanced modern logout confirmation dialog
   Future<void> _handleLogout() async {
+    // Modern confirmation dialog
+    final bool? shouldLogout = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24.0),
+          ),
+          elevation: 8,
+          child: Container(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Icon
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.logout_rounded,
+                    color: Colors.red,
+                    size: 40,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                // Title
+                Text(
+                  "Logout",
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: _darkText,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Message
+                Text(
+                  "Are you sure you want to log out?",
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: _darkText.withOpacity(0.7),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 28),
+                // Buttons
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    // Cancel button (outlined)
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: _primaryBlue,
+                          side: BorderSide(color: _primaryBlue.withOpacity(0.5)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          "Cancel",
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    // Logout button (filled red with white text)
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.of(context).pop(true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white, // Ensures white text
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 2,
+                        ),
+                        child: const Text(
+                          "Logout",
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (shouldLogout != true) return; // User cancelled
+
     try {
       // Close the drawer first
       Navigator.of(context).pop();
@@ -151,12 +252,8 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
     }
   }
 
-  // Method to handle location selection
   void _handleLocationSelected(Map<String, dynamic> locationData) {
-    // You can save this location data to Firestore or use it as needed
     print('Selected Location: $locationData');
-    
-    // Show success message
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -167,12 +264,9 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
         duration: const Duration(seconds: 2),
       ),
     );
-    
-    // You can save to Firestore here if needed
     _saveLocationToFirestore(locationData);
   }
 
-  // Method to save location to Firestore
   Future<void> _saveLocationToFirestore(Map<String, dynamic> locationData) async {
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -184,7 +278,6 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
           'location': locationData,
           'updatedAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
-        
         print('Location saved to Firestore');
       }
     } catch (e) {
@@ -234,30 +327,12 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
     String profileUrl = user['profileImageUrl'] ??
         "https://ui-avatars.com/api/?name=$firstName&background=2764E7&color=fff&bold=true&size=150";
 
-    // Responsive sizes
-    final logoSize = isSmallScreen ? 50.0 : 
-                    isMediumScreen ? 55.0 : 
-                    60.0;
-    
-    final profileSize = isSmallScreen ? 55.0 : 
-                       isMediumScreen ? 60.0 : 
-                       65.0;
-    
-    final logoFontSize = isSmallScreen ? 22.0 : 
-                        isMediumScreen ? 24.0 : 
-                        26.0;
-    
-    final taglineFontSize = isSmallScreen ? 10.0 : 
-                           isMediumScreen ? 10.5 : 
-                           11.0;
-    
-    final nameFontSize = isSmallScreen ? 15.0 : 
-                        isMediumScreen ? 16.0 : 
-                        17.0;
-    
-    final roleFontSize = isSmallScreen ? 10.0 : 
-                        isMediumScreen ? 10.5 : 
-                        11.0;
+    final logoSize = isSmallScreen ? 50.0 : isMediumScreen ? 55.0 : 60.0;
+    final profileSize = isSmallScreen ? 55.0 : isMediumScreen ? 60.0 : 65.0;
+    final logoFontSize = isSmallScreen ? 22.0 : isMediumScreen ? 24.0 : 26.0;
+    final taglineFontSize = isSmallScreen ? 10.0 : isMediumScreen ? 10.5 : 11.0;
+    final nameFontSize = isSmallScreen ? 15.0 : isMediumScreen ? 16.0 : 17.0;
+    final roleFontSize = isSmallScreen ? 10.0 : isMediumScreen ? 10.5 : 11.0;
 
     return Container(
       color: _backgroundColor,
@@ -268,9 +343,7 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
 
           // Header (Logo/Title section)
           Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: isSmallScreen ? 16.0 : 20.0
-            ),
+            padding: EdgeInsets.symmetric(horizontal: isSmallScreen ? 16.0 : 20.0),
             child: Row(
               children: [
                 Container(
@@ -278,9 +351,7 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
                   height: logoSize,
                   decoration: BoxDecoration(
                     color: _primaryBlue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(
-                      isSmallScreen ? 14.0 : 16.0
-                    ),
+                    borderRadius: BorderRadius.circular(isSmallScreen ? 14.0 : 16.0),
                     boxShadow: [
                       BoxShadow(
                         color: _primaryBlue.withOpacity(0.3),
@@ -339,23 +410,15 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
 
           // Profile Section
           Container(
-            margin: EdgeInsets.symmetric(
-              horizontal: isSmallScreen ? 12.0 : 16.0
-            ),
-            padding: EdgeInsets.all(
-              isSmallScreen ? 14.0 : 
-              isMediumScreen ? 16.0 : 
-              18.0
-            ),
+            margin: EdgeInsets.symmetric(horizontal: isSmallScreen ? 12.0 : 16.0),
+            padding: EdgeInsets.all(isSmallScreen ? 14.0 : isMediumScreen ? 16.0 : 18.0),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 colors: [Colors.white, Color(0xFFF8FAFF)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(
-                isSmallScreen ? 16.0 : 20.0
-              ),
+              borderRadius: BorderRadius.circular(isSmallScreen ? 16.0 : 20.0),
               boxShadow: [
                 BoxShadow(
                   color: _primaryBlue.withOpacity(0.08),
@@ -363,10 +426,7 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
                   offset: const Offset(0, 6),
                 ),
               ],
-              border: Border.all(
-                color: Colors.white.withOpacity(0.9), 
-                width: 1.5
-              ),
+              border: Border.all(color: Colors.white.withOpacity(0.9), width: 1.5),
             ),
             child: Row(
               children: [
@@ -375,10 +435,7 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
                   height: profileSize,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(
-                      color: _primaryBlue, 
-                      width: isSmallScreen ? 2.0 : 2.5
-                    ),
+                    border: Border.all(color: _primaryBlue, width: isSmallScreen ? 2.0 : 2.5),
                     boxShadow: [
                       BoxShadow(
                         color: _primaryBlue.withOpacity(0.2),
@@ -412,9 +469,7 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
                             height: profileSize * 0.3,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor: const AlwaysStoppedAnimation<Color>(
-                                Colors.white
-                              ),
+                              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
                             ),
                           ),
                         );
@@ -445,12 +500,8 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
                         ),
                         decoration: BoxDecoration(
                           color: _primaryBlue.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(
-                            isSmallScreen ? 6.0 : 8.0
-                          ),
-                          border: Border.all(
-                            color: _primaryBlue.withOpacity(0.3)
-                          ),
+                          borderRadius: BorderRadius.circular(isSmallScreen ? 6.0 : 8.0),
+                          border: Border.all(color: _primaryBlue.withOpacity(0.3)),
                         ),
                         child: Text(
                           role.toUpperCase(),
@@ -484,7 +535,6 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
               ),
               physics: const BouncingScrollPhysics(),
               children: [
-                // 1. Dashboard 
                 _buildModernDrawerItem(
                   icon: Icons.dashboard_rounded,
                   label: "Dashboard",
@@ -494,15 +544,11 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
                   isMediumScreen: isMediumScreen,
                   onTap: () {
                     Navigator.of(context).pop(); 
-                    Navigator.of(context).pushReplacement( 
-                      MaterialPageRoute(
-                        builder: (context) => const LandOwnerDashboard()
-                      ), 
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(builder: (context) => const LandOwnerDashboard()),
                     );
                   },
                 ),
-                
-                // 2. Land Details
                 _buildModernDrawerItem(
                   icon: Icons.landscape_rounded,
                   label: "Land Details",
@@ -512,31 +558,11 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
                   onTap: () {
                     Navigator.of(context).pop(); 
                     Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const LandDetails()
-                      ),
+                      MaterialPageRoute(builder: (context) => const LandDetails()),
                     );
                   },
                 ),
                 
-                // 3. My Profile
-                _buildModernDrawerItem(
-                  icon: Icons.person_rounded,
-                  label: "My Profile",
-                  description: "Personal settings",
-                  isSmallScreen: isSmallScreen,
-                  isMediumScreen: isMediumScreen,
-                  onTap: () {
-                    Navigator.of(context).pop(); 
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const UserDetails()
-                      ),
-                    );
-                  },
-                ),
-                
-                // 4. Land Location
                 _buildModernDrawerItem(
                   icon: Icons.location_on_rounded,
                   label: "Land Location",
@@ -554,8 +580,6 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
                     );
                   },
                 ),
-
-                // 4. Land Location
                 _buildModernDrawerItem(
                   icon: Icons.send,
                   label: "Export Product",
@@ -565,15 +589,10 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
                   onTap: () {
                     Navigator.of(context).pop(); 
                     Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => AddNewOrderPage(
-                        ),
-                      ),
+                      MaterialPageRoute(builder: (context) => AddNewOrderPage()),
                     );
                   },
                 ),
-
-                // 4. Land Location
                 _buildModernDrawerItem(
                   icon: Icons.info_outline,
                   label: "Export Product Details",
@@ -583,15 +602,23 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
                   onTap: () {
                     Navigator.of(context).pop(); 
                     Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => ExportProductsHistoryPage(
-                        ),
-                      ),
+                      MaterialPageRoute(builder: (context) => ExportProductsHistoryPage()),
                     );
                   },
                 ),
-                
-                // 5. Developer Info
+                _buildModernDrawerItem(
+                  icon: Icons.person_rounded,
+                  label: "My Profile",
+                  description: "Personal settings",
+                  isSmallScreen: isSmallScreen,
+                  isMediumScreen: isMediumScreen,
+                  onTap: () {
+                    Navigator.of(context).pop(); 
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (context) => const UserDetails()),
+                    );
+                  },
+                ),
                 _buildModernDrawerItem(
                   icon: Icons.code_rounded, 
                   label: "Developer Info", 
@@ -601,9 +628,7 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
                   onTap: () {
                     Navigator.of(context).pop();
                     Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const DeveloperInfoPage()
-                      ),
+                      MaterialPageRoute(builder: (context) => const DeveloperInfoPage()),
                     );
                   },
                 ),
@@ -611,21 +636,16 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
             ),
           ),
 
-          // Updated Logout Button
+          // Logout Button with modern confirmation
           Container(
             margin: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [
-                  Colors.red.shade50,
-                  Colors.red.shade100.withOpacity(0.8)
-                ],
+                colors: [Colors.red.shade50, Colors.red.shade100.withOpacity(0.8)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight
               ),
-              borderRadius: BorderRadius.circular(
-                isSmallScreen ? 16.0 : 18.0
-              ),
+              borderRadius: BorderRadius.circular(isSmallScreen ? 16.0 : 18.0),
               boxShadow: [
                 BoxShadow(
                   color: Colors.red.withOpacity(0.1),
@@ -633,18 +653,13 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
                   offset: const Offset(0, 4),
                 ),
               ],
-              border: Border.all(
-                color: Colors.red.withOpacity(0.2), 
-                width: 1.5
-              ),
+              border: Border.all(color: Colors.red.withOpacity(0.2), width: 1.5),
             ),
             child: Material(
               color: Colors.transparent,
               child: InkWell(
                 onTap: _handleLogout,
-                borderRadius: BorderRadius.circular(
-                  isSmallScreen ? 16.0 : 18.0
-                ),
+                borderRadius: BorderRadius.circular(isSmallScreen ? 16.0 : 18.0),
                 child: Container(
                   padding: EdgeInsets.symmetric(
                     horizontal: isSmallScreen ? 14.0 : 16.0,
@@ -653,9 +668,7 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
                   child: Row(
                     children: [
                       Container(
-                        padding: EdgeInsets.all(
-                          isSmallScreen ? 8.0 : 10.0
-                        ),
+                        padding: EdgeInsets.all(isSmallScreen ? 8.0 : 10.0),
                         decoration: BoxDecoration(
                           color: Colors.red.withOpacity(0.15),
                           shape: BoxShape.circle,
@@ -691,9 +704,7 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
                         ),
                       ),
                       Container(
-                        padding: EdgeInsets.all(
-                          isSmallScreen ? 5.0 : 6.0
-                        ),
+                        padding: EdgeInsets.all(isSmallScreen ? 5.0 : 6.0),
                         decoration: BoxDecoration(
                           color: Colors.red.withOpacity(0.1),
                           shape: BoxShape.circle,
@@ -800,9 +811,7 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
                       ),
                     ],
               border: Border.all(
-                color: isActive
-                    ? _primaryBlue.withOpacity(0.3)
-                    : Colors.white.withOpacity(0.8),
+                color: isActive ? _primaryBlue.withOpacity(0.3) : Colors.white.withOpacity(0.8),
                 width: 1.2,
               ),
             ),
@@ -811,9 +820,7 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
                 Container(
                   padding: EdgeInsets.all(iconPadding),
                   decoration: BoxDecoration(
-                    color: isActive
-                        ? Colors.white.withOpacity(0.2)
-                        : _primaryBlue.withOpacity(0.1),
+                    color: isActive ? Colors.white.withOpacity(0.2) : _primaryBlue.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -842,9 +849,7 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
                         description,
                         style: TextStyle(
                           fontSize: descFontSize,
-                          color: isActive 
-                              ? Colors.white.withOpacity(0.8) 
-                              : _darkText.withOpacity(0.5),
+                          color: isActive ? Colors.white.withOpacity(0.8) : _darkText.withOpacity(0.5),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -855,9 +860,7 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
                 SizedBox(width: isSmallScreen ? 8.0 : 10.0),
                 Icon(
                   Icons.arrow_forward_ios_rounded,
-                  color: isActive 
-                      ? Colors.white.withOpacity(0.7) 
-                      : _primaryBlue.withOpacity(0.4),
+                  color: isActive ? Colors.white.withOpacity(0.7) : _primaryBlue.withOpacity(0.4),
                   size: arrowSize,
                 ),
               ],
@@ -877,12 +880,7 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
       padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
       child: Row(
         children: [
-          Expanded(
-            child: Divider(
-              color: _primaryBlue.withOpacity(0.2),
-              height: 1,
-            ),
-          ),
+          Expanded(child: Divider(color: _primaryBlue.withOpacity(0.2), height: 1)),
           Padding(
             padding: EdgeInsets.symmetric(horizontal: textPadding),
             child: Text(
@@ -895,12 +893,7 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
               ),
             ),
           ),
-          Expanded(
-            child: Divider(
-              color: _primaryBlue.withOpacity(0.2),
-              height: 1,
-            ),
-          ),
+          Expanded(child: Divider(color: _primaryBlue.withOpacity(0.2), height: 1)),
         ],
       ),
     );
@@ -945,11 +938,7 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.error_outline_rounded,
-            color: _primaryBlue,
-            size: iconSize,
-          ),
+          Icon(Icons.error_outline_rounded, color: _primaryBlue, size: iconSize),
           SizedBox(height: isSmallScreen ? 12.0 : 16.0),
           Text(
             "Unable to load",
@@ -962,10 +951,7 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
           ),
           if (_error != null) 
             Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: isSmallScreen ? 8.0 : 0,
-                vertical: isSmallScreen ? 6.0 : 8.0,
-              ),
+              padding: EdgeInsets.symmetric(horizontal: isSmallScreen ? 8.0 : 0, vertical: isSmallScreen ? 6.0 : 8.0),
               child: Text(
                 _error!,
                 style: TextStyle(
@@ -989,17 +975,9 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
             style: ElevatedButton.styleFrom(
               backgroundColor: _primaryBlue,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              padding: EdgeInsets.symmetric(
-                horizontal: isSmallScreen ? 20.0 : 24.0,
-                vertical: isSmallScreen ? 10.0 : 12.0,
-              ),
-              textStyle: TextStyle(
-                fontSize: buttonFontSize,
-                fontWeight: FontWeight.w600,
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              padding: EdgeInsets.symmetric(horizontal: isSmallScreen ? 20.0 : 24.0, vertical: isSmallScreen ? 10.0 : 12.0),
+              textStyle: TextStyle(fontSize: buttonFontSize, fontWeight: FontWeight.w600),
             ),
             child: const Text("Retry"),
           ),
