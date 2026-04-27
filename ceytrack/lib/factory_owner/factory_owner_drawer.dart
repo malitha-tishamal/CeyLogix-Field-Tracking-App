@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'factory_details.dart'; // Import Factory Details page
-import 'factory_owner_dashboard.dart'; // Import the Dashboard page
-import 'user_profile.dart'; // Import the User Profile page (Contains UserDetails)
-import 'developer_info.dart'; // 💡 NEW: Import the Developer Info page
-import '../Auth/login_page.dart'; // Import the Login page
+import 'factory_details.dart';
+import 'factory_owner_dashboard.dart';
+import 'user_profile.dart';
+import 'developer_info.dart';
+import '../Auth/login_page.dart';
 import 'land_details.dart';
 import 'lands_map.dart';
 import 'factory_owner_orders.dart';
 
-// --- Hardcoded Colors for Simplicity (Replace with AppColors if available) ---
 const Color _primaryBlue = Color(0xFF2764E7);
 const Color _darkText = Color(0xFF2C2A3A);
 
@@ -73,12 +72,114 @@ class _FactoryOwnerDrawerState extends State<FactoryOwnerDrawer> {
     }
   }
 
-  // New method to handle logout
+  // Modern logout with confirmation dialog
   Future<void> _handleLogout() async {
+    // Modern confirmation dialog
+    final bool? shouldLogout = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24.0),
+          ),
+          elevation: 8,
+          child: Container(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Icon
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.logout_rounded,
+                    color: Colors.red,
+                    size: 40,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                // Title
+                Text(
+                  "Logout",
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: _darkText,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Message
+                Text(
+                  "Are you sure you want to log out?",
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: _darkText.withOpacity(0.7),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 28),
+                // Buttons
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    // Cancel button
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: _primaryBlue,
+                          side: BorderSide(color: _primaryBlue.withOpacity(0.5)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          "Cancel",
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    // Logout button (red with white text)
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.of(context).pop(true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white, // white text
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 2,
+                        ),
+                        child: const Text(
+                          "Logout",
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (shouldLogout != true) return; // User cancelled
+
     try {
       // Close the drawer first
       Navigator.of(context).pop();
-      
+
       // Show loading indicator
       showDialog(
         context: context,
@@ -98,10 +199,10 @@ class _FactoryOwnerDrawerState extends State<FactoryOwnerDrawer> {
 
       // Sign out from Firebase
       await FirebaseAuth.instance.signOut();
-      
+
       // Clear the static cache
       FactoryOwnerDrawer.staticCache = null;
-      
+
       // Navigate to login page and remove all previous routes
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const LoginPage()),
@@ -110,7 +211,7 @@ class _FactoryOwnerDrawerState extends State<FactoryOwnerDrawer> {
     } catch (e) {
       // Close loading dialog
       Navigator.of(context).pop();
-      
+
       // Show error message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -128,7 +229,7 @@ class _FactoryOwnerDrawerState extends State<FactoryOwnerDrawer> {
     final screenHeight = MediaQuery.of(context).size.height;
     final isSmallScreen = screenWidth < 360;
     final isMediumScreen = screenWidth < 400;
-    
+
     return Drawer(
       width: screenWidth * (isSmallScreen ? 0.75 : 0.65),
       shape: const RoundedRectangleBorder(
@@ -142,7 +243,12 @@ class _FactoryOwnerDrawerState extends State<FactoryOwnerDrawer> {
           } else if (snapshot.hasError || !snapshot.hasData || _error != null) {
             return _buildErrorState(screenWidth);
           } else {
-            return _buildDrawerContent(snapshot.data!, screenWidth, screenHeight, isSmallScreen);
+            return _buildDrawerContent(
+              snapshot.data!,
+              screenWidth,
+              screenHeight,
+              isSmallScreen,
+            );
           }
         },
       ),
@@ -150,8 +256,8 @@ class _FactoryOwnerDrawerState extends State<FactoryOwnerDrawer> {
   }
 
   Widget _buildDrawerContent(
-    Map<String, dynamic> user, 
-    double screenWidth, 
+    Map<String, dynamic> user,
+    double screenWidth,
     double screenHeight,
     bool isSmallScreen,
   ) {
@@ -164,12 +270,10 @@ class _FactoryOwnerDrawerState extends State<FactoryOwnerDrawer> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // STATIC TOP SECTION (Logo + Profile - Will NOT scroll)
+        // STATIC TOP SECTION
         Column(
           children: [
             SizedBox(height: screenHeight * 0.04),
-
-            // Header (Logo/Title section) - FIXED
             Padding(
               padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
               child: Row(
@@ -229,8 +333,6 @@ class _FactoryOwnerDrawerState extends State<FactoryOwnerDrawer> {
               ),
             ),
             SizedBox(height: screenHeight * 0.03),
-
-            // Profile Section - FIXED
             Container(
               margin: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
               padding: EdgeInsets.all(isSmallScreen ? 14 : 18),
@@ -297,7 +399,8 @@ class _FactoryOwnerDrawerState extends State<FactoryOwnerDrawer> {
                               height: isSmallScreen ? 18 : 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                                valueColor:
+                                    const AlwaysStoppedAnimation<Color>(Colors.white),
                               ),
                             ),
                           );
@@ -355,7 +458,7 @@ class _FactoryOwnerDrawerState extends State<FactoryOwnerDrawer> {
           ],
         ),
 
-        // SCROLLABLE MIDDLE SECTION (Menu Items only)
+        // SCROLLABLE MIDDLE SECTION
         Expanded(
           child: SingleChildScrollView(
             child: Padding(
@@ -365,33 +468,33 @@ class _FactoryOwnerDrawerState extends State<FactoryOwnerDrawer> {
               ),
               child: Column(
                 children: [
-                  // 1. Dashboard 
                   _buildModernDrawerItem(
                     icon: Icons.dashboard_rounded,
                     label: "Dashboard",
                     description: "Overview & Analytics",
                     isActive: true,
                     onTap: () {
-                      Navigator.of(context).pop(); 
-                      Navigator.of(context).pushReplacement( 
-                        MaterialPageRoute(builder: (context) => const FactoryOwnerDashboard()), 
+                      Navigator.of(context).pop();
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                          builder: (context) => const FactoryOwnerDashboard(),
+                        ),
                       );
                     },
                     screenWidth: screenWidth,
                     isSmallScreen: isSmallScreen,
                   ),
-                  
                   SizedBox(height: screenHeight * 0.008),
-                  
-                  // 2. Factory Details
                   _buildModernDrawerItem(
                     icon: Icons.factory,
                     label: "Factory Details",
                     description: "Update company information",
                     onTap: () {
-                      Navigator.of(context).pop(); 
+                      Navigator.of(context).pop();
                       Navigator.of(context).push(
-                        MaterialPageRoute(builder: (context) => const FactoryDetails()),
+                        MaterialPageRoute(
+                          builder: (context) => const FactoryDetails(),
+                        ),
                       );
                     },
                     screenWidth: screenWidth,
@@ -399,31 +502,12 @@ class _FactoryOwnerDrawerState extends State<FactoryOwnerDrawer> {
                   ),
                   
                   SizedBox(height: screenHeight * 0.008),
-                  
-                  // 3. My Profile
-                  _buildModernDrawerItem(
-                    icon: Icons.person_rounded,
-                    label: "My Profile",
-                    description: "Personal settings",
-                    onTap: () {
-                      Navigator.of(context).pop(); 
-                      Navigator.of(context).push(
-                        MaterialPageRoute(builder: (context) => const UserDetails()),
-                      );
-                    },
-                    screenWidth: screenWidth,
-                    isSmallScreen: isSmallScreen,
-                  ),
-                  
-                  SizedBox(height: screenHeight * 0.008),
-                  
-                  // 4. Land Details
                   _buildModernDrawerItem(
                     icon: Icons.landscape,
                     label: "Land Details",
                     description: "View All Associated Lands",
                     onTap: () {
-                      Navigator.of(context).pop(); 
+                      Navigator.of(context).pop();
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (context) => LandDetailsPage(
@@ -435,14 +519,11 @@ class _FactoryOwnerDrawerState extends State<FactoryOwnerDrawer> {
                     screenWidth: screenWidth,
                     isSmallScreen: isSmallScreen,
                   ),
-                  
                   SizedBox(height: screenHeight * 0.008),
-                  
-                  // 5. Land Details Map
                   _buildModernDrawerItem(
-                    icon: Icons.location_on, 
-                    label: "Land Details Map", 
-                    description: "Map with Land Details", 
+                    icon: Icons.location_on,
+                    label: "Land Details Map",
+                    description: "Associated Lands on Map ",
                     onTap: () {
                       Navigator.of(context).pop();
                       Navigator.of(context).push(
@@ -454,35 +535,48 @@ class _FactoryOwnerDrawerState extends State<FactoryOwnerDrawer> {
                     screenWidth: screenWidth,
                     isSmallScreen: isSmallScreen,
                   ),
-
                   _buildModernDrawerItem(
-                   icon: Icons.info_outline, 
-                    label: "Receved Products", 
-                    description: "Land Owners Export Product Receved", 
+                    icon: Icons.info_outline,
+                    label: "Received Products",
+                    description: "Land Owners Export Product Received",
                     onTap: () {
                       Navigator.of(context).pop();
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (context) => const FactoryOwnerOrdersPage(),
-                          
                         ),
                       );
                     },
                     screenWidth: screenWidth,
                     isSmallScreen: isSmallScreen,
                   ),
-                  
                   SizedBox(height: screenHeight * 0.008),
-                  
-                  // 6. Developer Info
                   _buildModernDrawerItem(
-                    icon: Icons.code_rounded, 
-                    label: "Developer Info", 
-                    description: "About the application", 
+                    icon: Icons.person_rounded,
+                    label: "My Profile",
+                    description: "Personal settings",
                     onTap: () {
                       Navigator.of(context).pop();
                       Navigator.of(context).push(
-                        MaterialPageRoute(builder: (context) => const DeveloperInfoPage()),
+                        MaterialPageRoute(
+                          builder: (context) => const UserDetails(),
+                        ),
+                      );
+                    },
+                    screenWidth: screenWidth,
+                    isSmallScreen: isSmallScreen,
+                  ),
+                  SizedBox(height: screenHeight * 0.008),
+                  _buildModernDrawerItem(
+                    icon: Icons.code_rounded,
+                    label: "Developer Info",
+                    description: "About the application",
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const DeveloperInfoPage(),
+                        ),
                       );
                     },
                     screenWidth: screenWidth,
@@ -494,10 +588,9 @@ class _FactoryOwnerDrawerState extends State<FactoryOwnerDrawer> {
           ),
         ),
 
-        // STATIC BOTTOM SECTION (Logout Button + Footer)
+        // STATIC BOTTOM SECTION
         Column(
           children: [
-            // Updated Logout Button
             Container(
               margin: EdgeInsets.all(screenWidth * 0.04),
               decoration: BoxDecoration(
@@ -588,8 +681,6 @@ class _FactoryOwnerDrawerState extends State<FactoryOwnerDrawer> {
                 ),
               ),
             ),
-
-            // Footer
             Container(
               padding: EdgeInsets.all(screenWidth * 0.04),
               child: Column(
@@ -711,7 +802,9 @@ class _FactoryOwnerDrawerState extends State<FactoryOwnerDrawer> {
                       description,
                       style: TextStyle(
                         fontSize: isSmallScreen ? 10 : 11,
-                        color: isActive ? Colors.white.withOpacity(0.8) : _darkText.withOpacity(0.5),
+                        color: isActive
+                            ? Colors.white.withOpacity(0.8)
+                            : _darkText.withOpacity(0.5),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -722,7 +815,9 @@ class _FactoryOwnerDrawerState extends State<FactoryOwnerDrawer> {
               SizedBox(width: screenWidth * 0.025),
               Icon(
                 Icons.arrow_forward_ios_rounded,
-                color: isActive ? Colors.white.withOpacity(0.7) : _primaryBlue.withOpacity(0.4),
+                color: isActive
+                    ? Colors.white.withOpacity(0.7)
+                    : _primaryBlue.withOpacity(0.4),
                 size: isSmallScreen ? 12 : 14,
               ),
             ],
