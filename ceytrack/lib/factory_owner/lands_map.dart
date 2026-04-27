@@ -129,9 +129,7 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
 
   void _fetchHeaderData() async {
     final user = _auth.currentUser;
-    if (user == null) {
-      return;
-    }
+    if (user == null) return;
 
     final String uid = user.uid;
 
@@ -171,32 +169,28 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
     try {
       List<Map<String, dynamic>> allLocations = [];
 
-      // Step 1: Fetch from land_location collection (coordinates only)
+      // Fetch from land_location collection
       final locationSnapshot = await _firestore.collection('land_location').get();
       
-      // Step 2: Fetch from lands collection (land details)
+      // Fetch from lands collection for details
       final landsSnapshot = await _firestore.collection('lands').get();
 
-      // Create a map of userId to land details from lands collection
+      // Map userId to land details
       Map<String, Map<String, dynamic>> landsMap = {};
-      
       for (var landDoc in landsSnapshot.docs) {
         final landData = landDoc.data() as Map<String, dynamic>;
         final userId = landDoc.id;
-        
         landsMap[userId] = {
           'landDetails': landData,
           'landId': landDoc.id,
         };
       }
 
-      // Process land_location documents
       for (var locDoc in locationSnapshot.docs) {
         final locData = locDoc.data() as Map<String, dynamic>;
         
         if (locData['latitude'] != null && locData['longitude'] != null) {
           String userId = '';
-          
           if (locData['userId'] != null) {
             userId = locData['userId'].toString();
           } else if (locData['owner'] != null) {
@@ -242,6 +236,13 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
             if (latitude != null && longitude != null) {
               final landDetails = landsMap[userId];
               
+              // Extract polygon points
+              List<LatLng> polygonPoints = [];
+              if (locData['polygonPoints'] != null) {
+                final points = locData['polygonPoints'] as List;
+                polygonPoints = points.map((p) => LatLng((p as GeoPoint).latitude, p.longitude)).toList();
+              }
+              
               String displayName = "${ownerName}'s Land";
               String landName = 'Unnamed Land';
               String cropType = 'N/A';
@@ -277,7 +278,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
                 cinnamonLandSize = details['cinnamonLandSize']?.toString() ?? 'N/A';
                 landSizeUnit = details['landSizeUnit']?.toString() ?? 'Hectares';
                 
-                // Get land photos from lands collection
                 if (details['landPhotos'] != null && details['landPhotos'] is List) {
                   landPhotos = List<String>.from(details['landPhotos'] as List);
                 }
@@ -307,7 +307,7 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
                 'cropType': cropType,
                 'landSize': landSize,
                 'landSizeDetails': landSizeDetails,
-                'landPhotos': landPhotos, // Land photos from lands collection
+                'landPhotos': landPhotos,
                 'province': province,
                 'district': district,
                 'village': village,
@@ -319,6 +319,7 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
                 'landSizeUnit': landSizeUnit,
                 'hasLandDetails': landDetails != null,
                 'landId': landDetails?['landId'] ?? locDoc.id,
+                'polygonPoints': polygonPoints, // Add polygon points
               });
             }
           } catch (e) {
@@ -427,7 +428,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
     Navigator.pop(context);
   }
 
-  // 🌟 NEW: Show land photos
   void _showLandPhotos(List<String> photos) {
     if (photos.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -447,7 +447,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
     });
   }
 
-  // 🌟 NEW: Land photos viewer widget
   Widget _buildPhotoViewer() {
     if (!_showPhotoViewer || _currentLandPhotos.isEmpty) {
       return const SizedBox.shrink();
@@ -464,7 +463,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
         ),
         child: Column(
           children: [
-            // Header
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Row(
@@ -490,7 +488,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
               ),
             ),
             
-            // Photo display
             Expanded(
               child: PageView.builder(
                 itemCount: _currentLandPhotos.length,
@@ -514,7 +511,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
               ),
             ),
             
-            // Photo indicators
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 12.0),
               child: Row(
@@ -535,7 +531,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
               ),
             ),
             
-            // Navigation buttons
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Row(
@@ -895,7 +890,27 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
     final mapHeight = _isPortrait 
         ? (_screenHeight * 0.35)
         : (_screenHeight * 0.65);
-    
+
+    // Build polygon list from lands that have polygon points
+    final List<Polygon> polygons = [];
+    for (var land in _filteredLandLocations) {
+      final points = land['polygonPoints'] as List<LatLng>?;
+      if (points != null && points.isNotEmpty) {
+        final cropType = land['cropType']?.toString() ?? '';
+        final fillColor = _getCropColor(cropType).withOpacity(0.25);
+        final borderColor = _getCropColor(cropType);
+        polygons.add(
+          Polygon(
+            points: points,
+            color: fillColor,
+            borderStrokeWidth: 2.0,
+            borderColor: borderColor,
+            isFilled: true,
+          ),
+        );
+      }
+    }
+
     return Container(
       height: mapHeight,
       margin: EdgeInsets.symmetric(
@@ -932,6 +947,11 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
               userAgentPackageName: 'com.example.land_locations',
             ),
             
+            // Polygon layer – draw boundaries
+            if (polygons.isNotEmpty)
+              PolygonLayer(polygons: polygons),
+            
+            // Marker layer
             MarkerLayer(
               markers: _filteredLandLocations.map((land) {
                 final latLng = LatLng(land['latitude'] as double, land['longitude'] as double);
@@ -1083,7 +1103,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
           padding: const EdgeInsets.all(12),
           child: Row(
             children: [
-              // Crop type icon
               Container(
                 width: 45,
                 height: 45,
@@ -1104,7 +1123,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Land name
                     Text(
                       displayName,
                       style: TextStyle(
@@ -1118,7 +1136,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
                     
                     const SizedBox(height: 3),
                     
-                    // Owner name
                     Text(
                       'Owner: ${land['ownerName'] ?? 'N/A'}',
                       style: TextStyle(
@@ -1131,7 +1148,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
                     
                     const SizedBox(height: 4),
                     
-                    // Details row
                     Row(
                       children: [
                         Icon(Icons.square_foot, size: 11, color: AppColors.successGreen),
@@ -1164,12 +1180,10 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
                       ],
                     ),
                     
-                    // Photo indicator and Crop type badge
                     Padding(
                       padding: const EdgeInsets.only(top: 6),
                       child: Row(
                         children: [
-                          // Photos button if available
                           if (hasPhotos)
                             GestureDetector(
                               onTap: () => _showLandPhotos(landPhotos),
@@ -1206,7 +1220,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
                               ),
                             ),
                           
-                          // Crop type badge
                           if (cropType != 'N/A')
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -1229,7 +1242,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
                   ],
                 ),
               ),
-              // Selected indicator
               if (isSelected)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -1260,6 +1272,8 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
     final isSmallScreen = _screenWidth < 360;
     final landPhotos = _selectedLand!['landPhotos'] as List<String>? ?? [];
     final hasPhotos = landPhotos.isNotEmpty;
+    final polygonPoints = _selectedLand!['polygonPoints'] as List<LatLng>? ?? [];
+    final hasPolygon = polygonPoints.isNotEmpty;
     
     return Container(
       padding: const EdgeInsets.all(12),
@@ -1282,7 +1296,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -1312,7 +1325,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
           
           const SizedBox(height: 12),
           
-          // Land name and crop type
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
@@ -1392,7 +1404,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
             ),
           ),
           
-          // 🌟 NEW: Land photos preview
           if (hasPhotos) ...[
             const SizedBox(height: 12),
             Column(
@@ -1427,7 +1438,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
                           margin: EdgeInsets.only(right: index < landPhotos.length - 1 ? 8 : 0),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(8),
-                            //border: Border.all(color: AppColors.borderColor),
                           ),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(8),
@@ -1480,10 +1490,36 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
             ),
           ],
           
-          // Details list
+          // Show polygon info if available
+          if (hasPolygon) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.primaryBlue.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.primaryBlue.withOpacity(0.2)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.draw, color: AppColors.primaryBlue, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Boundary: ${polygonPoints.length} points recorded',
+                      style: TextStyle(
+                        fontSize: isSmallScreen ? 12 : 13,
+                        color: AppColors.darkText,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          
           ..._buildDetailRows(),
           
-          // Google Maps button
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
@@ -1808,7 +1844,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
           ),
         ),
         
-        // 🌟 Photo viewer overlay
         if (_showPhotoViewer)
           _buildPhotoViewer(),
       ],
@@ -1866,7 +1901,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
           ],
         ),
         
-        // 🌟 Photo viewer overlay
         if (_showPhotoViewer)
           _buildPhotoViewer(),
       ],
@@ -1889,10 +1923,7 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
       ),
       body: Column(
         children: [
-          // Header (Fixed)
           _buildDashboardHeader(context),
-          
-          // Main Content (Scrollable)
           Expanded(
             child: _isPortrait 
                 ? _buildMainContent()
