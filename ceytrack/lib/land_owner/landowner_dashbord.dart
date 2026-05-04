@@ -1,4 +1,4 @@
-// land_owner_dashboard.dart
+// land_owner_dashboard.dart — MODERN REDESIGN
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -8,3753 +8,1504 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'land_owner_drawer.dart';
 import 'export_product_details.dart';
 
-// Reusing AppColors locally
 class AppColors {
-  static const Color background = Color(0xFFEEEBFF);
-  static const Color darkText = Color(0xFF2C2A3A);
-  static const Color primaryBlue = Color(0xFF2764E7);
-  static const Color accentRed = Color(0xFFE53935);
-  static const Color accentTeal = Color(0xFF00BFA5);
-  static const Color cardBackground = Colors.white;
-  static const Color secondaryText = Color(0xFF6A798A);
-  static const Color secondaryColor = Color(0xFF6AD96A);
-  static const Color successGreen = Color(0xFF4CAF50);
-  static const Color warningOrange = Color(0xFFFF9800);
-  static const Color purpleAccent = Color(0xFF9C27B0);
-  static const Color amberAccent = Color(0xFFFFC107);
+  static const Color background        = Color(0xFFF4F6FA);
+  static const Color darkText          = Color(0xFF1A1D26);
+  static const Color primaryBlue       = Color(0xFF2764E7);
+  static const Color accentRed         = Color(0xFFE53935);
+  static const Color accentTeal        = Color(0xFF00BFA5);
+  static const Color cardBackground    = Colors.white;
+  static const Color secondaryText     = Color(0xFF6A798A);
+  static const Color secondaryColor    = Color(0xFF6AD96A);
+  static const Color successGreen      = Color(0xFF2E9E5B);
+  static const Color warningOrange     = Color(0xFFE8840A);
+  static const Color purpleAccent      = Color(0xFF7C3AED);
+  static const Color amberAccent       = Color(0xFFF59E0B);
   static const Color headerGradientStart = Color(0xFF869AEC);
-  static const Color headerGradientEnd = Color(0xFFF7FAFF);
-  static const Color headerTextDark = Color(0xFF333333);
-  static const Color info = Color(0xFF2196F3);
-  static const Color textTertiary = Color(0xFF999999);
-  static const Color hover = Color(0xFFF5F7FA);
-  static const Color border = Color(0xFFE1E5E9);
+  static const Color headerGradientEnd   = Color(0xFFF7FAFF);
+  static const Color headerTextDark      = Color(0xFF333333);
+  static const Color info              = Color(0xFF0EA5E9);
+  static const Color textTertiary      = Color(0xFFB0BAC8);
+  static const Color hover             = Color(0xFFF8FAFC);
+  static const Color border            = Color(0xFFE8ECF2);
 }
 
-// -----------------------------------------------------------------------------
-// --- MAIN SCREEN (LandOwnerDashboard) ---
-// -----------------------------------------------------------------------------
+// ─── compact design tokens ────────────────────────────────────
+class _D {
+  static const double cardRadius  = 10.0;
+  static const double cardPad     = 10.0;
+  static const double sectionGap  = 14.0;
+  static const double chipRadius  = 6.0;
+  static const double iconBox     = 28.0;
+  static const double iconSize    = 14.0;
+}
+
+// ─────────────────────────────────────────────────────────────
 class LandOwnerDashboard extends StatefulWidget {
   const LandOwnerDashboard({super.key});
-
   @override
   State<LandOwnerDashboard> createState() => _LandOwnerDashboardState();
 }
 
 class _LandOwnerDashboardState extends State<LandOwnerDashboard> {
   final User? currentUser = FirebaseAuth.instance.currentUser;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final GlobalKey<ScaffoldState> _key = GlobalKey<ScaffoldState>();
 
-  // State variables for header data
-  String _loggedInUserName = 'Loading User...';
-  String _landName = 'Loading Land...';
-  String _userRole = 'Land Owner';
-  String _landID = 'L-ID';
-  String? _profileImageUrl;
+  String  _name       = 'Loading...';
+  String  _landName   = 'Loading...';
+  String  _userRole   = 'Land Owner';
+  String  _landID     = 'L-ID';
+  String? _avatarUrl;
 
-  // State variables for associated factories
-  List<Map<String, dynamic>> _allAssociatedFactories = [];
-  List<Map<String, dynamic>> _teaFactories = [];
-  List<Map<String, dynamic>> _cinnamonFactories = [];
-  List<Map<String, dynamic>> _multiCropFactories = [];
-  bool _isLoadingFactories = true;
-  String? _errorMessage;
+  List<Map<String, dynamic>> _allFactories   = [];
+  List<Map<String, dynamic>> _teaFact        = [];
+  List<Map<String, dynamic>> _cinnamonFact   = [];
+  List<Map<String, dynamic>> _multiFact      = [];
+  bool   _loadingFact = true;
+  String? _factError;
 
-  // Land size data variables
-  String? _landSize;
-  String? _landSizeUnit;
-  String? _cropType;
-  String? _teaLandSize;
-  String? _cinnamonLandSize;
-  String? _landSizeDetails;
+  String? _landSize, _landSizeUnit, _cropType;
+  String? _teaLandSize, _cinnamonLandSize, _landSizeDetails;
   List<String> _landPhotos = [];
 
   @override
   void initState() {
     super.initState();
     _fetchHeaderData();
-    _fetchAssociatedFactories();
-    _fetchLandSizeData();
+    _fetchFactories();
+    _fetchLandSize();
   }
 
-  // Fetch header data (username, land name, profile image)
+  // ── data ──────────────────────────────────────────────────
   void _fetchHeaderData() async {
-    final user = currentUser;
-    if (user == null) return;
-
-    final String uid = user.uid;
-    setState(() {
-      _landID = uid.substring(0, 8);
-    });
-
+    final uid = currentUser?.uid;
+    if (uid == null) return;
+    setState(() => _landID = uid.substring(0, 8));
     try {
-      final userDoc =
-          await FirebaseFirestore.instance.collection('users').doc(uid).get();
-      if (userDoc.exists) {
-        final userData = userDoc.data();
-        setState(() {
-          _loggedInUserName = userData?['name'] ?? 'Owner Name Missing';
-          _profileImageUrl = userData?['profileImageUrl'];
-        });
-      }
+      final ud = await _db.collection('users').doc(uid).get();
+      if (ud.exists) setState(() { _name = ud['name'] ?? 'Owner'; _avatarUrl = ud['profileImageUrl']; });
+      final ld = await _db.collection('lands').doc(uid).get();
+      if (ld.exists) setState(() => _landName = ld['landName'] ?? 'Land');
+    } catch (_) {}
+  }
 
-      final landDoc =
-          await FirebaseFirestore.instance.collection('lands').doc(uid).get();
-      if (landDoc.exists) {
-        setState(() {
-          _landName = landDoc.data()?['landName'] ?? 'Land Name Missing';
-        });
-      }
-    } catch (e) {
-      debugPrint("Error fetching header data: $e");
-      setState(() {
-        _loggedInUserName = 'Data Error';
-        _landName = 'Data Error';
+  void _fetchLandSize() async {
+    final uid = currentUser?.uid;
+    if (uid == null) return;
+    try {
+      final d = await _db.collection('lands').doc(uid).get();
+      if (d.exists) setState(() {
+        _landSize          = d['landSize']?.toString();
+        _landSizeUnit      = d['landSizeUnit'] ?? 'Acre';
+        _cropType          = d['cropType'];
+        _teaLandSize       = d['teaLandSize']?.toString();
+        _cinnamonLandSize  = d['cinnamonLandSize']?.toString();
+        _landSizeDetails   = d['landSizeDetails'];
+        _landPhotos        = List<String>.from(d['landPhotos'] ?? []);
       });
-    }
+    } catch (_) {}
   }
 
-  // Fetch land size data and photos
-  void _fetchLandSizeData() async {
-    final user = currentUser;
-    if (user == null) return;
-
+  void _fetchFactories() async {
+    final uid = currentUser?.uid;
+    if (uid == null) return;
+    setState(() { _loadingFact = true; _factError = null; });
     try {
-      final landDoc = await _firestore.collection('lands').doc(user.uid).get();
-
-      if (landDoc.exists) {
-        final landData = landDoc.data();
-        setState(() {
-          _landSize = landData?['landSize']?.toString();
-          _landSizeUnit = landData?['landSizeUnit'] ?? 'Acre';
-          _cropType = landData?['cropType'];
-          _teaLandSize = landData?['teaLandSize']?.toString();
-          _cinnamonLandSize = landData?['cinnamonLandSize']?.toString();
-          _landSizeDetails = landData?['landSizeDetails'];
-          _landPhotos = List<String>.from(landData?['landPhotos'] ?? []);
-        });
-      }
-    } catch (e) {
-      debugPrint("Error fetching land size data: $e");
-    }
-  }
-
-  // Fetch associated factories with owner names
-  void _fetchAssociatedFactories() async {
-    final user = currentUser;
-    if (user == null) return;
-
-    setState(() {
-      _isLoadingFactories = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final landDoc = await _firestore.collection('lands').doc(user.uid).get();
-      if (landDoc.exists) {
-        final landData = landDoc.data();
-        final factoryIds = List<String>.from(landData?['factoryIds'] ?? []);
-
-        if (factoryIds.isEmpty) {
-          setState(() {
-            _allAssociatedFactories = [];
-            _teaFactories = [];
-            _cinnamonFactories = [];
-            _multiCropFactories = [];
-            _isLoadingFactories = false;
-          });
-          return;
-        }
-
-        List<Map<String, dynamic>> factories = [];
-        for (String factoryId in factoryIds) {
+      final ld = await _db.collection('lands').doc(uid).get();
+      if (!ld.exists) { setState(() { _allFactories = []; _loadingFact = false; }); return; }
+      final ids = List<String>.from(ld['factoryIds'] ?? []);
+      if (ids.isEmpty) { setState(() { _allFactories = []; _loadingFact = false; }); return; }
+      List<Map<String, dynamic>> fList = [];
+      for (final id in ids) {
+        try {
+          final fd = await _db.collection('factories').doc(id).get();
+          if (!fd.exists) continue;
+          final fData = fd.data() as Map<String, dynamic>;
+          String ownerName = 'Unknown';
           try {
-            final factoryDoc =
-                await _firestore.collection('factories').doc(factoryId).get();
-            if (factoryDoc.exists) {
-              final factoryData = factoryDoc.data() as Map<String, dynamic>;
-              
-              String ownerUid = factoryId;
-              String ownerName = 'Unknown Owner';
-              
-              try {
-                final userDoc = await _firestore
-                    .collection('users')
-                    .doc(ownerUid)
-                    .get();
-                
-                if (userDoc.exists) {
-                  final userData = userDoc.data() as Map<String, dynamic>;
-                  ownerName = userData['name'] ?? 'Unknown Owner';
-                }
-              } catch (e) {
-                debugPrint("Error fetching owner info for $ownerUid: $e");
-              }
-              
-              factories.add({
-                'id': factoryId,
-                ...factoryData,
-                'ownerName': ownerName,
-              });
-            }
-          } catch (e) {
-            debugPrint("Error fetching factory $factoryId: $e");
-          }
-        }
-
-        _categorizeFactories(factories);
-      } else {
-        setState(() {
-          _allAssociatedFactories = [];
-          _teaFactories = [];
-          _cinnamonFactories = [];
-          _multiCropFactories = [];
-          _isLoadingFactories = false;
-        });
+            final ud = await _db.collection('users').doc(id).get();
+            if (ud.exists) ownerName = ud['name'] ?? 'Unknown';
+          } catch (_) {}
+          fList.add({'id': id, ...fData, 'ownerName': ownerName});
+        } catch (_) {}
       }
+      final tea      = fList.where((f) => f['cropType'] == 'Tea').toList();
+      final cinnamon = fList.where((f) => f['cropType'] == 'Cinnamon').toList();
+      final multi    = fList.where((f) => f['cropType'] == 'Both').toList();
+      setState(() { _allFactories = fList; _teaFact = tea; _cinnamonFact = cinnamon; _multiFact = multi; _loadingFact = false; });
     } catch (e) {
-      debugPrint("Error fetching associated factories: $e");
-      setState(() {
-        _errorMessage = "Failed to load factory data";
-        _isLoadingFactories = false;
-      });
+      setState(() { _factError = 'Failed to load factories'; _loadingFact = false; });
     }
   }
 
-  // Categorize factories by crop type
-  void _categorizeFactories(List<Map<String, dynamic>> factories) {
-    List<Map<String, dynamic>> teaFacts = [];
-    List<Map<String, dynamic>> cinnamonFacts = [];
-    List<Map<String, dynamic>> multiFacts = [];
-
-    for (var factory in factories) {
-      final cropType = factory['cropType'] ?? 'N/A';
-      if (cropType == 'Tea') {
-        teaFacts.add(factory);
-      } else if (cropType == 'Cinnamon') {
-        cinnamonFacts.add(factory);
-      } else if (cropType == 'Both') {
-        multiFacts.add(factory);
-      }
-    }
-
-    setState(() {
-      _allAssociatedFactories = factories;
-      _teaFactories = teaFacts;
-      _cinnamonFactories = cinnamonFacts;
-      _multiCropFactories = multiFacts;
-      _isLoadingFactories = false;
-    });
-  }
-
-  // Make phone call using url_launcher
-  Future<void> _makePhoneCall(String phoneNumber) async {
-    if (phoneNumber.isEmpty || phoneNumber == 'N/A') {
-      _showSnackBar('Phone number not available');
-      return;
-    }
-
-    final String tel = 'tel:${phoneNumber.replaceAll(RegExp(r'[-\s]'), '')}';
-    
+  Future<void> _call(String phone) async {
+    if (phone.isEmpty || phone == 'N/A') { _snack('Phone not available'); return; }
+    final tel = 'tel:${phone.replaceAll(RegExp(r'[-\s]'), '')}';
     try {
-      if (await canLaunchUrl(Uri.parse(tel))) {
-        await launchUrl(Uri.parse(tel));
-      } else {
-        _showPhoneAppErrorDialog(phoneNumber);
-      }
-    } catch (e) {
-      debugPrint('Could not launch phone app: $e');
-      _showPhoneAppErrorDialog(phoneNumber);
+      if (await canLaunchUrl(Uri.parse(tel))) await launchUrl(Uri.parse(tel));
+      else _showCallError(phone);
+    } catch (_) { _showCallError(phone); }
+  }
+
+  void _showCallError(String phone) => showDialog(context: context,
+    builder: (_) => AlertDialog(
+      title: const Text('Cannot Make Call'),
+      content: Text('No phone app found.\n\nNumber: $phone'),
+      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
+    ));
+
+  void _snack(String msg) => ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text(msg), duration: const Duration(seconds: 2), behavior: SnackBarBehavior.floating));
+
+  // ── helpers ───────────────────────────────────────────────
+  Color _cropColor([String? c]) {
+    switch ((c ?? _cropType ?? '').toLowerCase()) {
+      case 'tea'      : return AppColors.successGreen;
+      case 'cinnamon' : return AppColors.warningOrange;
+      case 'both'     : return AppColors.purpleAccent;
+      default         : return AppColors.primaryBlue;
+    }
+  }
+  IconData _cropIcon([String? c]) {
+    switch ((c ?? _cropType ?? '').toLowerCase()) {
+      case 'tea'      : return Icons.eco_rounded;
+      case 'cinnamon' : return Icons.forest_rounded;
+      case 'both'     : return Icons.layers_rounded;
+      default         : return Icons.landscape_rounded;
+    }
+  }
+  Color _statusColor(String s) {
+    switch (s.toLowerCase()) {
+      case 'pending'          : return AppColors.warningOrange;
+      case 'factory recived'  :
+      case 'factory received' : return AppColors.info;
+      case 'delivered': case 'completed': case 'accepted': return AppColors.successGreen;
+      case 'cancelled': case 'rejected' : return AppColors.accentRed;
+      default: return AppColors.primaryBlue;
+    }
+  }
+  IconData _statusIcon(String s) {
+    switch (s.toLowerCase()) {
+      case 'pending'          : return Icons.schedule_rounded;
+      case 'factory recived'  :
+      case 'factory received' : return Icons.factory_rounded;
+      case 'delivered': case 'completed': case 'accepted': return Icons.check_circle_rounded;
+      case 'cancelled': case 'rejected' : return Icons.cancel_rounded;
+      default: return Icons.info_rounded;
     }
   }
 
-  void _showPhoneAppErrorDialog(String phoneNumber) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Cannot Make Call'),
-        content: Text(
-          'Your device does not have a phone app installed.\n\nPhone number: $phoneNumber',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
-
+  // ── build ─────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    void handleDrawerNavigate(String routeName) {
-      Navigator.pop(context);
-    }
-
     return Scaffold(
-      key: _scaffoldKey,
+      key: _key,
       backgroundColor: AppColors.background,
       drawer: LandOwnerDrawer(
-        onLogout: () {
-          Navigator.pop(context);
-        },
-        onNavigate: handleDrawerNavigate,
+        onLogout   : () => Navigator.pop(context),
+        onNavigate : (_) => Navigator.pop(context),
       ),
-      body: Column(
-        children: [
-          _buildDashboardHeader(context),
-          Expanded(
-            child: Column(
-              children: [
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Land Summary Section
-                        _buildSectionTitle('Land Summary', Icons.landscape_rounded),
-                        const SizedBox(height: 10),
-                        _buildKeyMetrics(context),
-                        
-                        // ✅ Export Summary Section - NOW AT THE TOP
-                        const SizedBox(height: 30),
-                        _buildExportSummarySection(),
-                        
-                        // Associated Factories Section
-                        const SizedBox(height: 30),
-                        _buildAssociatedFactoriesSection(),
-                        const SizedBox(height: 30),
-                      ],
-                    ),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Text(
-                    'Developed By Malitha Tishamal',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: AppColors.darkText.withOpacity(0.7),
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+      body: Column(children: [
+        _buildHeader(context),
+        Expanded(child: Column(children: [
+          Expanded(child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              _sectionLabel('Land Summary', Icons.landscape_rounded),
+              const SizedBox(height: 8),
+              _buildLandCard(),
+              const SizedBox(height: _D.sectionGap),
+              _buildExportSection(),
+              const SizedBox(height: _D.sectionGap),
+              _buildFactoriesSection(),
+              const SizedBox(height: 20),
+            ]),
+          )),
+          _buildFooter(),
+        ])),
+      ]),
     );
   }
 
-  // -----------------------------------------------------------------
-  // --- WIDGET BUILDING METHODS ---
-  // -----------------------------------------------------------------
+  // ── HEADER (factory-owner style) ─────────────────────────
+  Widget _buildHeader(BuildContext ctx) {
+    final w  = MediaQuery.of(ctx).size.width;
+    final sm = w < 360;
+    final md = w >= 360 && w < 400;
 
-  Widget _buildDashboardHeader(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(ctx).padding.top + 2,
+        left: 16, right: 16, bottom: 12,
+      ),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFF869AEC), AppColors.headerGradientEnd],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
+          colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
+          begin: Alignment.topCenter, end: Alignment.bottomCenter),
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(30),
-          bottomRight: Radius.circular(30),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x10000000),
-            blurRadius: 15,
-            offset: Offset(0, 5),
-          ),
-        ],
+          bottomLeft: Radius.circular(30), bottomRight: Radius.circular(30)),
+        boxShadow: [BoxShadow(color: Color(0x10000000), blurRadius: 15, offset: Offset(0, 5))],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.menu,
-                    color: AppColors.headerTextDark, size: 28),
-                onPressed: () {
-                  _scaffoldKey.currentState?.openDrawer();
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Container(
-                width: 70,
-                height: 70,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: _profileImageUrl == null
-                      ? const LinearGradient(
-                          colors: [AppColors.primaryBlue, Color(0xFF457AED)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        )
-                      : null,
-                  border: Border.all(color: Colors.white, width: 3),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primaryBlue.withOpacity(0.4),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                  image: _profileImageUrl != null
-                      ? DecorationImage(
-                          image: NetworkImage(_profileImageUrl!),
-                          fit: BoxFit.cover,
-                        )
-                      : null,
-                ),
-                child: _profileImageUrl == null
-                    ? const Icon(Icons.person, size: 40, color: Colors.white)
-                    : null,
-              ),
-              const SizedBox(width: 15),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _loggedInUserName,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.headerTextDark,
-                    ),
-                  ),
-                  Text(
-                    'Land Name: $_landName \n($_userRole)',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.headerTextDark.withOpacity(0.7),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 25),
-          Text(
-            'Land Overview (ID: $_landID)',
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: AppColors.headerTextDark,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildKeyMetrics(BuildContext context) {
-    return GridView.count(
-      shrinkWrap: true,
-      crossAxisCount: 2,
-      crossAxisSpacing: 16,
-      mainAxisSpacing: 16,
-      physics: const NeverScrollableScrollPhysics(),
-      children: [
-        _buildLandAreaMetricCard(context),
-      ],
-    );
-  }
-
-  Widget _buildLandAreaMetricCard(BuildContext context) {
-    String displayValue = 'Loading...';
-    String displayTitle = 'Land Area';
-    String? detailsText;
-
-    if (_cropType != null && _landSize != null) {
-      if (_cropType == 'Tea') {
-        displayValue = '${_landSize} ${_landSizeUnit ?? "Ac"}';
-        displayTitle = 'Tea Land Area';
-        detailsText = 'Tea cultivation land size';
-      } else if (_cropType == 'Cinnamon') {
-        displayValue = '${_landSize} ${_landSizeUnit ?? "Ac"}';
-        displayTitle = 'Cinnamon Land Area';
-        detailsText = 'Cinnamon cultivation land size';
-      } else if (_cropType == 'Both') {
-        double teaSize = double.tryParse(_teaLandSize ?? '0') ?? 0;
-        double cinnamonSize = double.tryParse(_cinnamonLandSize ?? '0') ?? 0;
-        double totalSize = teaSize + cinnamonSize;
-
-        displayValue = '${totalSize.toStringAsFixed(1)} ${_landSizeUnit ?? "Ac"}';
-        displayTitle = 'Total Land Area';
-
-        if (teaSize > 0 && cinnamonSize > 0) {
-          detailsText = 'Tea: ${teaSize}Ac, Cinnamon: ${cinnamonSize}Ac';
-        } else if (teaSize > 0) {
-          detailsText = 'Tea: ${teaSize}Ac';
-        } else if (cinnamonSize > 0) {
-          detailsText = 'Cinnamon: ${cinnamonSize}Ac';
-        } else {
-          detailsText = 'No specific crop data';
-        }
-      } else {
-        displayValue = '${_landSize ?? "0"} ${_landSizeUnit ?? "Ac"}';
-        detailsText = 'General land area';
-      }
-    } else {
-      displayValue = 'No Data';
-      detailsText = 'Land details not available';
-    }
-
-    return GestureDetector(
-      onTap: () {
-        _showLandSizeDetailsModal();
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.cardBackground,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 6,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: _getCropColor().withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  _getCropIcon(),
-                  color: _getCropColor(),
-                  size: 16,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                displayValue,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.darkText,
-                ),
-              ),
-              Text(
-                displayTitle,
-                style: const TextStyle(
-                  fontSize: 9,
-                  color: AppColors.secondaryText,
-                ),
-              ),
-              if (detailsText != null && detailsText.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    detailsText,
-                    style: TextStyle(
-                      fontSize: 8,
-                      color: const Color.fromARGB(255, 61, 122, 191).withOpacity(0.8),
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              if (_cropType != null)
-                Container(
-                  margin: const EdgeInsets.only(top: 4),
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: _getCropColor().withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(5),
-                  ),
-                  child: Text(
-                    _cropType!,
-                    style: TextStyle(
-                      fontSize: 8,
-                      fontWeight: FontWeight.w600,
-                      color: _getCropColor(),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMetricCard(BuildContext context, String title, String value,
-      IconData icon, Color color) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: color, size: 28),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 16),
-                Text(value,
-                    style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.darkText)),
-                const SizedBox(height: 4),
-                Text(title,
-                    style:
-                        TextStyle(fontSize: 14, color: AppColors.secondaryText)),
-              ],
-            ),
-          ],
-        ),
-      )
-    );
-  }
-
-  Widget _buildAssociatedFactoriesSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _buildSectionTitle('Associated Factories', Icons.factory_rounded),
-            if (_allAssociatedFactories.isNotEmpty)
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppColors.primaryBlue, AppColors.purpleAccent],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.business, size: 14, color: Colors.white),
-                    const SizedBox(width: 6),
-                    Text(
-                      '${_allAssociatedFactories.length}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        if (_allAssociatedFactories.isNotEmpty) _buildFactoryStatsCards(),
-        const SizedBox(height: 16),
-        if (_isLoadingFactories)
-          _buildLoadingFactories()
-        else if (_errorMessage != null)
-          _buildErrorFactories()
-        else if (_allAssociatedFactories.isEmpty)
-          _buildNoFactoriesCard()
-        else
-          _buildFactoriesByCategory(),
-      ],
-    );
-  }
-
-  Widget _buildFactoryStatsCards() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              _buildStatCard(
-                title: 'Total Factories',
-                value: _allAssociatedFactories.length.toString(),
-                icon: Icons.factory,
-                color: AppColors.primaryBlue,
-                iconColor: Colors.white,
-              ),
-              const SizedBox(width: 12),
-              _buildStatCard(
-                title: 'Cinnamon',
-                value: _cinnamonFactories.length.toString(),
-                icon: Icons.spa,
-                color: AppColors.warningOrange,
-                iconColor: Colors.white,
-              ),
-              const SizedBox(width: 12),
-              _buildStatCard(
-                title: 'Tea',
-                value: _teaFactories.length.toString(),
-                icon: Icons.agriculture,
-                color: AppColors.successGreen,
-                iconColor: Colors.white,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              _buildStatCard(
-                title: 'Multi-Crop',
-                value: _multiCropFactories.length.toString(),
-                icon: Icons.all_inclusive,
-                color: AppColors.purpleAccent,
-                iconColor: Colors.white,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatCard({
-    required String title,
-    required String value,
-    required IconData icon,
-    required Color color,
-    required Color iconColor,
-  }) {
-    return GestureDetector(
-      onTap: () {
-        if (title == 'Cinnamon' && _cinnamonFactories.isNotEmpty) {
-          _showCategoryDialog('Cinnamon Factories', _cinnamonFactories, color);
-        } else if (title == 'Tea' && _teaFactories.isNotEmpty) {
-          _showCategoryDialog('Tea Factories', _teaFactories, color);
-        } else if (title == 'Multi-Crop' && _multiCropFactories.isNotEmpty) {
-          _showCategoryDialog(
-              'Multi-Crop Factories', _multiCropFactories, color);
-        }
-      },
-      child: Container(
-        width: 120,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [color, Color.lerp(color, Colors.black, 0.1)!],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: color.withOpacity(0.3),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+        // Top row: menu | name+role | avatar
+        Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+          // Menu button
+          GestureDetector(
+            onTap: () => _key.currentState?.openDrawer(),
+            child: Container(
+              padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(icon, size: 20, color: iconColor),
+              child: const Icon(Icons.menu, color: AppColors.headerTextDark, size: 24),
             ),
-            const SizedBox(height: 12),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              title,
+          ),
+          const Spacer(),
+          // Centre: name + role
+          Column(mainAxisSize: MainAxisSize.min, children: [
+            Text(_name,
               style: TextStyle(
-                fontSize: 12,
-                color: Colors.white.withOpacity(0.9),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFactoriesByCategory() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (_cinnamonFactories.isNotEmpty)
-          _buildCategorySection(
-            title: 'Cinnamon Factories',
-            icon: Icons.spa,
-            color: AppColors.warningOrange,
-            factories: _cinnamonFactories,
-          ),
-        if (_teaFactories.isNotEmpty)
-          _buildCategorySection(
-            title: 'Tea Factories',
-            icon: Icons.agriculture,
-            color: AppColors.successGreen,
-            factories: _teaFactories,
-          ),
-        if (_multiCropFactories.isNotEmpty)
-          _buildCategorySection(
-            title: 'Multi-Crop Factories',
-            icon: Icons.all_inclusive,
-            color: AppColors.purpleAccent,
-            factories: _multiCropFactories,
-          ),
-      ],
-    );
-  }
-
-  Widget _buildCategorySection({
-    required String title,
-    required IconData icon,
-    required Color color,
-    required List<Map<String, dynamic>> factories,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 24),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(icon, size: 22, color: color),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.darkText,
-                  ),
-                ),
-              ],
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                '${factories.length} factories',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: color,
-                ),
-              ),
-            ),
-          ],
-        ),
+                fontSize: sm ? 14 : md ? 16 : 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.headerTextDark,
+              )),
+            const SizedBox(height: 3),
+            Text('Land Name: $_landName',
+              style: TextStyle(
+                fontSize: sm ? 9 : md ? 10 : 11,
+                color: AppColors.headerTextDark.withOpacity(0.75),
+              )),
+            Text('($_userRole)',
+              style: TextStyle(
+                fontSize: sm ? 9 : md ? 10 : 11,
+                color: AppColors.headerTextDark.withOpacity(0.75),
+              )),
+          ]),
+          const Spacer(),
+          // Avatar
+          _buildAvatar(),
+        ]),
         const SizedBox(height: 12),
-        Column(
-          children: factories.asMap().entries.map((entry) {
-            final index = entry.key;
-            final factory = entry.value;
-            return _buildModernFactoryCard(factory, index, color);
-          }).toList(),
-        ),
-      ],
+        // Bottom title
+        Text('Land Overview (ID: $_landID)',
+          style: const TextStyle(
+            fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.headerTextDark)),
+      ]),
     );
   }
 
-  Widget _buildModernFactoryCard(
-      Map<String, dynamic> factory, int index, Color categoryColor) {
-    final factoryName = factory['factoryName'] ?? 'Unknown Factory';
-    final ownerName = factory['ownerName'] ?? 'N/A';
-    final contactNumber = factory['contactNumber'] ?? 'N/A';
-    final cropType = factory['cropType'] ?? 'N/A';
-    final address = factory['address'] ?? 'N/A';
-    final village = factory['village'] ?? 'N/A';
-    final district = factory['district'] ?? 'N/A';
-    final updatedAt = factory['updatedAt'] != null
-        ? (factory['updatedAt'] as Timestamp).toDate()
-        : null;
-    
-    final factoryLogoUrl = factory['factoryLogoUrl'];
-
-    final mainColor = categoryColor;
-    final icon = _getFactoryCropIcon(cropType);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Material(
-        elevation: 4,
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                mainColor.withOpacity(0.05),
-                mainColor.withOpacity(0.02),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: mainColor.withOpacity(0.1),
-              width: 1,
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: mainColor.withOpacity(0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: factoryLogoUrl != null && factoryLogoUrl.isNotEmpty
-                            ? Image.network(
-                                factoryLogoUrl,
-                                fit: BoxFit.cover,
-                                loadingBuilder: (context, child, loadingProgress) {
-                                  if (loadingProgress == null) return child;
-                                  return Container(
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          mainColor,
-                                          Color.lerp(mainColor, Colors.black, 0.2)!,
-                                        ],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                    ),
-                                    child: const Center(
-                                      child: CircularProgressIndicator(
-                                        color: Colors.white,
-                                        strokeWidth: 2,
-                                      ),
-                                    ),
-                                  );
-                                },
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          mainColor,
-                                          Color.lerp(mainColor, Colors.black, 0.2)!,
-                                        ],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                    ),
-                                    child: Icon(
-                                      icon,
-                                      color: Colors.white,
-                                      size: 30,
-                                    ),
-                                  );
-                                },
-                              )
-                            : Container(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      mainColor,
-                                      Color.lerp(mainColor, Colors.black, 0.2)!,
-                                    ],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                ),
-                                child: Icon(
-                                      icon,
-                                      color: Colors.white,
-                                      size: 30,
-                                    ),
-                              ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  factoryName,
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.darkText,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: mainColor.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(20),
-                                  border:
-                                      Border.all(color: mainColor.withOpacity(0.3)),
-                                ),
-                                child: Text(
-                                  cropType,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: mainColor,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Owner: $ownerName',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: AppColors.secondaryText,
-                            ),
-                          ),
-                          if (updatedAt != null) ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              'Updated: ${DateFormat('MMM dd, yyyy').format(updatedAt)}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppColors.secondaryText.withOpacity(0.7),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.background),
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.phone, size: 18, color: mainColor),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Contact Number',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.secondaryText,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  contactNumber,
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.darkText,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(Icons.location_on, size: 18, color: mainColor),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Location',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.secondaryText,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  '$village, $district',
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w500,
-                                    color: AppColors.darkText,
-                                  ),
-                                ),
-                                if (address.isNotEmpty) ...[
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    address,
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: AppColors.secondaryText,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _makePhoneCall(contactNumber),
-                        icon: Icon(Icons.phone, size: 18, color: mainColor),
-                        label: Text(
-                          'Call Now',
-                          style:
-                              TextStyle(color: mainColor, fontWeight: FontWeight.w600),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          side: BorderSide(color: mainColor),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () => _showFactoryDetailsModal(factory),
-                        icon:
-                            const Icon(Icons.info_outline, size: 18, color: Colors.white),
-                        label: const Text(
-                          'Full Details',
-                          style:
-                              TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: mainColor,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 2,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+  Widget _buildAvatar() {
+    if (_avatarUrl != null && _avatarUrl!.isNotEmpty) {
+      return CircleAvatar(
+        radius: 40,
+        backgroundImage: NetworkImage(_avatarUrl!),
+        backgroundColor: Colors.grey.shade200,
+        onBackgroundImageError: (_, __) => setState(() => _avatarUrl = null),
+      );
+    }
+    return CircleAvatar(
+      radius: 40,
+      backgroundColor: AppColors.primaryBlue.withOpacity(0.15),
+      child: const Icon(Icons.person, color: AppColors.primaryBlue, size: 40),
     );
   }
 
-  Widget _buildLoadingFactories() {
-    return Container(
-      padding: const EdgeInsets.all(40),
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        children: [
-          SizedBox(
-            width: 60,
-            height: 60,
-            child: CircularProgressIndicator(
-              strokeWidth: 4,
-              valueColor:
-                  AlwaysStoppedAnimation<Color>(AppColors.primaryBlue),
-            ),
-          ),
-          const SizedBox(height: 20),
-          const Text(
-            'Loading Factory Details',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: AppColors.darkText,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Fetching your associated factories...',
-            style: TextStyle(
-              color: AppColors.secondaryText,
-              fontSize: 14,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // ── LAND SUMMARY CARD ─────────────────────────────────────
+  Widget _buildLandCard() {
+    final cc = _cropColor();
 
-  Widget _buildErrorFactories() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.accentRed.withOpacity(0.2)),
-      ),
-      child: Column(
-        children: [
-          Icon(Icons.error_outline, size: 48, color: AppColors.accentRed),
-          const SizedBox(height: 16),
-          Text(
-            _errorMessage ?? 'Unable to load factory data',
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: AppColors.darkText,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Please check your internet connection and try again',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppColors.secondaryText,
-              fontSize: 14,
-            ),
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: _fetchAssociatedFactories,
-            icon: const Icon(Icons.refresh, size: 18),
-            label: const Text('Retry'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryBlue,
-              foregroundColor: Colors.white,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+    // build display values
+    String areaVal  = 'No Data';
+    String areaLbl  = 'Land Area';
+    String? subLine;
 
-  Widget _buildNoFactoriesCard() {
-    return Container(
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primaryBlue.withOpacity(0.1)),
-      ),
-      child: Column(
-        children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: AppColors.primaryBlue.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child:
-                Icon(Icons.factory_outlined, size: 40, color: AppColors.primaryBlue),
-          ),
-          const SizedBox(height: 20),
-          const Text(
-            'No Associated Factories',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: AppColors.darkText,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'You are not currently associated with any factories. Add factories to start supplying your crops.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppColors.secondaryText,
-              fontSize: 14,
-            ),
-          ),
-          const SizedBox(height: 20),
-          ElevatedButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.add_business, size: 18),
-            label: const Text('Add Factories'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryBlue,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionTitle(String title, IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4.0),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: AppColors.primaryBlue.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: AppColors.primaryBlue, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: AppColors.darkText,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // -----------------------------------------------------------------
-  // --- EXPORT SUMMARY SECTION ---
-  // -----------------------------------------------------------------
-
-  Widget _buildExportSummarySection() {
-    return FutureBuilder<QuerySnapshot>(
-      future: FirebaseFirestore.instance
-          .collection('land_orders')
-          .where('landOwnerId', isEqualTo: currentUser?.uid)
-          .limit(5)
-          .get(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return _buildExportSummaryLoading();
-        }
-
-        if (snapshot.hasError || !snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return _buildNoExportHistory();
-        }
-
-        final orders = snapshot.data!.docs;
-        final totalOrders = orders.length;
-        double totalQuantity = 0;
-        double teaTotal = 0;
-        double cinnamonTotal = 0;
-        int deliveredOrders = 0;
-
-        for (var order in orders) {
-          final data = order.data() as Map<String, dynamic>;
-          final status = data['status']?.toString().toLowerCase() ?? '';
-          final cropType = data['cropType'] ?? '';
-          final totalQty = double.tryParse(data['totalQuantity']?.toString() ?? '0') ?? 0;
-          final teaQty = double.tryParse(data['teaQuantity']?.toString() ?? '0') ?? 0;
-          final cinnamonQty = double.tryParse(data['cinnamonQuantity']?.toString() ?? '0') ?? 0;
-
-          totalQuantity += totalQty;
-          
-          if (cropType == 'Tea') {
-            teaTotal += totalQty;
-          } else if (cropType == 'Cinnamon') {
-            cinnamonTotal += cinnamonQty;
-          } else if (cropType == 'Both') {
-            teaTotal += teaQty;
-            cinnamonTotal += cinnamonQty;
-          }
-
-          if (status.contains('delivered') || 
-              status.contains('completed') || 
-              status.contains('accepted')) {
-            deliveredOrders++;
-          }
-        }
-
-        return Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.cardBackground,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 5),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryBlue.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.inventory_outlined,
-                          color: AppColors.primaryBlue,
-                          size: 20,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      const Text(
-                        'Recent Export Summary',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.darkText,
-                        ),
-                      ),
-                    ],
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ExportProductsHistoryPage(),
-                        ),
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryBlue.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Row(
-                        children: [
-                          Text(
-                            'View All',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.primaryBlue,
-                            ),
-                          ),
-                          SizedBox(width: 4),
-                          Icon(
-                            Icons.arrow_forward,
-                            size: 14,
-                            color: AppColors.primaryBlue,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _buildExportStatCard(
-                    title: 'Total Exports',
-                    value: totalOrders.toString(),
-                    icon: Icons.shopping_cart_checkout,
-                    color: AppColors.primaryBlue,
-                  ),
-                  _buildExportStatCard(
-                    title: 'Delivered',
-                    value: deliveredOrders.toString(),
-                    icon: Icons.check_circle,
-                    color: AppColors.successGreen,
-                  ),
-                  _buildExportStatCard(
-                    title: 'Total Qty',
-                    value: '${totalQuantity.toStringAsFixed(0)} kg',
-                    icon: Icons.scale,
-                    color: AppColors.purpleAccent,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.background,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Crop Breakdown',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.darkText,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    if (teaTotal > 0)
-                      _buildCropProgress(
-                        label: 'Tea',
-                        value: teaTotal,
-                        total: totalQuantity,
-                        color: AppColors.successGreen,
-                      ),
-                    if (cinnamonTotal > 0)
-                      _buildCropProgress(
-                        label: 'Cinnamon',
-                        value: cinnamonTotal,
-                        total: totalQuantity,
-                        color: AppColors.warningOrange,
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              if (orders.length > 0) ...[
-                const Text(
-                  'Recent Exports',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.darkText,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                ...orders.take(3).map((order) => _buildOrderPreviewItem(order)).toList(),
-              ],
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildExportStatCard({
-    required String title,
-    required String value,
-    required IconData icon,
-    required Color color,
-  }) {
-    return Container(
-      width: 90,
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.1)),
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, size: 18, color: color),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: color,
-            ),
-          ),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 10,
-              color: AppColors.secondaryText,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCropProgress({
-    required String label,
-    required double value,
-    required double total,
-    required Color color,
-  }) {
-    final percentage = total > 0 ? (value / total) * 100 : 0;
-    
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: color,
-                ),
-              ),
-              Text(
-                '${value.toStringAsFixed(0)} kg (${percentage.toStringAsFixed(0)}%)',
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.secondaryText,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          LinearProgressIndicator(
-            value: total > 0 ? value / total : 0,
-            backgroundColor: color.withOpacity(0.2),
-            valueColor: AlwaysStoppedAnimation<Color>(color),
-            minHeight: 6,
-            borderRadius: BorderRadius.circular(3),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOrderPreviewItem(QueryDocumentSnapshot order) {
-    final data = order.data() as Map<String, dynamic>;
-    final factoryName = data['factoryName'] ?? 'Unknown Factory';
-    final status = data['status'] ?? 'Pending';
-    final totalQuantity = data['totalQuantity']?.toString() ?? '0';
-    final cropType = data['cropType'] ?? 'N/A';
-    final orderDate = data['orderDate'] as Timestamp?;
-    final unit = data['unit'] ?? 'kg';
-
-    final statusColor = _getOrderStatusColor(status);
-    
-    return GestureDetector(
-      onTap: () {
-        _showOrderDetailsModal(order, data);
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: AppColors.hover,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                _getOrderStatusIcon(status),
-                size: 16,
-                color: statusColor,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    factoryName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.darkText,
-                    ),
-                  ),
-                  Row(
-                    children: [
-                      Text(
-                        '$totalQuantity $unit • ',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.secondaryText,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: _getCropColorFromString(cropType).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          cropType,
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: _getCropColorFromString(cropType),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (orderDate != null)
-                    Text(
-                      DateFormat('MMM dd, HH:mm').format(orderDate.toDate()),
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textTertiary,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                status,
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: statusColor,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildExportSummaryLoading() {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryBlue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.inventory_outlined,
-                  color: AppColors.primaryBlue,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Text(
-                'Export Summary',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.darkText,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          const Center(
-            child: CircularProgressIndicator(
-              color: AppColors.primaryBlue,
-              strokeWidth: 2,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Loading export data...',
-            style: TextStyle(
-              fontSize: 12,
-              color: AppColors.secondaryText,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNoExportHistory() {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryBlue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.inventory_outlined,
-                  color: AppColors.primaryBlue,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Text(
-                'Export History',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.darkText,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Center(
-            child: Column(
-              children: [
-                Icon(
-                  Icons.inventory_2_outlined,
-                  size: 48,
-                  color: AppColors.textTertiary.withOpacity(0.3),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'No Export History',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Start exporting your products to see history',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textTertiary,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryBlue,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  ),
-                  child: const Text(
-                    'Start Exporting',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Order Details Modal Dialog
-  void _showOrderDetailsModal(QueryDocumentSnapshot orderDoc, Map<String, dynamic> orderData) async {
-    final orderId = orderDoc.id;
-    final factoryName = orderData['factoryName'] ?? 'Unknown Factory';
-    final factoryId = orderData['factoryId'];
-    final status = orderData['status'] ?? 'Pending';
-    final cropType = orderData['cropType'] ?? 'N/A';
-    final totalQuantity = orderData['totalQuantity']?.toString() ?? '0';
-    final teaQuantity = orderData['teaQuantity']?.toString() ?? '0';
-    final cinnamonQuantity = orderData['cinnamonQuantity']?.toString() ?? '0';
-    final unit = orderData['unit'] ?? 'kg';
-    final description = orderData['description'] ?? '';
-    final orderDate = orderData['orderDate'] as Timestamp?;
-    final createdAt = orderData['createdAt'] as Timestamp?;
-    final updatedAt = orderData['updatedAt'] as Timestamp?;
-    final orderPhotos = List<String>.from(orderData['orderPhotos'] ?? []);
-    
-    Map<String, dynamic> factoryDetails = {};
-    String ownerName = 'Loading...';
-    
-    if (factoryId != null) {
-      try {
-        final factoryDoc = await _firestore.collection('factories').doc(factoryId).get();
-        if (factoryDoc.exists) {
-          factoryDetails = factoryDoc.data() as Map<String, dynamic>;
-          
-          final userDoc = await _firestore.collection('users').doc(factoryId).get();
-          if (userDoc.exists) {
-            final userData = userDoc.data() as Map<String, dynamic>;
-            ownerName = userData['name'] ?? 'Unknown Owner';
-          }
-        }
-      } catch (e) {
-        debugPrint("Error fetching factory details: $e");
+    if (_cropType != null && _landSize != null) {
+      final u = _landSizeUnit ?? 'Ac';
+      if (_cropType == 'Both') {
+        final t = double.tryParse(_teaLandSize ?? '0') ?? 0;
+        final c = double.tryParse(_cinnamonLandSize ?? '0') ?? 0;
+        areaVal = '${(t + c).toStringAsFixed(1)} $u';
+        areaLbl = 'Total Land Area';
+        if (t > 0 && c > 0) subLine = 'Tea ${t}Ac  ·  Cinnamon ${c}Ac';
+      } else {
+        areaVal = '$_landSize $u';
+        areaLbl = '${_cropType} Land Area';
       }
     }
-    
-    final contactNumber = factoryDetails['contactNumber'] ?? 'N/A';
-    final address = factoryDetails['address'] ?? 'N/A';
-    final village = factoryDetails['village'] ?? 'N/A';
-    final district = factoryDetails['district'] ?? 'N/A';
-    final factoryLogoUrl = factoryDetails['factoryLogoUrl'];
-    
-    final statusColor = _getOrderStatusColor(status);
-    
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => OrderDetailsModal(
-        orderId: orderId,
-        factoryName: factoryName,
-        ownerName: ownerName,
-        contactNumber: contactNumber,
-        address: address,
-        village: village,
-        district: district,
-        factoryLogoUrl: factoryLogoUrl,
-        status: status,
-        statusColor: statusColor,
-        cropType: cropType,
-        totalQuantity: totalQuantity,
-        teaQuantity: teaQuantity,
-        cinnamonQuantity: cinnamonQuantity,
-        unit: unit,
-        description: description,
-        orderDate: orderDate,
-        createdAt: createdAt,
-        updatedAt: updatedAt,
-        orderPhotos: orderPhotos,
-        makePhoneCall: _makePhoneCall,
+
+    return GestureDetector(
+      onTap: _showLandModal,
+      child: Container(
+        padding: const EdgeInsets.all(_D.cardPad),
+        decoration: BoxDecoration(
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(_D.cardRadius),
+          border: Border.all(color: AppColors.border),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 4, offset: const Offset(0, 2))],
+        ),
+        child: Row(children: [
+          // Icon box
+          Container(
+            width: 44, height: 44,
+            decoration: BoxDecoration(color: cc.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+            child: Icon(_cropIcon(), color: cc, size: 22),
+          ),
+          const SizedBox(width: 12),
+          // Info
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(areaVal, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.darkText, height: 1.1)),
+            Text(areaLbl, style: const TextStyle(fontSize: 11, color: AppColors.secondaryText)),
+            if (subLine != null) ...[
+              const SizedBox(height: 3),
+              Text(subLine!, style: TextStyle(fontSize: 10, color: cc.withOpacity(0.9))),
+            ],
+          ])),
+          // Crop badge + arrow
+          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            if (_cropType != null)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(color: cc.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+                child: Text(_cropType!, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: cc)),
+              ),
+            const SizedBox(height: 6),
+            Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.textTertiary),
+          ]),
+        ]),
       ),
     );
   }
 
-  // -----------------------------------------------------------------
-  // --- HELPER METHODS ---
-  // -----------------------------------------------------------------
+  // ── EXPORT SUMMARY SECTION ────────────────────────────────
+  Widget _buildExportSection() {
+    return FutureBuilder<QuerySnapshot>(
+      future: _db.collection('land_orders').where('landOwnerId', isEqualTo: currentUser?.uid).limit(5).get(),
+      builder: (ctx, snap) {
+        if (snap.connectionState == ConnectionState.waiting) return _exportLoading();
+        if (snap.hasError || !snap.hasData || snap.data!.docs.isEmpty) return _exportEmpty();
 
-  IconData _getCropIcon() {
-    switch (_cropType) {
-      case 'Cinnamon':
-        return Icons.spa;
-      case 'Tea':
-        return Icons.agriculture;
-      case 'Both':
-        return Icons.all_inclusive;
-      default:
-        return Icons.factory;
-    }
-  }
+        final docs = snap.data!.docs;
+        double total = 0, tea = 0, cinn = 0;
+        int delivered = 0;
+        for (final d in docs) {
+          final data = d.data() as Map<String, dynamic>;
+          final s    = (data['status'] ?? '').toString().toLowerCase();
+          final ct   = data['cropType'] ?? '';
+          final tq   = double.tryParse(data['totalQuantity']?.toString() ?? '0') ?? 0;
+          final teaq = double.tryParse(data['teaQuantity']?.toString() ?? '0') ?? 0;
+          final cinq = double.tryParse(data['cinnamonQuantity']?.toString() ?? '0') ?? 0;
+          total += tq;
+          if (ct == 'Tea')      tea  += tq;
+          if (ct == 'Cinnamon') cinn += cinq;
+          if (ct == 'Both') { tea += teaq; cinn += cinq; }
+          if (s.contains('delivered') || s.contains('completed') || s.contains('accepted')) delivered++;
+        }
 
-  IconData _getFactoryCropIcon(String cropType) {
-    switch (cropType) {
-      case 'Cinnamon':
-        return Icons.spa;
-      case 'Tea':
-        return Icons.agriculture;
-      case 'Both':
-        return Icons.all_inclusive;
-      default:
-        return Icons.factory;
-    }
-  }
+        return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          _sectionLabel('Export Summary', Icons.inventory_2_rounded,
+            trailing: GestureDetector(
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ExportProductsHistoryPage())),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(color: AppColors.primaryBlue.withOpacity(0.08), borderRadius: BorderRadius.circular(8)),
+                child: const Row(children: [
+                  Text('View All', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.primaryBlue)),
+                  SizedBox(width: 3),
+                  Icon(Icons.arrow_forward_rounded, size: 11, color: AppColors.primaryBlue),
+                ]),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
 
-  Color _getCropColor() {
-    switch (_cropType) {
-      case 'Tea':
-        return AppColors.successGreen;
-      case 'Cinnamon':
-        return AppColors.warningOrange;
-      case 'Both':
-        return AppColors.purpleAccent;
-      default:
-        return AppColors.secondaryColor;
-    }
-  }
+          // 3 stat mini-cards
+          Row(children: [
+            Expanded(child: _miniStat('Total', docs.length.toString(),         Icons.receipt_long_rounded, AppColors.primaryBlue)),
+            const SizedBox(width: 6),
+            Expanded(child: _miniStat('Delivered', delivered.toString(),        Icons.check_circle_rounded,  AppColors.successGreen)),
+            const SizedBox(width: 6),
+            Expanded(child: _miniStat('Total Qty', '${total.toStringAsFixed(0)}kg', Icons.scale_rounded,    AppColors.purpleAccent)),
+          ]),
 
-  IconData _getCropIconData() {
-    switch (_cropType) {
-      case 'Tea':
-        return Icons.agriculture;
-      case 'Cinnamon':
-        return Icons.spa;
-      case 'Both':
-        return Icons.all_inclusive;
-      default:
-        return Icons.landscape;
-    }
-  }
-
-  void _showCategoryDialog(
-      String title, List<Map<String, dynamic>> factories, Color color) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(
-                _getCropIcon(),
-                color: color),
-            const SizedBox(width: 12),
-            Text(title,
-                style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+          // Crop breakdown
+          if (tea > 0 || cinn > 0) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(_D.cardPad),
+              decoration: BoxDecoration(
+                color: AppColors.cardBackground,
+                borderRadius: BorderRadius.circular(_D.cardRadius),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Container(width: 3, height: 12, decoration: BoxDecoration(color: AppColors.primaryBlue, borderRadius: BorderRadius.circular(2))),
+                  const SizedBox(width: 6),
+                  const Text('Crop Breakdown', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.darkText)),
+                ]),
+                const SizedBox(height: 8),
+                if (tea > 0)  _cropBar('Tea',      tea,  total, AppColors.successGreen),
+                if (cinn > 0) _cropBar('Cinnamon', cinn, total, AppColors.warningOrange),
+              ]),
+            ),
           ],
+
+          // Recent exports
+          if (docs.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(_D.cardPad),
+              decoration: BoxDecoration(
+                color: AppColors.cardBackground,
+                borderRadius: BorderRadius.circular(_D.cardRadius),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Container(width: 3, height: 12, decoration: BoxDecoration(color: AppColors.primaryBlue, borderRadius: BorderRadius.circular(2))),
+                  const SizedBox(width: 6),
+                  const Text('Recent Exports', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.darkText)),
+                ]),
+                const SizedBox(height: 8),
+                ...docs.take(3).map((d) => _exportRow(d)).toList(),
+              ]),
+            ),
+          ],
+        ]);
+      },
+    );
+  }
+
+  Widget _miniStat(String label, String value, IconData icon, Color color) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+    decoration: BoxDecoration(
+      color: AppColors.cardBackground,
+      borderRadius: BorderRadius.circular(_D.cardRadius),
+      border: Border.all(color: AppColors.border),
+      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 4, offset: const Offset(0, 2))],
+    ),
+    child: Row(children: [
+      Container(
+        width: 28, height: 28,
+        decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(7)),
+        child: Icon(icon, size: 13, color: color),
+      ),
+      const SizedBox(width: 7),
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: color, height: 1.1)),
+        Text(label, style: const TextStyle(fontSize: 9, color: AppColors.secondaryText)),
+      ])),
+    ]),
+  );
+
+  Widget _cropBar(String label, double val, double total, Color color) {
+    final pct = total > 0 ? val / total : 0.0;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+          Text('${val.toStringAsFixed(0)} kg  (${(pct * 100).toStringAsFixed(0)}%)',
+            style: const TextStyle(fontSize: 10, color: AppColors.secondaryText)),
+        ]),
+        const SizedBox(height: 3),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(value: pct, minHeight: 5,
+            backgroundColor: color.withOpacity(0.15), valueColor: AlwaysStoppedAnimation(color)),
         ),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: factories.length,
-            itemBuilder: (context, index) {
-              final factory = factories[index];
-              return ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: color.withOpacity(0.1),
-                  child: Icon(Icons.factory, color: color),
+      ]),
+    );
+  }
+
+  Widget _exportRow(QueryDocumentSnapshot doc) {
+    final data     = doc.data() as Map<String, dynamic>;
+    final factory  = data['factoryName'] ?? 'Unknown';
+    final status   = data['status'] ?? 'Pending';
+    final qty      = data['totalQuantity']?.toString() ?? '0';
+    final crop     = data['cropType'] ?? 'N/A';
+    final date     = data['orderDate'] as Timestamp?;
+    final unit     = data['unit'] ?? 'kg';
+    final sc       = _statusColor(status);
+    final cc       = _cropColor(crop);
+
+    return GestureDetector(
+      onTap: () => _showOrderModal(doc, data),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppColors.hover,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(children: [
+          Container(
+            width: 26, height: 26,
+            decoration: BoxDecoration(color: sc.withOpacity(0.12), shape: BoxShape.circle),
+            child: Icon(_statusIcon(status), size: 12, color: sc),
+          ),
+          const SizedBox(width: 9),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(factory, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.darkText), overflow: TextOverflow.ellipsis),
+            Row(children: [
+              Text('$qty $unit  ·  ', style: const TextStyle(fontSize: 10, color: AppColors.secondaryText)),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                decoration: BoxDecoration(color: cc.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                child: Text(crop, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: cc)),
+              ),
+            ]),
+            if (date != null)
+              Text(DateFormat('dd MMM  •  HH:mm').format(date.toDate()),
+                style: const TextStyle(fontSize: 9.5, color: AppColors.textTertiary)),
+          ])),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+            decoration: BoxDecoration(color: sc.withOpacity(0.1), borderRadius: BorderRadius.circular(8), border: Border.all(color: sc.withOpacity(0.2))),
+            child: Text(status, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: sc)),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  Widget _exportLoading() => Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(_D.cardRadius), border: Border.all(color: AppColors.border)),
+    child: const Row(children: [
+      SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryBlue)),
+      SizedBox(width: 12),
+      Text('Loading export data…', style: TextStyle(fontSize: 12, color: AppColors.secondaryText)),
+    ]),
+  );
+
+  Widget _exportEmpty() => Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(_D.cardRadius), border: Border.all(color: AppColors.border)),
+    child: Column(children: [
+      const Icon(Icons.inbox_rounded, size: 36, color: AppColors.textTertiary),
+      const SizedBox(height: 8),
+      const Text('No Export History', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.darkText)),
+      const SizedBox(height: 4),
+      const Text('Start exporting your products to see history', textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 11, color: AppColors.secondaryText)),
+      const SizedBox(height: 10),
+      ElevatedButton(onPressed: () {},
+        style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryBlue, foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8)),
+        child: const Text('Start Exporting', style: TextStyle(fontSize: 11))),
+    ]),
+  );
+
+  // ── FACTORIES SECTION ─────────────────────────────────────
+  Widget _buildFactoriesSection() {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _sectionLabel('Associated Factories', Icons.factory_rounded,
+        trailing: _allFactories.isNotEmpty ? _countBadge(_allFactories.length.toString()) : null),
+      const SizedBox(height: 8),
+
+      // mini stat row
+      if (_allFactories.isNotEmpty) ...[
+        Row(children: [
+          Expanded(child: _factStat('Total',      _allFactories.length.toString(),  Icons.factory_rounded,   AppColors.primaryBlue)),
+          const SizedBox(width: 6),
+          Expanded(child: _factStat('Tea',        _teaFact.length.toString(),       Icons.eco_rounded,       AppColors.successGreen,  onTap: () => _teaFact.isNotEmpty     ? _showCatDialog('Tea Factories',      _teaFact,     AppColors.successGreen)  : null)),
+          const SizedBox(width: 6),
+          Expanded(child: _factStat('Cinnamon',   _cinnamonFact.length.toString(),  Icons.forest_rounded,    AppColors.warningOrange, onTap: () => _cinnamonFact.isNotEmpty ? _showCatDialog('Cinnamon Factories', _cinnamonFact, AppColors.warningOrange) : null)),
+          const SizedBox(width: 6),
+          Expanded(child: _factStat('Multi',      _multiFact.length.toString(),     Icons.layers_rounded,    AppColors.purpleAccent,  onTap: () => _multiFact.isNotEmpty    ? _showCatDialog('Multi-Crop',         _multiFact,    AppColors.purpleAccent)  : null)),
+        ]),
+        const SizedBox(height: 10),
+      ],
+
+      if (_loadingFact)        _factLoading()
+      else if (_factError != null) _factErr()
+      else if (_allFactories.isEmpty) _factEmpty()
+      else _buildFactoryList(),
+    ]);
+  }
+
+  Widget _factStat(String label, String val, IconData icon, Color color, {VoidCallback? onTap}) =>
+    GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 7),
+        decoration: BoxDecoration(
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(_D.cardRadius),
+          border: Border.all(color: AppColors.border),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 4, offset: const Offset(0, 2))],
+        ),
+        child: Column(children: [
+          Container(
+            width: 26, height: 26,
+            decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(7)),
+            child: Icon(icon, size: 13, color: color),
+          ),
+          const SizedBox(height: 4),
+          Text(val,   style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: color, height: 1.1)),
+          Text(label, style: const TextStyle(fontSize: 8.5, color: AppColors.secondaryText)),
+        ]),
+      ),
+    );
+
+  Widget _buildFactoryList() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    if (_cinnamonFact.isNotEmpty) _catSection('Cinnamon Factories', Icons.forest_rounded, AppColors.warningOrange, _cinnamonFact),
+    if (_teaFact.isNotEmpty)      _catSection('Tea Factories',      Icons.eco_rounded,    AppColors.successGreen,  _teaFact),
+    if (_multiFact.isNotEmpty)    _catSection('Multi-Crop Factories', Icons.layers_rounded, AppColors.purpleAccent, _multiFact),
+  ]);
+
+  Widget _catSection(String title, IconData icon, Color color, List<Map<String, dynamic>> list) =>
+    Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const SizedBox(height: 12),
+      Row(children: [
+        Container(
+          width: _D.iconBox, height: _D.iconBox,
+          decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(7)),
+          child: Icon(icon, size: _D.iconSize, color: color),
+        ),
+        const SizedBox(width: 8),
+        Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.darkText)),
+        const Spacer(),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+          child: Text('${list.length}', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: color)),
+        ),
+      ]),
+      const SizedBox(height: 8),
+      ...list.map((f) => _factoryCard(f, color)).toList(),
+    ]);
+
+  Widget _factoryCard(Map<String, dynamic> f, Color color) {
+    final name       = f['factoryName'] ?? 'Unknown';
+    final owner      = f['ownerName']   ?? 'N/A';
+    final phone      = f['contactNumber'] ?? 'N/A';
+    final cropType   = f['cropType'] ?? 'N/A';
+    final village    = f['village']  ?? 'N/A';
+    final district   = f['district'] ?? 'N/A';
+    final logoUrl    = f['factoryLogoUrl'];
+    final updatedAt  = f['updatedAt'] != null ? (f['updatedAt'] as Timestamp).toDate() : null;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(_D.cardRadius),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 4, offset: const Offset(0, 2))],
+      ),
+      child: Column(children: [
+        // top strip
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.04),
+            border: Border(bottom: BorderSide(color: AppColors.border)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(_D.cardRadius)),
+          ),
+          child: Row(children: [
+            // logo
+            Container(
+              width: 36, height: 36,
+              decoration: BoxDecoration(borderRadius: BorderRadius.circular(9),
+                boxShadow: [BoxShadow(color: color.withOpacity(0.2), blurRadius: 4, offset: const Offset(0, 2))]),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(9),
+                child: logoUrl != null && logoUrl.isNotEmpty
+                  ? Image.network(logoUrl, fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _logoFallback(color, cropType))
+                  : _logoFallback(color, cropType),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.darkText), overflow: TextOverflow.ellipsis),
+              Text('Owner: $owner', style: const TextStyle(fontSize: 10.5, color: AppColors.secondaryText), overflow: TextOverflow.ellipsis),
+              if (updatedAt != null)
+                Text('Updated ${DateFormat('dd MMM yyyy').format(updatedAt)}',
+                  style: const TextStyle(fontSize: 9.5, color: AppColors.textTertiary)),
+            ])),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+              decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(6), border: Border.all(color: color.withOpacity(0.2))),
+              child: Text(cropType, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: color)),
+            ),
+          ]),
+        ),
+
+        // body
+        Padding(
+          padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+          child: Column(children: [
+            Row(children: [
+              Icon(Icons.phone_rounded, size: 12, color: color),
+              const SizedBox(width: 6),
+              Text(phone, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: AppColors.darkText)),
+            ]),
+            const SizedBox(height: 4),
+            Row(children: [
+              Icon(Icons.location_on_rounded, size: 12, color: color),
+              const SizedBox(width: 6),
+              Expanded(child: Text('$village, $district', style: const TextStyle(fontSize: 11, color: AppColors.secondaryText), overflow: TextOverflow.ellipsis)),
+            ]),
+            const SizedBox(height: 8),
+            Row(children: [
+              Expanded(child: OutlinedButton.icon(
+                onPressed: () => _call(phone),
+                icon: Icon(Icons.phone_rounded, size: 13, color: color),
+                label: Text('Call', style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  side: BorderSide(color: color.withOpacity(0.4)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
-                title: Text(factory['factoryName'] ?? 'Unknown'),
-                subtitle: Text('Owner: ${factory['ownerName'] ?? 'N/A'}'),
-                trailing: Icon(Icons.chevron_right, color: color),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showFactoryDetailsModal(factory);
-                },
-              );
-            },
-          ),
+              )),
+              const SizedBox(width: 8),
+              Expanded(child: ElevatedButton.icon(
+                onPressed: () => _showFactoryModal(f),
+                icon: const Icon(Icons.info_outline_rounded, size: 13, color: Colors.white),
+                label: const Text('Details', style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w600)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: color, elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              )),
+            ]),
+          ]),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
+      ]),
     );
   }
 
-  void _showFactoryDetailsModal(Map<String, dynamic> factory) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => FactoryDetailsModal(
-        factory: factory,
-        makePhoneCall: _makePhoneCall,
+  Widget _logoFallback(Color color, String cropType) => Container(
+    color: color.withOpacity(0.15),
+    child: Icon(_cropIcon(cropType), color: color, size: 18),
+  );
+
+  Widget _factLoading() => Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(_D.cardRadius), border: Border.all(color: AppColors.border)),
+    child: const Row(children: [
+      SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryBlue)),
+      SizedBox(width: 12),
+      Text('Loading factories…', style: TextStyle(fontSize: 12, color: AppColors.secondaryText)),
+    ]),
+  );
+
+  Widget _factErr() => Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(_D.cardRadius), border: Border.all(color: AppColors.border)),
+    child: Column(children: [
+      const Icon(Icons.cloud_off_rounded, size: 36, color: AppColors.textTertiary),
+      const SizedBox(height: 8),
+      Text(_factError ?? 'Error', style: const TextStyle(fontSize: 12, color: AppColors.secondaryText), textAlign: TextAlign.center),
+      const SizedBox(height: 8),
+      TextButton.icon(onPressed: _fetchFactories, icon: const Icon(Icons.refresh_rounded, size: 14), label: const Text('Retry', style: TextStyle(fontSize: 12)),
+        style: TextButton.styleFrom(foregroundColor: AppColors.primaryBlue)),
+    ]),
+  );
+
+  Widget _factEmpty() => Container(
+    padding: const EdgeInsets.all(20),
+    decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(_D.cardRadius), border: Border.all(color: AppColors.border)),
+    child: Column(children: [
+      Container(
+        width: 52, height: 52,
+        decoration: BoxDecoration(color: AppColors.primaryBlue.withOpacity(0.08), borderRadius: BorderRadius.circular(14)),
+        child: const Icon(Icons.factory_outlined, size: 26, color: AppColors.primaryBlue),
       ),
-    );
-  }
+      const SizedBox(height: 10),
+      const Text('No Associated Factories', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.darkText)),
+      const SizedBox(height: 4),
+      const Text('Add factories to start supplying your crops.', textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 11, color: AppColors.secondaryText)),
+      const SizedBox(height: 10),
+      ElevatedButton.icon(onPressed: () {},
+        icon: const Icon(Icons.add_business_rounded, size: 14),
+        label: const Text('Add Factory', style: TextStyle(fontSize: 11)),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primaryBlue, foregroundColor: Colors.white, elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9))),
+    ]),
+  );
 
-  void _showLandSizeDetailsModal() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => LandSizeDetailsModal(
-        cropType: _cropType,
-        landSize: _landSize,
-        landSizeUnit: _landSizeUnit,
-        teaLandSize: _teaLandSize,
-        cinnamonLandSize: _cinnamonLandSize,
-        landSizeDetails: _landSizeDetails,
-        landPhotos: _landPhotos,
-      ),
-    );
-  }
+  // ── SECTION LABEL ─────────────────────────────────────────
+  Widget _sectionLabel(String title, IconData icon, {Widget? trailing}) => Row(children: [
+    Container(
+      width: _D.iconBox, height: _D.iconBox,
+      decoration: BoxDecoration(color: AppColors.primaryBlue.withOpacity(0.1), borderRadius: BorderRadius.circular(7)),
+      child: Icon(icon, size: _D.iconSize, color: AppColors.primaryBlue),
+    ),
+    const SizedBox(width: 8),
+    Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.darkText)),
+    if (trailing != null) ...[const Spacer(), trailing],
+  ]);
 
-  // Helper functions for order status
-  Color _getOrderStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'pending':
-        return AppColors.warningOrange;
-      case 'factory recived':
-      case 'received factory':
-        return AppColors.info;
-      case 'delivered':
-      case 'completed':
-      case 'accepted':
-        return AppColors.successGreen;
-      case 'cancelled':
-      case 'rejected':
-        return AppColors.accentRed;
-      default:
-        return AppColors.primaryBlue;
+  Widget _countBadge(String n) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+    decoration: BoxDecoration(
+      gradient: const LinearGradient(colors: [AppColors.primaryBlue, AppColors.purpleAccent]),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Row(children: [
+      const Icon(Icons.business_rounded, size: 11, color: Colors.white),
+      const SizedBox(width: 4),
+      Text(n, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)),
+    ]),
+  );
+
+  // ── FOOTER ────────────────────────────────────────────────
+  Widget _buildFooter() => Container(
+    padding: const EdgeInsets.symmetric(vertical: 8),
+    decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.border))),
+    child: const Text('Developed By Malitha Tishamal',
+      textAlign: TextAlign.center,
+      style: TextStyle(fontSize: 11, color: AppColors.secondaryText)),
+  );
+
+  // ── MODALS ────────────────────────────────────────────────
+  void _showLandModal() => showModalBottomSheet(context: context, isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => LandSizeDetailsModal(
+      cropType: _cropType, landSize: _landSize, landSizeUnit: _landSizeUnit,
+      teaLandSize: _teaLandSize, cinnamonLandSize: _cinnamonLandSize,
+      landSizeDetails: _landSizeDetails, landPhotos: _landPhotos));
+
+  void _showFactoryModal(Map<String, dynamic> f) => showModalBottomSheet(context: context,
+    isScrollControlled: true, backgroundColor: Colors.transparent,
+    builder: (_) => FactoryDetailsModal(factory: f, makePhoneCall: _call));
+
+  void _showCatDialog(String title, List<Map<String, dynamic>> list, Color color) =>
+    showDialog(context: context, builder: (_) => AlertDialog(
+      title: Row(children: [
+        Icon(_cropIcon(), color: color),
+        const SizedBox(width: 10),
+        Text(title, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 15)),
+      ]),
+      content: SizedBox(width: double.maxFinite, child: ListView.builder(
+        shrinkWrap: true, itemCount: list.length,
+        itemBuilder: (_, i) => ListTile(
+          leading: CircleAvatar(backgroundColor: color.withOpacity(0.1), child: Icon(Icons.factory_rounded, color: color, size: 18)),
+          title: Text(list[i]['factoryName'] ?? 'Unknown', style: const TextStyle(fontSize: 13)),
+          subtitle: Text('Owner: ${list[i]['ownerName'] ?? 'N/A'}', style: const TextStyle(fontSize: 11)),
+          trailing: Icon(Icons.chevron_right_rounded, color: color),
+          onTap: () { Navigator.pop(context); _showFactoryModal(list[i]); },
+        ),
+      )),
+      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))],
+    ));
+
+  void _showOrderModal(QueryDocumentSnapshot doc, Map<String, dynamic> data) async {
+    final factoryId = data['factoryId'];
+    Map<String, dynamic> fd = {};
+    String ownerName = 'Loading…';
+    if (factoryId != null) {
+      try {
+        final fDoc = await _db.collection('factories').doc(factoryId).get();
+        if (fDoc.exists) fd = fDoc.data() as Map<String, dynamic>;
+        final uDoc = await _db.collection('users').doc(factoryId).get();
+        if (uDoc.exists) ownerName = uDoc['name'] ?? 'Unknown';
+      } catch (_) {}
     }
-  }
-
-  IconData _getOrderStatusIcon(String status) {
-    switch (status.toLowerCase()) {
-      case 'pending':
-        return Icons.pending_outlined;
-      case 'factory recived':
-      case 'received factory':
-        return Icons.factory_rounded;
-      case 'delivered':
-      case 'completed':
-      case 'accepted':
-        return Icons.check_circle_outline_rounded;
-      case 'cancelled':
-      case 'rejected':
-        return Icons.cancel_outlined;
-      default:
-        return Icons.info_outline_rounded;
-    }
-  }
-
-  Color _getCropColorFromString(String cropType) {
-    switch (cropType.toLowerCase()) {
-      case 'tea':
-        return AppColors.successGreen;
-      case 'cinnamon':
-        return AppColors.warningOrange;
-      case 'both':
-        return AppColors.purpleAccent;
-      default:
-        return AppColors.primaryBlue;
-    }
+    final sc = _statusColor(data['status'] ?? '');
+    showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
+      builder: (_) => OrderDetailsModal(
+        orderId: doc.id,
+        factoryName: data['factoryName'] ?? 'Unknown',
+        ownerName: ownerName,
+        contactNumber: fd['contactNumber'] ?? 'N/A',
+        address: fd['address'] ?? 'N/A',
+        village: fd['village'] ?? 'N/A',
+        district: fd['district'] ?? 'N/A',
+        factoryLogoUrl: fd['factoryLogoUrl'],
+        status: data['status'] ?? 'Pending',
+        statusColor: sc,
+        cropType: data['cropType'] ?? 'N/A',
+        totalQuantity: data['totalQuantity']?.toString() ?? '0',
+        teaQuantity: data['teaQuantity']?.toString() ?? '0',
+        cinnamonQuantity: data['cinnamonQuantity']?.toString() ?? '0',
+        unit: data['unit'] ?? 'kg',
+        description: data['description'] ?? '',
+        orderDate: data['orderDate'] as Timestamp?,
+        createdAt: data['createdAt'] as Timestamp?,
+        updatedAt: data['updatedAt'] as Timestamp?,
+        orderPhotos: List<String>.from(data['orderPhotos'] ?? []),
+        makePhoneCall: _call,
+      ));
   }
 }
 
-// -----------------------------------------------------------------
-// --- MODAL WIDGETS ---
-// -----------------------------------------------------------------
+// ─────────────────────────────────────────────────────────────
+// MODAL WIDGETS — unchanged logic, compact style
+// ─────────────────────────────────────────────────────────────
 
 class FactoryDetailsModal extends StatelessWidget {
   final Map<String, dynamic> factory;
   final Function(String) makePhoneCall;
+  const FactoryDetailsModal({super.key, required this.factory, required this.makePhoneCall});
 
-  const FactoryDetailsModal({
-    super.key,
-    required this.factory,
-    required this.makePhoneCall,
-  });
+  Color get _mainColor {
+    switch ((factory['cropType'] ?? '').toString()) {
+      case 'Tea'      : return AppColors.successGreen;
+      case 'Cinnamon' : return AppColors.warningOrange;
+      case 'Both'     : return AppColors.purpleAccent;
+      default         : return AppColors.primaryBlue;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final factoryName = factory['factoryName'] ?? 'Unknown Factory';
-    final ownerName = factory['ownerName'] ?? 'N/A';
-    final contactNumber = factory['contactNumber'] ?? 'N/A';
-    final cropType = factory['cropType'] ?? 'N/A';
-    final address = factory['address'] ?? 'N/A';
-    final village = factory['village'] ?? 'N/A';
-    final province = factory['province'] ?? 'N/A';
-    final district = factory['district'] ?? 'N/A';
-    final agDivision = factory['agDivision'] ?? 'N/A';
-    final gnDivision = factory['gnDivision'] ?? 'N/A';
-    final country = factory['country'] ?? 'Sri Lanka';
-    final updatedAt = factory['updatedAt'] != null
-        ? (factory['updatedAt'] as Timestamp).toDate()
-        : null;
-    
-    final factoryLogoUrl = factory['factoryLogoUrl'];
-    final factoryPhotos = List<String>.from(factory['factoryPhotos'] ?? []);
-
-    final Map<String, Color> cropColors = {
-      'Cinnamon': AppColors.warningOrange,
-      'Tea': AppColors.successGreen,
-      'Both': AppColors.purpleAccent,
-    };
-
-    final mainColor = cropColors[cropType] ?? AppColors.primaryBlue;
+    final c        = _mainColor;
+    final name     = factory['factoryName']   ?? 'Unknown';
+    final owner    = factory['ownerName']     ?? 'N/A';
+    final phone    = factory['contactNumber'] ?? 'N/A';
+    final crop     = factory['cropType']      ?? 'N/A';
+    final address  = factory['address']       ?? 'N/A';
+    final village  = factory['village']       ?? 'N/A';
+    final province = factory['province']      ?? 'N/A';
+    final district = factory['district']      ?? 'N/A';
+    final agDiv    = factory['agDivision']    ?? 'N/A';
+    final gnDiv    = factory['gnDivision']    ?? 'N/A';
+    final country  = factory['country']       ?? 'Sri Lanka';
+    final logo     = factory['factoryLogoUrl'];
+    final photos   = List<String>.from(factory['factoryPhotos'] ?? []);
+    final updAt    = factory['updatedAt'] != null ? (factory['updatedAt'] as Timestamp).toDate() : null;
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.90,
+      height: MediaQuery.of(context).size.height * 0.88,
       decoration: const BoxDecoration(
         color: AppColors.cardBackground,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(30),
-          topRight: Radius.circular(30),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(children: [
+        // handle
+        Container(margin: const EdgeInsets.only(top: 10), width: 36, height: 3,
+          decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2))),
+        // header
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+          child: Row(children: [
+            _logo(logo, c, crop),
+            const SizedBox(width: 12),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.darkText)),
+              Text('$crop Factory', style: TextStyle(fontSize: 11, color: c, fontWeight: FontWeight.w600)),
+            ])),
+            GestureDetector(onTap: () => Navigator.pop(context),
+              child: const Icon(Icons.close_rounded, size: 18, color: AppColors.secondaryText)),
+          ]),
         ),
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  mainColor.withOpacity(0.1),
-                  mainColor.withOpacity(0.05),
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(30),
-                topRight: Radius.circular(30),
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: mainColor.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: factoryLogoUrl != null && factoryLogoUrl.isNotEmpty
-                        ? Image.network(
-                            factoryLogoUrl,
-                            fit: BoxFit.cover,
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return Container(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      mainColor,
-                                      Color.lerp(mainColor, Colors.black, 0.2)!,
-                                    ],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                ),
-                                child: const Center(
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
-                                  ),
-                                ),
-                              );
-                            },
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      mainColor,
-                                      Color.lerp(mainColor, Colors.black, 0.2)!,
-                                    ],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                ),
-                                child: Icon(
-                                  Icons.factory,
-                                  color: Colors.white,
-                                  size: 28,
-                                ),
-                              );
-                            },
-                          )
-                        : Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  mainColor,
-                                  Color.lerp(mainColor, Colors.black, 0.2)!,
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                            ),
-                            child: Icon(
-                              Icons.factory,
-                              color: Colors.white,
-                              size: 28,
-                            ),
-                          ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        factoryName,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.darkText,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '$cropType Factory',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: mainColor,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close, color: AppColors.secondaryText),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildDetailSection(
-                    title: 'Basic Information',
-                    icon: Icons.info_outline,
-                    children: [
-                      _buildDetailRow('Factory Name', factoryName),
-                      _buildDetailRow('Owner Name', ownerName),
-                      _buildDetailRow('Contact Number', contactNumber),
-                      _buildDetailRow('Crop Type', cropType),
-                      if (updatedAt != null)
-                        _buildDetailRow(
-                          'Last Updated',
-                          DateFormat('MMMM dd, yyyy - hh:mm a').format(updatedAt),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  
-                  if (factoryPhotos.isNotEmpty)
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildDetailSection(
-                          title: 'Factory Photos',
-                          icon: Icons.photo_camera,
-                          children: [
-                            const SizedBox(height: 8),
-                            Text(
-                              'Total ${factoryPhotos.length} photo${factoryPhotos.length > 1 ? 's' : ''}',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: AppColors.secondaryText,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            GridView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 3,
-                                crossAxisSpacing: 8,
-                                mainAxisSpacing: 8,
-                                childAspectRatio: 1,
-                              ),
-                              itemCount: factoryPhotos.length,
-                              itemBuilder: (context, index) {
-                                return ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.network(
-                                    factoryPhotos[index],
-                                    fit: BoxFit.cover,
-                                    loadingBuilder: (context, child, loadingProgress) {
-                                      if (loadingProgress == null) return child;
-                                      return Center(
-                                        child: CircularProgressIndicator(
-                                          value: loadingProgress.expectedTotalBytes != null
-                                              ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                              : null,
-                                          color: mainColor,
-                                        ),
-                                      );
-                                    },
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Container(
-                                        color: Colors.grey[200],
-                                        child: const Icon(Icons.broken_image, color: Colors.grey),
-                                      );
-                                    },
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-                      ],
-                    ),
-                  
-                  _buildDetailSection(
-                    title: 'Location Details',
-                    icon: Icons.location_on,
-                    children: [
-                      _buildDetailRow('Address', address),
-                      _buildDetailRow('Village/Town', village),
-                      _buildDetailRow('District', district),
-                      _buildDetailRow('Province', province),
-                      _buildDetailRow('A/G Division', agDivision),
-                      _buildDetailRow('G/N Division', gnDivision),
-                      _buildDetailRow('Country', country),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  _buildDetailSection(
-                    title: 'Factory Identification',
-                    icon: Icons.fingerprint,
-                    children: [
-                      _buildDetailRow(
-                          'Factory ID', factory['id']?.toString() ?? 'N/A'),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.background,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: mainColor.withOpacity(0.2)),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.shield, color: mainColor, size: 20),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                'Associated via Land Details',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: AppColors.darkText,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 30),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => makePhoneCall(contactNumber),
-                          icon: Icon(Icons.phone, color: mainColor),
-                          label: Text(
-                            'Call Factory',
-                            style:
-                                TextStyle(color: mainColor, fontWeight: FontWeight.w600),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            side: BorderSide(color: mainColor),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () {},
-                          icon: const Icon(Icons.message, color: Colors.white),
-                          label: const Text(
-                            'Send Message',
-                            style:
-                                TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: mainColor,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+        const Divider(height: 1, color: AppColors.border),
+
+        Expanded(child: SingleChildScrollView(
+          padding: const EdgeInsets.all(14),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            _sec('Basic Information', Icons.info_outline_rounded, [
+              _row('Factory',  name),
+              _row('Owner',    owner),
+              _row('Contact',  phone),
+              _row('Crop',     crop),
+              if (updAt != null) _row('Updated', DateFormat('dd MMM yyyy  HH:mm').format(updAt)),
+            ]),
+            const SizedBox(height: 12),
+            if (photos.isNotEmpty) ...[
+              _sec('Factory Photos', Icons.photo_camera_rounded, [
+                const SizedBox(height: 6),
+                _photoGrid(photos, c),
+              ]),
+              const SizedBox(height: 12),
+            ],
+            _sec('Location', Icons.location_on_rounded, [
+              _row('Address',  address),
+              _row('Village',  village),
+              _row('District', district),
+              _row('Province', province),
+              _row('A/G Div',  agDiv),
+              _row('G/N Div',  gnDiv),
+              _row('Country',  country),
+            ]),
+            const SizedBox(height: 20),
+            Row(children: [
+              Expanded(child: OutlinedButton.icon(
+                onPressed: () => makePhoneCall(phone),
+                icon: Icon(Icons.phone_rounded, size: 14, color: c),
+                label: Text('Call', style: TextStyle(fontSize: 12, color: c, fontWeight: FontWeight.w600)),
+                style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 11),
+                  side: BorderSide(color: c), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+              )),
+              const SizedBox(width: 10),
+              Expanded(child: ElevatedButton.icon(
+                onPressed: () {},
+                icon: const Icon(Icons.message_rounded, size: 14, color: Colors.white),
+                label: const Text('Message', style: TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w600)),
+                style: ElevatedButton.styleFrom(backgroundColor: c, elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 11),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+              )),
+            ]),
+            const SizedBox(height: 16),
+          ]),
+        )),
+      ]),
     );
   }
 
-  Widget _buildDetailSection({
-    required String title,
-    required IconData icon,
-    required List<Widget> children,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: AppColors.primaryBlue.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(icon, size: 18, color: AppColors.primaryBlue),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: AppColors.darkText,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.background,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            children: children,
-          ),
-        ),
-      ],
-    );
+  Widget _logo(String? url, Color c, String crop) => Container(
+    width: 46, height: 46,
+    decoration: BoxDecoration(borderRadius: BorderRadius.circular(10),
+      boxShadow: [BoxShadow(color: c.withOpacity(0.25), blurRadius: 6, offset: const Offset(0, 3))]),
+    child: ClipRRect(borderRadius: BorderRadius.circular(10),
+      child: url != null && url.isNotEmpty
+        ? Image.network(url, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _fb(c, crop))
+        : _fb(c, crop)),
+  );
+
+  Widget _fb(Color c, String crop) => Container(
+    color: c.withOpacity(0.12),
+    child: Icon(_cropIconFromString(crop), color: c, size: 22));
+
+  IconData _cropIconFromString(String ct) {
+    switch (ct.toLowerCase()) {
+      case 'tea': return Icons.eco_rounded;
+      case 'cinnamon': return Icons.forest_rounded;
+      case 'both': return Icons.layers_rounded;
+      default: return Icons.factory_rounded;
+    }
   }
 
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              '$label:',
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.secondaryText,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                fontSize: 14,
-                color: AppColors.darkText,
-              ),
-            ),
-          ),
-        ],
-      )
-    );
-  }
+  Widget _sec(String title, IconData icon, List<Widget> ch) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(children: [
+        Container(width: 26, height: 26,
+          decoration: BoxDecoration(color: AppColors.primaryBlue.withOpacity(0.1), borderRadius: BorderRadius.circular(7)),
+          child: Icon(icon, size: 13, color: AppColors.primaryBlue)),
+        const SizedBox(width: 7),
+        Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.darkText)),
+      ]),
+      const SizedBox(height: 7),
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(color: AppColors.hover, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.border)),
+        child: Column(children: ch),
+      ),
+    ],
+  );
+
+  Widget _row(String label, String value) => Container(
+    padding: const EdgeInsets.symmetric(vertical: 7),
+    decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.border, width: 0.5))),
+    child: Row(children: [
+      SizedBox(width: 80, child: Text(label, style: const TextStyle(fontSize: 11, color: AppColors.secondaryText))),
+      const SizedBox(width: 8),
+      Expanded(child: Text(value, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: AppColors.darkText))),
+    ]),
+  );
+
+  Widget _photoGrid(List<String> photos, Color c) => GridView.builder(
+    shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
+    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 6, mainAxisSpacing: 6),
+    itemCount: photos.length,
+    itemBuilder: (_, i) => ClipRRect(borderRadius: BorderRadius.circular(7),
+      child: Image.network(photos[i], fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => Container(color: AppColors.hover, child: const Icon(Icons.broken_image_outlined, size: 18, color: AppColors.textTertiary)))));
 }
 
-// Order Details Modal Widget
+
+// ── Order Details Modal ───────────────────────────────────────
 class OrderDetailsModal extends StatelessWidget {
-  final String orderId;
-  final String factoryName;
-  final String ownerName;
-  final String contactNumber;
-  final String address;
-  final String village;
-  final String district;
+  final String orderId, factoryName, ownerName, contactNumber, address, village, district;
   final String? factoryLogoUrl;
-  final String status;
+  final String status, cropType, totalQuantity, teaQuantity, cinnamonQuantity, unit, description;
   final Color statusColor;
-  final String cropType;
-  final String totalQuantity;
-  final String teaQuantity;
-  final String cinnamonQuantity;
-  final String unit;
-  final String description;
-  final Timestamp? orderDate;
-  final Timestamp? createdAt;
-  final Timestamp? updatedAt;
+  final Timestamp? orderDate, createdAt, updatedAt;
   final List<String> orderPhotos;
   final Function(String) makePhoneCall;
 
   const OrderDetailsModal({
-    super.key,
-    required this.orderId,
-    required this.factoryName,
-    required this.ownerName,
-    required this.contactNumber,
-    required this.address,
-    required this.village,
-    required this.district,
-    required this.factoryLogoUrl,
-    required this.status,
-    required this.statusColor,
-    required this.cropType,
-    required this.totalQuantity,
-    required this.teaQuantity,
-    required this.cinnamonQuantity,
-    required this.unit,
-    required this.description,
-    required this.orderDate,
-    required this.createdAt,
-    required this.updatedAt,
-    required this.orderPhotos,
-    required this.makePhoneCall,
+    super.key, required this.orderId, required this.factoryName, required this.ownerName,
+    required this.contactNumber, required this.address, required this.village, required this.district,
+    required this.factoryLogoUrl, required this.status, required this.statusColor,
+    required this.cropType, required this.totalQuantity, required this.teaQuantity,
+    required this.cinnamonQuantity, required this.unit, required this.description,
+    required this.orderDate, required this.createdAt, required this.updatedAt,
+    required this.orderPhotos, required this.makePhoneCall,
   });
+
+  IconData get _statusIcon {
+    switch (status.toLowerCase()) {
+      case 'pending'          : return Icons.schedule_rounded;
+      case 'factory recived'  :
+      case 'factory received' : return Icons.factory_rounded;
+      case 'delivered': case 'completed': case 'accepted': return Icons.check_circle_rounded;
+      case 'cancelled': case 'rejected' : return Icons.cancel_rounded;
+      default: return Icons.info_rounded;
+    }
+  }
+  Color get _cropColor {
+    switch (cropType.toLowerCase()) {
+      case 'tea'      : return AppColors.successGreen;
+      case 'cinnamon' : return AppColors.warningOrange;
+      case 'both'     : return AppColors.purpleAccent;
+      default         : return AppColors.primaryBlue;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final cropColor = _getCropColorFromString(cropType);
-    
     return Container(
       height: MediaQuery.of(context).size.height * 0.85,
       decoration: const BoxDecoration(
         color: AppColors.cardBackground,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(30),
-          topRight: Radius.circular(30),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  statusColor.withOpacity(0.1),
-                  statusColor.withOpacity(0.05),
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(30),
-                topRight: Radius.circular(30),
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: statusColor.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: factoryLogoUrl != null && factoryLogoUrl!.isNotEmpty
-                        ? Image.network(
-                            factoryLogoUrl!,
-                            fit: BoxFit.cover,
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return Container(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      statusColor,
-                                      Color.lerp(statusColor, Colors.black, 0.2)!,
-                                    ],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                ),
-                                child: const Center(
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
-                                  ),
-                                ),
-                              );
-                            },
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      statusColor,
-                                      Color.lerp(statusColor, Colors.black, 0.2)!,
-                                    ],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                ),
-                                child: const Icon(
-                                  Icons.factory,
-                                  color: Colors.white,
-                                  size: 28,
-                                ),
-                              );
-                            },
-                          )
-                        : Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  statusColor,
-                                  Color.lerp(statusColor, Colors.black, 0.2)!,
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                            ),
-                            child: const Icon(
-                              Icons.factory,
-                              color: Colors.white,
-                              size: 28,
-                            ),
-                          ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        factoryName,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.darkText,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Order: $orderId',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.secondaryText,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close, color: AppColors.secondaryText),
-                ),
-              ],
-            ),
-          ),
-          
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 20),
-            decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.05),
-              border: Border(
-                bottom: BorderSide(color: statusColor.withOpacity(0.1)),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: statusColor.withOpacity(0.3)),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        _getOrderStatusIcon(status),
-                        size: 14,
-                        color: statusColor,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        status.toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: statusColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildDetailSection(
-                    title: 'Order Information',
-                    icon: Icons.shopping_cart,
-                    children: [
-                      _buildDetailRow('Order ID', orderId),
-                      _buildDetailRow('Crop Type', cropType),
-                      _buildDetailRowWithBadge(
-                        'Total Quantity',
-                        '$totalQuantity $unit',
-                        cropColor,
-                      ),
-                      if (cropType == 'Both' || cropType == 'Tea') 
-                        _buildDetailRow('Tea Quantity', '$teaQuantity $unit'),
-                      if (cropType == 'Both' || cropType == 'Cinnamon') 
-                        _buildDetailRow('Cinnamon Quantity', '$cinnamonQuantity $unit'),
-                      if (orderDate != null)
-                        _buildDetailRow(
-                          'Order Date',
-                          DateFormat('MMMM dd, yyyy - hh:mm a').format(orderDate!.toDate()),
-                        ),
-                      if (description.isNotEmpty)
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 8),
-                            const Text(
-                              'Description:',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.secondaryText,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              description,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: AppColors.darkText,
-                              ),
-                            ),
-                          ],
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  
-                  _buildDetailSection(
-                    title: 'Factory Information',
-                    icon: Icons.factory,
-                    children: [
-                      _buildDetailRow('Factory Name', factoryName),
-                      _buildDetailRow('Owner Name', ownerName),
-                      _buildDetailRow('Contact Number', contactNumber),
-                      _buildDetailRow('Address', address),
-                      _buildDetailRow('Village/Town', village),
-                      _buildDetailRow('District', district),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  
-                  if (orderPhotos.isNotEmpty)
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildDetailSection(
-                          title: 'Order Photos',
-                          icon: Icons.photo_library,
-                          children: [
-                            const SizedBox(height: 8),
-                            Text(
-                              'Total ${orderPhotos.length} photo${orderPhotos.length > 1 ? 's' : ''}',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: AppColors.secondaryText,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            GridView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 3,
-                                crossAxisSpacing: 8,
-                                mainAxisSpacing: 8,
-                                childAspectRatio: 1,
-                              ),
-                              itemCount: orderPhotos.length,
-                              itemBuilder: (context, index) {
-                                return ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.network(
-                                    orderPhotos[index],
-                                    fit: BoxFit.cover,
-                                    loadingBuilder: (context, child, loadingProgress) {
-                                      if (loadingProgress == null) return child;
-                                      return Center(
-                                        child: CircularProgressIndicator(
-                                          value: loadingProgress.expectedTotalBytes != null
-                                              ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                              : null,
-                                          color: statusColor,
-                                        ),
-                                      );
-                                    },
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Container(
-                                        color: Colors.grey[200],
-                                        child: const Icon(Icons.broken_image, color: Colors.grey),
-                                      );
-                                    },
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-                      ],
-                    ),
-                  
-                  _buildDetailSection(
-                    title: 'Timestamps',
-                    icon: Icons.access_time,
-                    children: [
-                      if (createdAt != null)
-                        _buildDetailRow(
-                          'Created At',
-                          DateFormat('MMMM dd, yyyy - hh:mm a').format(createdAt!.toDate()),
-                        ),
-                      if (updatedAt != null)
-                        _buildDetailRow(
-                          'Updated At',
-                          DateFormat('MMMM dd, yyyy - hh:mm a').format(updatedAt!.toDate()),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 30),
-                  
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => makePhoneCall(contactNumber),
-                          icon: Icon(Icons.phone, color: statusColor),
-                          label: Text(
-                            'Call Factory',
-                            style: TextStyle(
-                              color: statusColor, 
-                              fontWeight: FontWeight.w600
-                            ),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            side: BorderSide(color: statusColor),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            Navigator.pop(context);
-                          },
-                          icon: const Icon(Icons.close, color: Colors.white, size: 18),
-                          label: const Text(
-                            'Close',
-                            style: TextStyle(
-                              color: Colors.white, 
-                              fontWeight: FontWeight.w600
-                            ),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: statusColor,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            elevation: 2,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+      child: Column(children: [
+        Container(margin: const EdgeInsets.only(top: 10), width: 36, height: 3,
+          decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2))),
 
-  Widget _buildDetailSection({
-    required String title,
-    required IconData icon,
-    required List<Widget> children,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: AppColors.primaryBlue.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(icon, size: 18, color: AppColors.primaryBlue),
+        // header
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+          child: Row(children: [
+            Container(width: 44, height: 44,
+              decoration: BoxDecoration(borderRadius: BorderRadius.circular(10),
+                boxShadow: [BoxShadow(color: statusColor.withOpacity(0.25), blurRadius: 6, offset: const Offset(0, 3))]),
+              child: ClipRRect(borderRadius: BorderRadius.circular(10),
+                child: factoryLogoUrl != null && factoryLogoUrl!.isNotEmpty
+                  ? Image.network(factoryLogoUrl!, fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(color: statusColor.withOpacity(0.12), child: const Icon(Icons.factory_rounded, color: Colors.white, size: 20)))
+                  : Container(color: statusColor.withOpacity(0.12), child: Icon(Icons.factory_rounded, color: statusColor, size: 20))),
             ),
             const SizedBox(width: 10),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: AppColors.darkText,
-              ),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(factoryName, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.darkText), overflow: TextOverflow.ellipsis),
+              Text('Order: ${orderId.substring(0, 8)}…', style: const TextStyle(fontSize: 10, color: AppColors.secondaryText)),
+            ])),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(8), border: Border.all(color: statusColor.withOpacity(0.25))),
+              child: Row(children: [
+                Icon(_statusIcon, size: 10, color: statusColor),
+                const SizedBox(width: 4),
+                Text(status.toUpperCase(), style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: statusColor)),
+              ]),
             ),
-          ],
+            const SizedBox(width: 6),
+            GestureDetector(onTap: () => Navigator.pop(context),
+              child: const Icon(Icons.close_rounded, size: 18, color: AppColors.secondaryText)),
+          ]),
         ),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.background,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            children: children,
-          ),
-        ),
-      ],
+        const Divider(height: 1, color: AppColors.border),
+
+        Expanded(child: SingleChildScrollView(
+          padding: const EdgeInsets.all(14),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            _sec('Order Information', Icons.receipt_long_rounded, [
+              _row('Order ID', '${orderId.substring(0, 12)}…'),
+              _row('Crop Type', cropType),
+              _rowBadge('Total Qty', '$totalQuantity $unit', _cropColor),
+              if (cropType == 'Both' || cropType == 'Tea')      _row('Tea Qty',      '$teaQuantity $unit'),
+              if (cropType == 'Both' || cropType == 'Cinnamon') _row('Cinnamon Qty', '$cinnamonQuantity $unit'),
+              if (orderDate != null) _row('Order Date', DateFormat('dd MMM yyyy  HH:mm').format(orderDate!.toDate())),
+              if (description.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text('Description', style: const TextStyle(fontSize: 10, color: AppColors.secondaryText)),
+                const SizedBox(height: 3),
+                Text(description, style: const TextStyle(fontSize: 11.5, color: AppColors.darkText, height: 1.45)),
+              ],
+            ]),
+            const SizedBox(height: 12),
+            _sec('Factory Information', Icons.factory_rounded, [
+              _row('Factory',  factoryName),
+              _row('Owner',    ownerName),
+              _row('Contact',  contactNumber),
+              _row('Address',  address),
+              _row('Village',  village),
+              _row('District', district),
+            ]),
+            if (orderPhotos.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _sec('Order Photos', Icons.photo_library_rounded, [
+                const SizedBox(height: 6),
+                _photoGrid(orderPhotos),
+              ]),
+            ],
+            if (createdAt != null || updatedAt != null) ...[
+              const SizedBox(height: 12),
+              _sec('Timestamps', Icons.access_time_rounded, [
+                if (createdAt != null) _row('Created',  DateFormat('dd MMM yyyy  HH:mm').format(createdAt!.toDate())),
+                if (updatedAt != null) _row('Updated',  DateFormat('dd MMM yyyy  HH:mm').format(updatedAt!.toDate())),
+              ]),
+            ],
+            const SizedBox(height: 16),
+            Row(children: [
+              Expanded(child: OutlinedButton.icon(
+                onPressed: () => makePhoneCall(contactNumber),
+                icon: Icon(Icons.phone_rounded, size: 13, color: statusColor),
+                label: Text('Call Factory', style: TextStyle(fontSize: 11, color: statusColor, fontWeight: FontWeight.w600)),
+                style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 11),
+                  side: BorderSide(color: statusColor), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+              )),
+              const SizedBox(width: 10),
+              Expanded(child: ElevatedButton.icon(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.close_rounded, size: 13, color: Colors.white),
+                label: const Text('Close', style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w600)),
+                style: ElevatedButton.styleFrom(backgroundColor: statusColor, elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 11),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+              )),
+            ]),
+            const SizedBox(height: 16),
+          ]),
+        )),
+      ]),
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              '$label:',
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.secondaryText,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                fontSize: 14,
-                color: AppColors.darkText,
-              ),
-            ),
-          ),
-        ],
+  Widget _sec(String title, IconData icon, List<Widget> ch) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(children: [
+        Container(width: 26, height: 26,
+          decoration: BoxDecoration(color: AppColors.primaryBlue.withOpacity(0.1), borderRadius: BorderRadius.circular(7)),
+          child: Icon(icon, size: 12, color: AppColors.primaryBlue)),
+        const SizedBox(width: 7),
+        Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.darkText)),
+      ]),
+      const SizedBox(height: 6),
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(color: AppColors.hover, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.border)),
+        child: Column(children: ch),
       ),
-    );
-  }
+    ],
+  );
 
-  Widget _buildDetailRowWithBadge(String label, String value, Color color) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              '$label:',
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.secondaryText,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: color.withOpacity(0.3)),
-            ),
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: color,
-              ),
-            ),
-          ),
-        ],
+  Widget _row(String label, String value) => Container(
+    padding: const EdgeInsets.symmetric(vertical: 7),
+    decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.border, width: 0.5))),
+    child: Row(children: [
+      SizedBox(width: 85, child: Text(label, style: const TextStyle(fontSize: 10.5, color: AppColors.secondaryText))),
+      const SizedBox(width: 8),
+      Expanded(child: Text(value, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: AppColors.darkText))),
+    ]),
+  );
+
+  Widget _rowBadge(String label, String value, Color color) => Container(
+    padding: const EdgeInsets.symmetric(vertical: 7),
+    decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.border, width: 0.5))),
+    child: Row(children: [
+      SizedBox(width: 85, child: Text(label, style: const TextStyle(fontSize: 10.5, color: AppColors.secondaryText))),
+      const SizedBox(width: 8),
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+        decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(5), border: Border.all(color: color.withOpacity(0.25))),
+        child: Text(value, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: color)),
       ),
-    );
-  }
+    ]),
+  );
 
-  Color _getCropColorFromString(String cropType) {
-    switch (cropType.toLowerCase()) {
-      case 'tea':
-        return AppColors.successGreen;
-      case 'cinnamon':
-        return AppColors.warningOrange;
-      case 'both':
-        return AppColors.purpleAccent;
-      default:
-        return AppColors.primaryBlue;
-    }
-  }
-
-  IconData _getOrderStatusIcon(String status) {
-    switch (status.toLowerCase()) {
-      case 'pending':
-        return Icons.pending_outlined;
-      case 'factory recived':
-      case 'received factory':
-      case 'factory received':
-        return Icons.factory_rounded;
-      case 'delivered':
-      case 'completed':
-      case 'accepted':
-        return Icons.check_circle_outline_rounded;
-      case 'cancelled':
-      case 'rejected':
-        return Icons.cancel_outlined;
-      default:
-        return Icons.info_outline_rounded;
-    }
-  }
+  Widget _photoGrid(List<String> p) => GridView.builder(
+    shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
+    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 6, mainAxisSpacing: 6),
+    itemCount: p.length,
+    itemBuilder: (_, i) => ClipRRect(borderRadius: BorderRadius.circular(7),
+      child: Image.network(p[i], fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => Container(color: AppColors.hover,
+          child: const Icon(Icons.broken_image_outlined, size: 18, color: AppColors.textTertiary)))));
 }
 
+
+// ── Land Size Details Modal ───────────────────────────────────
 class LandSizeDetailsModal extends StatelessWidget {
-  final String? cropType;
-  final String? landSize;
-  final String? landSizeUnit;
-  final String? teaLandSize;
-  final String? cinnamonLandSize;
-  final String? landSizeDetails;
+  final String? cropType, landSize, landSizeUnit, teaLandSize, cinnamonLandSize, landSizeDetails;
   final List<String> landPhotos;
 
   const LandSizeDetailsModal({
-    super.key,
-    required this.cropType,
-    required this.landSize,
-    required this.landSizeUnit,
-    required this.teaLandSize,
-    required this.cinnamonLandSize,
-    required this.landSizeDetails,
+    super.key, required this.cropType, required this.landSize, required this.landSizeUnit,
+    required this.teaLandSize, required this.cinnamonLandSize, required this.landSizeDetails,
     required this.landPhotos,
   });
 
+  Color get _cc {
+    switch (cropType) {
+      case 'Tea'      : return AppColors.successGreen;
+      case 'Cinnamon' : return AppColors.warningOrange;
+      case 'Both'     : return AppColors.purpleAccent;
+      default         : return AppColors.primaryBlue;
+    }
+  }
+  IconData get _ci {
+    switch (cropType) {
+      case 'Tea'      : return Icons.eco_rounded;
+      case 'Cinnamon' : return Icons.forest_rounded;
+      case 'Both'     : return Icons.layers_rounded;
+      default         : return Icons.landscape_rounded;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final Color mainColor = _getModalCropColor(cropType);
-    final IconData mainIcon = _getModalCropIcon(cropType);
+    final c   = _cc;
+    final u   = landSizeUnit ?? 'Ac';
+    final tea = double.tryParse(teaLandSize ?? '0') ?? 0;
+    final cin = double.tryParse(cinnamonLandSize ?? '0') ?? 0;
+    final tot = cropType == 'Both' ? tea + cin : double.tryParse(landSize ?? '0') ?? 0;
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.85,
+      height: MediaQuery.of(context).size.height * 0.82,
       decoration: const BoxDecoration(
         color: AppColors.cardBackground,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(30),
-          topRight: Radius.circular(30),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  mainColor.withOpacity(0.1),
-                  mainColor.withOpacity(0.05),
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(30),
-                topRight: Radius.circular(30),
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: mainColor,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(mainIcon, color: Colors.white, size: 28),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Land Size Details',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.darkText,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        cropType != null
-                            ? '$cropType Land Information'
-                            : 'Land Information',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: mainColor,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close, color: AppColors.secondaryText),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: mainColor.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: mainColor.withOpacity(0.2)),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(_getModalCropIcon(cropType),
-                            size: 32, color: mainColor),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                cropType ?? 'Not Specified',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.darkText,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Cultivation Type',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: AppColors.secondaryText,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  _buildDetailSection(
-                    title: 'Land Size Information',
-                    icon: Icons.square_foot,
-                    children: _buildLandSizeDetails(),
-                  ),
-                  const SizedBox(height: 24),
-                  
-                  if (landPhotos.isNotEmpty)
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildDetailSection(
-                          title: 'Land Photos',
-                          icon: Icons.photo_camera,
-                          children: [
-                            const SizedBox(height: 8),
-                            Text(
-                              'Total ${landPhotos.length} photo${landPhotos.length > 1 ? 's' : ''}',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: AppColors.secondaryText,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            GridView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 3,
-                                crossAxisSpacing: 8,
-                                mainAxisSpacing: 8,
-                                childAspectRatio: 1,
-                              ),
-                              itemCount: landPhotos.length,
-                              itemBuilder: (context, index) {
-                                return ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.network(
-                                    landPhotos[index],
-                                    fit: BoxFit.cover,
-                                    loadingBuilder: (context, child, loadingProgress) {
-                                      if (loadingProgress == null) return child;
-                                      return Center(
-                                        child: CircularProgressIndicator(
-                                          value: loadingProgress.expectedTotalBytes != null
-                                              ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                              : null,
-                                          color: mainColor,
-                                        ),
-                                      );
-                                    },
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Container(
-                                        color: Colors.grey[200],
-                                        child: const Icon(Icons.broken_image, color: Colors.grey),
-                                      );
-                                    },
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-                      ],
-                    ),
-                  
-                  if (cropType == 'Both')
-                    _buildDetailSection(
-                      title: 'Crop-wise Breakdown',
-                      icon: Icons.insights,
-                      children: _buildCropBreakdownDetails(),
-                    ),
-                  if (cropType == 'Both') const SizedBox(height: 24),
-                  
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.circular(10),
-                      border:
-                          Border.all(color: AppColors.primaryBlue.withOpacity(0.2)),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.info_outline,
-                            color: AppColors.primaryBlue, size: 20),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            'All land sizes are measured in ${landSizeUnit ?? 'Acre'} (Ac)',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: AppColors.darkText,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  List<Widget> _buildLandSizeDetails() {
-    final List<Widget> details = [];
-
-    if (landSize != null) {
-      details.add(_buildDetailRow(
-          'Total Land Size', '$landSize ${landSizeUnit ?? "Ac"}'));
-    }
-
-    if (cropType == 'Both') {
-      if (teaLandSize != null && double.tryParse(teaLandSize!) != 0) {
-        details.add(_buildDetailRow(
-            'Tea Land Size', '$teaLandSize ${landSizeUnit ?? "Ac"}'));
-      }
-      if (cinnamonLandSize != null && double.tryParse(cinnamonLandSize!) != 0) {
-        details.add(_buildDetailRow('Cinnamon Land Size',
-            '$cinnamonLandSize ${landSizeUnit ?? "Ac"}'));
-      }
-    } else if (cropType == 'Tea' && teaLandSize != null) {
-      details.add(_buildDetailRow(
-          'Tea Land Size', '$teaLandSize ${landSizeUnit ?? "Ac"}'));
-    } else if (cropType == 'Cinnamon' && cinnamonLandSize != null) {
-      details.add(_buildDetailRow('Cinnamon Land Size',
-          '$cinnamonLandSize ${landSizeUnit ?? "Ac"}'));
-    }
-
-    if (landSizeDetails != null && landSizeDetails!.isNotEmpty) {
-      details.add(const SizedBox(height: 8));
-      details.add(Text(
-        landSizeDetails!,
-        style: TextStyle(
-          fontSize: 14,
-          fontStyle: FontStyle.italic,
-          color: AppColors.secondaryText,
+      child: Column(children: [
+        Container(margin: const EdgeInsets.only(top: 10), width: 36, height: 3,
+          decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2))),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+          child: Row(children: [
+            Container(width: 42, height: 42,
+              decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(10)),
+              child: Icon(_ci, color: Colors.white, size: 22)),
+            const SizedBox(width: 12),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Land Size Details', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.darkText)),
+              Text('${cropType ?? 'Unknown'} Land', style: TextStyle(fontSize: 11, color: c, fontWeight: FontWeight.w600)),
+            ])),
+            GestureDetector(onTap: () => Navigator.pop(context),
+              child: const Icon(Icons.close_rounded, size: 18, color: AppColors.secondaryText)),
+          ]),
         ),
-      ));
-    }
+        const Divider(height: 1, color: AppColors.border),
 
-    return details;
-  }
-
-  List<Widget> _buildCropBreakdownDetails() {
-    final List<Widget> breakdown = [];
-
-    double teaSize = double.tryParse(teaLandSize ?? '0') ?? 0;
-    double cinnamonSize = double.tryParse(cinnamonLandSize ?? '0') ?? 0;
-    double totalSize = teaSize + cinnamonSize;
-
-    if (totalSize > 0) {
-      if (teaSize > 0) {
-        double teaPercentage = (teaSize / totalSize) * 100;
-        breakdown.add(_buildPercentageRow(
-          'Tea Cultivation',
-          teaSize,
-          teaPercentage,
-          AppColors.successGreen,
-        ));
-      }
-
-      if (cinnamonSize > 0) {
-        double cinnamonPercentage = (cinnamonSize / totalSize) * 100;
-        breakdown.add(_buildPercentageRow(
-          'Cinnamon Cultivation',
-          cinnamonSize,
-          cinnamonPercentage,
-          AppColors.warningOrange,
-        ));
-      }
-
-      breakdown.add(Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12.0),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Total Land Area',
-                style: const TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.darkText,
-                ),
-              ),
-            ),
-            Text( 
-              '${totalSize.toStringAsFixed(1)} ${landSizeUnit ?? "Ac"}',
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: AppColors.primaryBlue,
-              ),
-            ),
-          ],
-        ),
-      ));
-    }
-
-    return breakdown;
-  }
-
-  Widget _buildPercentageRow(
-      String label, double size, double percentage, Color color) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppColors.darkText,
-                ),
-              ),
-              Text(
-                '${size.toStringAsFixed(1)} Ac (${percentage.toStringAsFixed(1)}%)',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: color,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          LinearProgressIndicator(
-            value: percentage / 100,
-            backgroundColor: color.withOpacity(0.2),
-            valueColor: AlwaysStoppedAnimation<Color>(color),
-            minHeight: 6,
-            borderRadius: BorderRadius.circular(3),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 140,
-            child: Text(
-              '$label:',
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: AppColors.secondaryText,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: AppColors.darkText,
-              ),
-            ),
-          ),
-        ],
-      )
-    );
-  }
-
-  Widget _buildDetailSection({
-    required String title,
-    required IconData icon,
-    required List<Widget> children,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
+        Expanded(child: SingleChildScrollView(
+          padding: const EdgeInsets.all(14),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            // big area card
             Container(
-              padding: const EdgeInsets.all(6),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.primaryBlue.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
+                color: c.withOpacity(0.07),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: c.withOpacity(0.2)),
               ),
-              child: Icon(icon, size: 18, color: AppColors.primaryBlue),
+              child: Row(children: [
+                Icon(_ci, size: 28, color: c),
+                const SizedBox(width: 14),
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('${tot.toStringAsFixed(1)} $u', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.darkText, height: 1.1)),
+                  Text(cropType ?? 'Land', style: TextStyle(fontSize: 11, color: c, fontWeight: FontWeight.w600)),
+                ]),
+              ]),
             ),
-            const SizedBox(width: 10),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: AppColors.darkText,
+            const SizedBox(height: 12),
+
+            // breakdown
+            if (cropType == 'Both' && (tea > 0 || cin > 0)) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: AppColors.hover, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.border)),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Container(width: 3, height: 12, decoration: BoxDecoration(color: AppColors.primaryBlue, borderRadius: BorderRadius.circular(2))),
+                    const SizedBox(width: 6),
+                    const Text('Crop Breakdown', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.darkText)),
+                  ]),
+                  const SizedBox(height: 10),
+                  if (tea > 0)  _bar('Tea',      tea,  tot, AppColors.successGreen, u),
+                  if (cin > 0)  _bar('Cinnamon', cin,  tot, AppColors.warningOrange, u),
+                  const Divider(height: 12, color: AppColors.border),
+                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                    const Text('Total', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.darkText)),
+                    Text('${tot.toStringAsFixed(1)} $u', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primaryBlue)),
+                  ]),
+                ]),
               ),
+              const SizedBox(height: 12),
+            ],
+
+            if (landSizeDetails != null && landSizeDetails!.isNotEmpty) ...[
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: AppColors.hover, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.border)),
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Icon(Icons.notes_rounded, size: 13, color: AppColors.secondaryText),
+                  const SizedBox(width: 7),
+                  Expanded(child: Text(landSizeDetails!, style: const TextStyle(fontSize: 11.5, color: AppColors.darkText, height: 1.5))),
+                ]),
+              ),
+              const SizedBox(height: 12),
+            ],
+
+            if (landPhotos.isNotEmpty) ...[
+              Row(children: [
+                Container(width: 26, height: 26,
+                  decoration: BoxDecoration(color: AppColors.primaryBlue.withOpacity(0.1), borderRadius: BorderRadius.circular(7)),
+                  child: const Icon(Icons.photo_camera_rounded, size: 13, color: AppColors.primaryBlue)),
+                const SizedBox(width: 7),
+                Text('Land Photos (${landPhotos.length})', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.darkText)),
+              ]),
+              const SizedBox(height: 7),
+              GridView.builder(
+                shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 6, mainAxisSpacing: 6),
+                itemCount: landPhotos.length,
+                itemBuilder: (_, i) => ClipRRect(borderRadius: BorderRadius.circular(8),
+                  child: Image.network(landPhotos[i], fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(color: AppColors.hover,
+                      child: const Icon(Icons.broken_image_outlined, size: 18, color: AppColors.textTertiary))))),
+            ],
+
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: AppColors.primaryBlue.withOpacity(0.05), borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.primaryBlue.withOpacity(0.15))),
+              child: Row(children: [
+                const Icon(Icons.info_outline_rounded, size: 13, color: AppColors.primaryBlue),
+                const SizedBox(width: 8),
+                Expanded(child: Text('All sizes measured in $u (${_unitFull(u)})',
+                  style: const TextStyle(fontSize: 11, color: AppColors.darkText))),
+              ]),
             ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.background,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            children: children,
-          ),
-        ),
-      ],
+            const SizedBox(height: 16),
+          ]),
+        )),
+      ]),
     );
   }
 
-  Color _getModalCropColor(String? cropType) {
-    switch (cropType) {
-      case 'Tea':
-        return AppColors.successGreen;
-      case 'Cinnamon':
-        return AppColors.warningOrange;
-      case 'Both':
-        return AppColors.purpleAccent;
-      default:
-        return AppColors.primaryBlue;
+  String _unitFull(String u) {
+    switch (u.toLowerCase()) {
+      case 'ac': case 'acre': return 'Acres';
+      case 'ha': return 'Hectares';
+      case 'perch': return 'Perches';
+      default: return u;
     }
   }
 
-  IconData _getModalCropIcon(String? cropType) {
-    switch (cropType) {
-      case 'Tea':
-        return Icons.agriculture;
-      case 'Cinnamon':
-        return Icons.spa;
-      case 'Both':
-        return Icons.all_inclusive;
-      default:
-        return Icons.landscape;
-    }
+  Widget _bar(String label, double val, double total, Color color, String u) {
+    final pct = total > 0 ? val / total : 0.0;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+          Text('${val.toStringAsFixed(1)} $u  (${(pct * 100).toStringAsFixed(0)}%)',
+            style: const TextStyle(fontSize: 10.5, color: AppColors.secondaryText)),
+        ]),
+        const SizedBox(height: 4),
+        ClipRRect(borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(value: pct, minHeight: 5,
+            backgroundColor: color.withOpacity(0.15), valueColor: AlwaysStoppedAnimation(color))),
+      ]),
+    );
   }
 }
