@@ -10,7 +10,7 @@ import 'factory_owner_drawer.dart';
 class AppColors {
   static const Color background = Color(0xFFEEEBFF);
   static const Color darkText = Color(0xFF2C2A3A);
-  static const Color primaryBlue = Color(0xFF2764E7);
+  static const Color primaryGreen = Color(0xFF4CAF50);
   static const Color accentRed = Color(0xFFE53935);
   static const Color accentTeal = Color(0xFF00BFA5);
   static const Color successGreen = Color(0xFF4CAF50);
@@ -18,8 +18,13 @@ class AppColors {
   static const Color cardBackground = Colors.white;
   static const Color secondaryText = Color(0xFF6A798A);
   static const Color secondaryColor = Color(0xFF6AD96A);
+  static const Color purpleAccent = Color(0xFF9C27B0);
+  static const Color amberAccent = Color(0xFFFFC107);
+  static const Color info = Color(0xFF2196F3);
+  static const Color textTertiary = Color(0xFF999999);
+  static const Color hover = Color(0xFFF5F7FA);
+  static const Color border = Color(0xFFE1E5E9);
   
-  // Header gradient colors
   static const Color headerGradientStart = Color(0xFF869AEC);
   static const Color headerGradientEnd = Color(0xFFF7FAFF);  
   static const Color headerTextDark = Color(0xFF333333);
@@ -38,13 +43,13 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final MapController _mapController = MapController();
   
-  // Header variables
+  // Header data
   String _loggedInUserName = 'Loading...';
   String _factoryName = 'Loading...';
   String _userRole = 'Factory Owner';
   String? _profileImageUrl;
 
-  // Land locations data
+  // Land locations
   List<Map<String, dynamic>> _landLocations = [];
   List<Map<String, dynamic>> _filteredLandLocations = [];
   bool _isLoading = true;
@@ -61,18 +66,17 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
   String? _selectedProvince;
   bool _showFilters = false;
 
-  // Screen size responsive variables
-  late bool _isPortrait;
-  late double _screenWidth;
-  late double _screenHeight;
+  // Responsive
+  bool _isPortrait = true;
+  double _screenWidth = 0;
+  double _screenHeight = 0;
   bool _showListInLandscape = false;
 
-  // Land photos state
+  // Photos
   int _currentPhotoIndex = 0;
   bool _showPhotoViewer = false;
   List<String> _currentLandPhotos = [];
 
-  // Province data for Sri Lanka
   final List<String> _provinces = [
     'All Provinces',
     'Western Province',
@@ -86,7 +90,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
     'Sabaragamuwa Province',
   ];
 
-  // Tile layers
   final List<Map<String, String>> _tileLayers = [
     {
       'name': 'OpenStreetMap Standard',
@@ -169,13 +172,9 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
     try {
       List<Map<String, dynamic>> allLocations = [];
 
-      // Fetch from land_location collection
       final locationSnapshot = await _firestore.collection('land_location').get();
-      
-      // Fetch from lands collection for details
       final landsSnapshot = await _firestore.collection('lands').get();
 
-      // Map userId to land details
       Map<String, Map<String, dynamic>> landsMap = {};
       for (var landDoc in landsSnapshot.docs) {
         final landData = landDoc.data() as Map<String, dynamic>;
@@ -236,7 +235,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
             if (latitude != null && longitude != null) {
               final landDetails = landsMap[userId];
               
-              // Extract polygon points
               List<LatLng> polygonPoints = [];
               if (locData['polygonPoints'] != null) {
                 final points = locData['polygonPoints'] as List;
@@ -319,7 +317,7 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
                 'landSizeUnit': landSizeUnit,
                 'hasLandDetails': landDetails != null,
                 'landId': landDetails?['landId'] ?? locDoc.id,
-                'polygonPoints': polygonPoints, // Add polygon points
+                'polygonPoints': polygonPoints,
               });
             }
           } catch (e) {
@@ -431,10 +429,10 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
   void _showLandPhotos(List<String> photos) {
     if (photos.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('No photos available for this land'),
+        const SnackBar(
+          content: Text('No photos available for this land'),
           backgroundColor: AppColors.warningOrange,
-          duration: const Duration(seconds: 2),
+          duration: Duration(seconds: 2),
         ),
       );
       return;
@@ -470,47 +468,31 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
                 children: [
                   Text(
                     'Land Photos (${_currentPhotoIndex + 1}/${_currentLandPhotos.length})',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.darkText,
-                    ),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.darkText),
                   ),
                   IconButton(
                     icon: const Icon(Icons.close),
-                    onPressed: () {
-                      setState(() {
-                        _showPhotoViewer = false;
-                      });
-                    },
+                    onPressed: () => setState(() => _showPhotoViewer = false),
                   ),
                 ],
               ),
             ),
-            
             Expanded(
               child: PageView.builder(
                 itemCount: _currentLandPhotos.length,
-                onPageChanged: (index) {
-                  setState(() {
-                    _currentPhotoIndex = index;
-                  });
-                },
-                itemBuilder: (context, index) {
-                  return Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 10),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      image: DecorationImage(
-                        image: NetworkImage(_currentLandPhotos[index]),
-                        fit: BoxFit.contain,
-                      ),
+                onPageChanged: (index) => setState(() => _currentPhotoIndex = index),
+                itemBuilder: (context, index) => Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 10),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    image: DecorationImage(
+                      image: NetworkImage(_currentLandPhotos[index]),
+                      fit: BoxFit.contain,
                     ),
-                  );
-                },
+                  ),
+                ),
               ),
             ),
-            
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 12.0),
               child: Row(
@@ -522,49 +504,28 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
                     margin: const EdgeInsets.symmetric(horizontal: 4),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: _currentPhotoIndex == index 
-                          ? AppColors.primaryBlue 
-                          : Colors.grey.shade300,
+                      color: _currentPhotoIndex == index ? AppColors.primaryGreen : Colors.grey.shade300,
                     ),
                   );
                 }),
               ),
             ),
-            
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   ElevatedButton.icon(
-                    onPressed: _currentPhotoIndex > 0
-                        ? () {
-                            setState(() {
-                              _currentPhotoIndex--;
-                            });
-                          }
-                        : null,
+                    onPressed: _currentPhotoIndex > 0 ? () => setState(() => _currentPhotoIndex--) : null,
                     icon: const Icon(Icons.arrow_back, size: 16),
                     label: const Text('Previous'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryBlue,
-                      foregroundColor: Colors.white,
-                    ),
+                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGreen, foregroundColor: Colors.white),
                   ),
                   ElevatedButton.icon(
-                    onPressed: _currentPhotoIndex < _currentLandPhotos.length - 1
-                        ? () {
-                            setState(() {
-                              _currentPhotoIndex++;
-                            });
-                          }
-                        : null,
+                    onPressed: _currentPhotoIndex < _currentLandPhotos.length - 1 ? () => setState(() => _currentPhotoIndex++) : null,
                     icon: const Icon(Icons.arrow_forward, size: 16),
                     label: const Text('Next'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryBlue,
-                      foregroundColor: Colors.white,
-                    ),
+                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGreen, foregroundColor: Colors.white),
                   ),
                 ],
               ),
@@ -575,13 +536,17 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
     );
   }
 
+  // ===================== DASHBOARD-STYLE HEADER =====================
   Widget _buildDashboardHeader(BuildContext context) {
+    final isSmallScreen = _screenWidth < 360;
+    final isMediumScreen = _screenWidth >= 360 && _screenWidth < 400;
+    
     return Container(
       padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top + 10,
+        top: MediaQuery.of(context).padding.top + 2,
         left: 16,
         right: 16,
-        bottom: 16,
+        bottom: 12,
       ),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -590,137 +555,99 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
           end: Alignment.bottomCenter,
         ),
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(20),
-          bottomRight: Radius.circular(20),
+          bottomLeft: Radius.circular(30),
+          bottomRight: Radius.circular(30),
         ),
         boxShadow: [
-          BoxShadow(
-            color: Color(0x10000000),
-            blurRadius: 10,
-            offset: Offset(0, 3),
-          ),
+          BoxShadow(color: Color(0x10000000), blurRadius: 15, offset: Offset(0, 5)),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              IconButton(
-                icon: const Icon(Icons.menu, color: AppColors.headerTextDark, size: 24),
-                onPressed: () {
-                  _scaffoldKey.currentState?.openDrawer();
-                },
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 8),
-          
-          Row(
-            children: [
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: _profileImageUrl == null 
-                    ? const LinearGradient(
-                        colors: [AppColors.primaryBlue, Color(0xFF457AED)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                    : null,
-                  border: Border.all(color: Colors.white, width: 2),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primaryBlue.withOpacity(0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                  image: _profileImageUrl != null 
-                    ? DecorationImage(
-                        image: NetworkImage(_profileImageUrl!),
-                        fit: BoxFit.cover,
-                      )
-                    : null,
-                ),
-                child: _profileImageUrl == null
-                    ? const Icon(Icons.person, size: 32, color: Colors.white)
-                    : null,
-              ),
-              
-              const SizedBox(width: 12),
-              
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _loggedInUserName, 
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.headerTextDark,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      _factoryName, 
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: AppColors.headerTextDark.withOpacity(0.8),
-                        fontWeight: FontWeight.w500,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      _userRole, 
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.headerTextDark.withOpacity(0.6),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+              GestureDetector(
+                onTap: () => _scaffoldKey.currentState?.openDrawer(),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.menu, color: AppColors.headerTextDark, size: 24),
                 ),
               ),
+              const Spacer(),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _loggedInUserName,
+                    style: TextStyle(
+                      fontSize: isSmallScreen ? 14 : isMediumScreen ? 16 : 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.headerTextDark,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Factory Owner',
+                    style: TextStyle(
+                      fontSize: isSmallScreen ? 10 : isMediumScreen ? 11 : 12,
+                      color: AppColors.headerTextDark,
+                    ),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              _buildProfileAvatar(),
             ],
           ),
-          
-          const SizedBox(height: 16), 
-          
-          Text(
+          const SizedBox(height: 12),
+          const Text(
             'Land Locations',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: AppColors.headerTextDark,
-            ),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.headerTextDark),
           ),
         ],
       ),
     );
   }
 
+  Widget _buildProfileAvatar() {
+    if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) {
+      return CircleAvatar(
+        radius: 40,
+        backgroundImage: NetworkImage(_profileImageUrl!),
+        backgroundColor: Colors.grey.shade200,
+        onBackgroundImageError: (_, __) => setState(() => _profileImageUrl = null),
+      );
+    } else {
+      return CircleAvatar(
+        radius: 40,
+        backgroundColor: AppColors.primaryGreen.withOpacity(0.2),
+        child: Icon(Icons.person, color: AppColors.primaryGreen, size: 48),
+      );
+    }
+  }
+
+  // ===================== COMPACT FILTER SECTION =====================
   Widget _buildFilterSection() {
+    final isSmallScreen = _screenWidth < 360;
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(isSmallScreen ? 10 : 12),
       margin: EdgeInsets.symmetric(
         horizontal: _screenWidth > 400 ? 16 : 12,
         vertical: 8,
       ),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 14),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -728,157 +655,103 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
       ),
       child: Column(
         children: [
+          // Search bar
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
+            padding: EdgeInsets.symmetric(horizontal: isSmallScreen ? 8 : 10),
             decoration: BoxDecoration(
               color: AppColors.background,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.primaryBlue.withOpacity(0.15)),
+              borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
+              border: Border.all(color: AppColors.border),
             ),
             child: Row(
               children: [
-                const Icon(Icons.search, color: AppColors.primaryBlue, size: 20),
-                const SizedBox(width: 6),
+                Icon(Icons.search, color: AppColors.primaryGreen, size: isSmallScreen ? 16 : 18),
+                SizedBox(width: 8),
                 Expanded(
                   child: TextField(
                     controller: _searchController,
                     onChanged: (_) => _applyFilters(),
-                    decoration: const InputDecoration(
-                      hintText: 'Search lands...',
+                    decoration: InputDecoration(
+                      hintText: 'Search lands, owners, districts...',
                       border: InputBorder.none,
-                      hintStyle: TextStyle(
-                        color: AppColors.secondaryText,
-                        fontSize: 14,
-                      ),
+                      hintStyle: TextStyle(fontSize: isSmallScreen ? 12 : 13, color: AppColors.secondaryText),
                     ),
-                    style: const TextStyle(
-                      color: AppColors.darkText,
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(fontSize: isSmallScreen ? 13 : 14, color: AppColors.darkText),
                   ),
                 ),
                 if (_searchController.text.isNotEmpty)
                   IconButton(
-                    icon: const Icon(Icons.clear, size: 18),
+                    icon: Icon(Icons.clear, size: isSmallScreen ? 16 : 18),
                     onPressed: () {
                       _searchController.clear();
                       _applyFilters();
                     },
-                    padding: const EdgeInsets.all(4),
                   ),
               ],
             ),
           ),
-          
-          const SizedBox(height: 10),
-          
+          SizedBox(height: 8),
+          // Filter toggle
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 'Filters',
                 style: TextStyle(
-                  fontSize: _screenWidth > 400 ? 15 : 14,
+                  fontSize: isSmallScreen ? 13 : 14,
                   fontWeight: FontWeight.w600,
                   color: AppColors.darkText,
                 ),
               ),
               IconButton(
-                icon: Icon(
-                  _showFilters ? Icons.expand_less : Icons.expand_more,
-                  color: AppColors.primaryBlue,
-                  size: 20,
-                ),
-                onPressed: () {
-                  setState(() {
-                    _showFilters = !_showFilters;
-                  });
-                },
+                icon: Icon(_showFilters ? Icons.expand_less : Icons.expand_more,
+                  color: AppColors.primaryGreen, size: isSmallScreen ? 18 : 20),
+                onPressed: () => setState(() => _showFilters = !_showFilters),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),
             ],
           ),
-          
           if (_showFilters) ...[
-            const SizedBox(height: 10),
-            
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Province',
-                  style: TextStyle(
-                    fontSize: _screenWidth > 400 ? 14 : 13,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.darkText,
-                  ),
+            SizedBox(height: 10),
+            // Province dropdown (compact)
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 10),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _selectedProvince,
+                  isExpanded: true,
+                  hint: Text('Select Province', style: TextStyle(fontSize: isSmallScreen ? 12 : 13, color: AppColors.secondaryText)),
+                  dropdownColor: Colors.white,
+                  items: _provinces.map((province) {
+                    return DropdownMenuItem(
+                      value: province,
+                      child: Text(province, style: TextStyle(fontSize: isSmallScreen ? 12 : 13)),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedProvince = value;
+                      _applyFilters();
+                    });
+                  },
                 ),
-                const SizedBox(height: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: AppColors.background,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.primaryBlue.withOpacity(0.1)),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _selectedProvince,
-                      isExpanded: true,
-                      icon: Icon(Icons.arrow_drop_down, color: AppColors.primaryBlue),
-                      dropdownColor: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                      style: const TextStyle(
-                        color: AppColors.darkText,
-                        fontSize: 14,
-                      ),
-                      items: _provinces.map((province) {
-                        return DropdownMenuItem(
-                          value: province,
-                          child: Text(
-                            province,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedProvince = value;
-                          _applyFilters();
-                        });
-                      },
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
-            
-            const SizedBox(height: 12),
-            
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: _clearFilters,
-                  icon: const Icon(Icons.clear_all, size: 14),
-                  label: Text(
-                    'Clear Filters',
-                    style: TextStyle(
-                      fontSize: _screenWidth > 400 ? 13 : 12,
-                    ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.accentRed,
-                    side: BorderSide(color: AppColors.accentRed.withOpacity(0.3)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    minimumSize: Size.zero,
-                  ),
-                ),
-              ],
+            SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: _clearFilters,
+                icon: Icon(Icons.clear_all, size: 14),
+                label: Text('Clear Filters', style: TextStyle(fontSize: isSmallScreen ? 11 : 12)),
+                style: TextButton.styleFrom(foregroundColor: AppColors.accentRed),
+              ),
             ),
           ],
         ],
@@ -886,12 +759,10 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
     );
   }
 
+  // ===================== MAP SECTION =====================
   Widget _buildMapSection() {
-    final mapHeight = _isPortrait 
-        ? (_screenHeight * 0.35)
-        : (_screenHeight * 0.65);
+    final mapHeight = _isPortrait ? (_screenHeight * 0.35) : (_screenHeight * 0.65);
 
-    // Build polygon list from lands that have polygon points
     final List<Polygon> polygons = [];
     for (var land in _filteredLandLocations) {
       final points = land['polygonPoints'] as List<LatLng>?;
@@ -934,7 +805,7 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
           options: MapOptions(
             center: _centerLocation ?? const LatLng(7.8731, 80.7718),
             zoom: _zoomLevel,
-            onTap: (position, latLng) {
+            onTap: (_, __) {
               setState(() {
                 _selectedLocation = null;
                 _selectedLand = null;
@@ -946,17 +817,11 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
               urlTemplate: _tileLayers[_selectedTileLayer]['url'],
               userAgentPackageName: 'com.example.land_locations',
             ),
-            
-            // Polygon layer – draw boundaries
-            if (polygons.isNotEmpty)
-              PolygonLayer(polygons: polygons),
-            
-            // Marker layer
+            if (polygons.isNotEmpty) PolygonLayer(polygons: polygons),
             MarkerLayer(
               markers: _filteredLandLocations.map((land) {
                 final latLng = LatLng(land['latitude'] as double, land['longitude'] as double);
                 final isSelected = _selectedLand != null && _selectedLand!['id'] == land['id'];
-                
                 return Marker(
                   point: latLng,
                   width: isSelected ? 40 : 30,
@@ -978,7 +843,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
                 );
               }).toList(),
             ),
-            
             if (_selectedLocation != null)
               MarkerLayer(
                 markers: [
@@ -986,15 +850,10 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
                     point: _selectedLocation!,
                     width: 40,
                     height: 40,
-                    child: Icon(
-                      Icons.location_pin,
-                      color: AppColors.accentRed,
-                      size: 32,
-                    ),
+                    child: Icon(Icons.location_pin, color: AppColors.accentRed, size: 32),
                   ),
                 ],
               ),
-            
             RichAttributionWidget(
               attributions: [
                 TextSourceAttribution(
@@ -1009,58 +868,37 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
     );
   }
 
+  // ===================== LAND LIST & CARDS =====================
   Widget _buildLandList() {
-    if (_filteredLandLocations.isEmpty) {
-      return Container();
-    }
+    if (_filteredLandLocations.isEmpty) return const SizedBox.shrink();
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: _screenWidth > 400 ? 16 : 12,
-            vertical: 8,
-          ),
+          padding: EdgeInsets.symmetric(horizontal: _screenWidth > 400 ? 16 : 12, vertical: 8),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 'Lands (${_filteredLandLocations.length})',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.darkText,
-                ),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.darkText),
               ),
               if (!_isPortrait)
                 IconButton(
-                  icon: Icon(
-                    _showListInLandscape ? Icons.visibility_off : Icons.visibility,
-                    size: 20,
-                    color: AppColors.primaryBlue,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _showListInLandscape = !_showListInLandscape;
-                    });
-                  },
+                  icon: Icon(_showListInLandscape ? Icons.visibility_off : Icons.visibility, size: 20, color: AppColors.primaryGreen),
+                  onPressed: () => setState(() => _showListInLandscape = !_showListInLandscape),
                 ),
             ],
           ),
         ),
-        
         if (_isPortrait || _showListInLandscape)
           ListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            padding: EdgeInsets.symmetric(
-              horizontal: _screenWidth > 400 ? 16 : 12,
-            ),
+            padding: EdgeInsets.symmetric(horizontal: _screenWidth > 400 ? 16 : 12),
             itemCount: _filteredLandLocations.length,
-            itemBuilder: (context, index) {
-              return _buildLandCard(_filteredLandLocations[index]);
-            },
+            itemBuilder: (context, index) => _buildLandCard(_filteredLandLocations[index]),
           ),
       ],
     );
@@ -1091,13 +929,7 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
             color: isSelected ? AppColors.successGreen : Colors.grey.withOpacity(0.15),
             width: isSelected ? 1.5 : 1,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 4, offset: const Offset(0, 2))],
         ),
         child: Padding(
           padding: const EdgeInsets.all(12),
@@ -1110,13 +942,7 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
                   color: _getCropColor(cropType).withOpacity(0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Center(
-                  child: Icon(
-                    _getCropIcon(cropType),
-                    color: _getCropColor(cropType),
-                    size: 24,
-                  ),
-                ),
+                child: Center(child: Icon(_getCropIcon(cropType), color: _getCropColor(cropType), size: 24)),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -1125,29 +951,18 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
                   children: [
                     Text(
                       displayName,
-                      style: TextStyle(
-                        fontSize: isSmallScreen ? 14 : 15,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.darkText,
-                      ),
+                      style: TextStyle(fontSize: isSmallScreen ? 14 : 15, fontWeight: FontWeight.w600, color: AppColors.darkText),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    
                     const SizedBox(height: 3),
-                    
                     Text(
                       'Owner: ${land['ownerName'] ?? 'N/A'}',
-                      style: TextStyle(
-                        fontSize: isSmallScreen ? 11 : 12,
-                        color: AppColors.secondaryText,
-                      ),
+                      style: TextStyle(fontSize: isSmallScreen ? 11 : 12, color: AppColors.secondaryText),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    
                     const SizedBox(height: 4),
-                    
                     Row(
                       children: [
                         Icon(Icons.square_foot, size: 11, color: AppColors.successGreen),
@@ -1155,31 +970,24 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
                         Flexible(
                           child: Text(
                             'Size: ${land['landSize']} ${land['landSizeUnit'] ?? 'Ac'}',
-                            style: TextStyle(
-                              fontSize: isSmallScreen ? 10 : 11,
-                              color: AppColors.secondaryText,
-                            ),
+                            style: TextStyle(fontSize: isSmallScreen ? 10 : 11, color: AppColors.secondaryText),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Icon(Icons.location_on, size: 11, color: AppColors.primaryBlue),
+                        Icon(Icons.location_on, size: 11, color: AppColors.primaryGreen),
                         const SizedBox(width: 3),
                         Flexible(
                           child: Text(
                             _getShortAddress(land),
-                            style: TextStyle(
-                              fontSize: isSmallScreen ? 10 : 11,
-                              color: AppColors.secondaryText,
-                            ),
+                            style: TextStyle(fontSize: isSmallScreen ? 10 : 11, color: AppColors.secondaryText),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
                     ),
-                    
                     Padding(
                       padding: const EdgeInsets.only(top: 6),
                       child: Row(
@@ -1191,35 +999,20 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                 margin: const EdgeInsets.only(right: 8),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primaryBlue.withOpacity(0.1),
+                                  color: AppColors.primaryGreen.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                    color: AppColors.primaryBlue.withOpacity(0.3),
-                                    width: 1,
-                                  ),
+                                  border: Border.all(color: AppColors.primaryGreen.withOpacity(0.3)),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(
-                                      Icons.photo,
-                                      size: 10,
-                                      color: AppColors.primaryBlue,
-                                    ),
+                                    Icon(Icons.photo, size: 10, color: AppColors.primaryGreen),
                                     const SizedBox(width: 3),
-                                    Text(
-                                      '${landPhotos.length} photos',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.primaryBlue,
-                                      ),
-                                    ),
+                                    Text('${landPhotos.length} photos', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.primaryGreen)),
                                   ],
                                 ),
                               ),
                             ),
-                          
                           if (cropType != 'N/A')
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -1229,11 +1022,7 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
                               ),
                               child: Text(
                                 cropType,
-                                style: TextStyle(
-                                  fontSize: isSmallScreen ? 10 : 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: _getCropColor(cropType),
-                                ),
+                                style: TextStyle(fontSize: isSmallScreen ? 10 : 11, fontWeight: FontWeight.w600, color: _getCropColor(cropType)),
                               ),
                             ),
                         ],
@@ -1245,18 +1034,8 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
               if (isSelected)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppColors.successGreen,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '✓',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
+                  decoration: BoxDecoration(color: AppColors.successGreen, borderRadius: BorderRadius.circular(12)),
+                  child: Text('✓', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white)),
                 ),
             ],
           ),
@@ -1277,21 +1056,12 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
     
     return Container(
       padding: const EdgeInsets.all(12),
-      margin: EdgeInsets.symmetric(
-        horizontal: _screenWidth > 400 ? 16 : 12,
-        vertical: 8,
-      ),
+      margin: EdgeInsets.symmetric(horizontal: _screenWidth > 400 ? 16 : 12, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.successGreen.withOpacity(0.15)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1302,38 +1072,27 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
               Expanded(
                 child: Text(
                   'Land Details',
-                  style: TextStyle(
-                    fontSize: isSmallScreen ? 16 : 17,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.darkText,
-                  ),
+                  style: TextStyle(fontSize: isSmallScreen ? 16 : 17, fontWeight: FontWeight.w700, color: AppColors.darkText),
                 ),
               ),
               IconButton(
                 icon: const Icon(Icons.close, size: 18),
-                onPressed: () {
-                  setState(() {
-                    _selectedLand = null;
-                    _selectedLocation = null;
-                  });
-                },
+                onPressed: () => setState(() {
+                  _selectedLand = null;
+                  _selectedLocation = null;
+                }),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),
             ],
           ),
-          
           const SizedBox(height: 12),
-          
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: _getCropColor(cropType).withOpacity(0.06),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: _getCropColor(cropType).withOpacity(0.2),
-                width: 1,
-              ),
+              border: Border.all(color: _getCropColor(cropType).withOpacity(0.2)),
             ),
             child: Row(
               children: [
@@ -1344,13 +1103,7 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
                     color: _getCropColor(cropType).withOpacity(0.15),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Center(
-                    child: Icon(
-                      _getCropIcon(cropType),
-                      color: _getCropColor(cropType),
-                      size: 22,
-                    ),
-                  ),
+                  child: Center(child: Icon(_getCropIcon(cropType), color: _getCropColor(cropType), size: 22)),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -1359,11 +1112,7 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
                     children: [
                       Text(
                         _selectedLand!['landName'] ?? _selectedLand!['displayName'] ?? 'Unnamed Land',
-                        style: TextStyle(
-                          fontSize: isSmallScreen ? 14 : 15,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.darkText,
-                        ),
+                        style: TextStyle(fontSize: isSmallScreen ? 14 : 15, fontWeight: FontWeight.w600, color: AppColors.darkText),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -1379,20 +1128,9 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(
-                                  _getCropIcon(cropType),
-                                  size: 12,
-                                  color: _getCropColor(cropType),
-                                ),
+                                Icon(_getCropIcon(cropType), size: 12, color: _getCropColor(cropType)),
                                 const SizedBox(width: 3),
-                                Text(
-                                  cropType,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: _getCropColor(cropType),
-                                  ),
-                                ),
+                                Text(cropType, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _getCropColor(cropType))),
                               ],
                             ),
                           ),
@@ -1403,7 +1141,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
               ],
             ),
           ),
-          
           if (hasPhotos) ...[
             const SizedBox(height: 12),
             Column(
@@ -1411,16 +1148,9 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.photo_library, size: 18, color: AppColors.primaryBlue),
+                    const Icon(Icons.photo_library, size: 18, color: AppColors.primaryGreen),
                     const SizedBox(width: 6),
-                    Text(
-                      'Land Photos (${landPhotos.length})',
-                      style: TextStyle(
-                        fontSize: isSmallScreen ? 13 : 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.darkText,
-                      ),
-                    ),
+                    Text('Land Photos (${landPhotos.length})', style: TextStyle(fontSize: isSmallScreen ? 13 : 14, fontWeight: FontWeight.w600, color: AppColors.darkText)),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -1429,97 +1159,61 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     itemCount: landPhotos.length,
-                    itemBuilder: (context, index) {
-                      return GestureDetector(
-                        onTap: () => _showLandPhotos(landPhotos),
-                        child: Container(
-                          width: 100,
-                          height: 80,
-                          margin: EdgeInsets.only(right: index < landPhotos.length - 1 ? 8 : 0),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.network(
-                              landPhotos[index],
-                              fit: BoxFit.cover,
-                              loadingBuilder: (context, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
-                                return Center(
-                                  child: CircularProgressIndicator(
-                                    value: loadingProgress.expectedTotalBytes != null
-                                        ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                        : null,
-                                    color: AppColors.primaryBlue,
-                                    strokeWidth: 2,
-                                  ),
-                                );
-                              },
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  color: Colors.grey[200],
-                                  child: const Icon(Icons.broken_image, color: Colors.grey),
-                                );
-                              },
-                            ),
+                    itemBuilder: (context, index) => GestureDetector(
+                      onTap: () => _showLandPhotos(landPhotos),
+                      child: Container(
+                        width: 100,
+                        height: 80,
+                        margin: EdgeInsets.only(right: index < landPhotos.length - 1 ? 8 : 0),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            landPhotos[index],
+                            fit: BoxFit.cover,
+                            loadingBuilder: (_, child, progress) => progress == null ? child : Center(child: CircularProgressIndicator(value: progress.expectedTotalBytes != null ? progress.cumulativeBytesLoaded / progress.expectedTotalBytes! : null, strokeWidth: 2)),
+                            errorBuilder: (_, __, ___) => Container(color: Colors.grey[200], child: const Icon(Icons.broken_image, color: Colors.grey)),
                           ),
                         ),
-                      );
-                    },
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 6),
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton.icon(
                     onPressed: () => _showLandPhotos(landPhotos),
                     icon: const Icon(Icons.open_in_full, size: 14),
-                    label: Text(
-                      'View All Photos',
-                      style: TextStyle(
-                        fontSize: isSmallScreen ? 11 : 12,
-                      ),
-                    ),
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.primaryBlue,
-                    ),
+                    label: Text('View All Photos', style: TextStyle(fontSize: isSmallScreen ? 11 : 12)),
+                    style: TextButton.styleFrom(foregroundColor: AppColors.primaryGreen),
                   ),
                 ),
               ],
             ),
           ],
-          
-          // Show polygon info if available
           if (hasPolygon) ...[
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: AppColors.primaryBlue.withOpacity(0.05),
+                color: AppColors.primaryGreen.withOpacity(0.05),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.primaryBlue.withOpacity(0.2)),
+                border: Border.all(color: AppColors.primaryGreen.withOpacity(0.2)),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.draw, color: AppColors.primaryBlue, size: 18),
+                  const Icon(Icons.draw, color: AppColors.primaryGreen, size: 18),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'Boundary: ${polygonPoints.length} points recorded',
-                      style: TextStyle(
-                        fontSize: isSmallScreen ? 12 : 13,
-                        color: AppColors.darkText,
-                      ),
+                      style: TextStyle(fontSize: isSmallScreen ? 12 : 13, color: AppColors.darkText),
                     ),
                   ),
                 ],
               ),
             ),
           ],
-          
           ..._buildDetailRows(),
-          
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
@@ -1528,18 +1222,14 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
                 final lat = _selectedLand!['latitudeString'];
                 final lng = _selectedLand!['longitudeString'];
                 final url = 'https://www.google.com/maps/search/?api=1&query=$lat,$lng';
-                if (await canLaunchUrlString(url)) {
-                  await launchUrlString(url);
-                }
+                if (await canLaunchUrlString(url)) await launchUrlString(url);
               },
               icon: const Icon(Icons.open_in_new, size: 16),
               label: const Text('Open in Google Maps'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryBlue,
+                backgroundColor: AppColors.primaryGreen,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
             ),
@@ -1575,7 +1265,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
         if (_selectedLand!['address'] != null && _selectedLand!['address'] != 'Address not available')
           {'label': 'Address', 'value': _selectedLand!['address']},
       ];
-      
       fields.insertAll(2, additionalFields);
     } else {
       fields.insert(2, {'label': 'Address', 'value': _selectedLand!['address'] ?? 'N/A'});
@@ -1589,32 +1278,16 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
           children: [
             SizedBox(
               width: isSmallScreen ? 80 : 90,
-              child: Text(
-                '${field['label']}:',
-                style: TextStyle(
-                  fontSize: isSmallScreen ? 12 : 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.secondaryText,
-                ),
-              ),
+              child: Text('${field['label']}:', style: TextStyle(fontSize: isSmallScreen ? 12 : 13, fontWeight: FontWeight.w600, color: AppColors.secondaryText)),
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: Text(
-                field['value'] ?? '',
-                style: TextStyle(
-                  fontSize: isSmallScreen ? 12 : 13,
-                  color: AppColors.darkText,
-                ),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
+              child: Text(field['value'] ?? '', style: TextStyle(fontSize: isSmallScreen ? 12 : 13, color: AppColors.darkText), maxLines: 3, overflow: TextOverflow.ellipsis),
             ),
           ],
         ),
       ]);
     }
-    
     return rows;
   }
 
@@ -1627,9 +1300,7 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
       return district.length > 15 ? '${district.substring(0, 15)}...' : district;
     } else if (land['address'] != null && land['address'] != 'Address not available') {
       final address = land['address'];
-      if (address.length > 20) {
-        return '${address.substring(0, 20)}...';
-      }
+      if (address.length > 20) return '${address.substring(0, 20)}...';
       return address;
     }
     return 'Location';
@@ -1637,45 +1308,30 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
 
   Color _getCropColor(String? cropType) {
     switch (cropType?.toLowerCase()) {
-      case 'tea':
-        return AppColors.successGreen;
-      case 'cinnamon':
-        return AppColors.warningOrange;
-      case 'both':
-        return AppColors.accentTeal;
-      case 'paddy':
-        return const Color(0xFF8BC34A);
-      case 'vegetables':
-        return AppColors.primaryBlue;
-      case 'fruits':
-        return AppColors.accentRed;
-      default:
-        return AppColors.secondaryText;
+      case 'tea': return AppColors.successGreen;
+      case 'cinnamon': return AppColors.warningOrange;
+      case 'both': return AppColors.accentTeal;
+      case 'paddy': return const Color(0xFF8BC34A);
+      case 'vegetables': return AppColors.primaryGreen;
+      case 'fruits': return AppColors.accentRed;
+      default: return AppColors.secondaryText;
     }
   }
 
   IconData _getCropIcon(String? cropType) {
     switch (cropType?.toLowerCase()) {
-      case 'tea':
-        return Icons.emoji_nature;
-      case 'cinnamon':
-        return Icons.spa;
-      case 'both':
-        return Icons.all_inclusive;
-      case 'paddy':
-        return Icons.grass;
-      case 'vegetables':
-        return Icons.eco;
-      case 'fruits':
-        return Icons.apple;
-      default:
-        return Icons.terrain;
+      case 'tea': return Icons.emoji_nature;
+      case 'cinnamon': return Icons.spa;
+      case 'both': return Icons.all_inclusive;
+      case 'paddy': return Icons.grass;
+      case 'vegetables': return Icons.eco;
+      case 'fruits': return Icons.apple;
+      default: return Icons.terrain;
     }
   }
 
   Widget _buildEmptyState() {
     final isSmallScreen = _screenWidth < 360;
-    
     return Container(
       padding: const EdgeInsets.all(20),
       margin: const EdgeInsets.all(16),
@@ -1688,51 +1344,31 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            _searchController.text.isNotEmpty || _selectedProvince != null
-              ? Icons.search_off
-              : Icons.agriculture,
+            _searchController.text.isNotEmpty || _selectedProvince != null ? Icons.search_off : Icons.agriculture,
             size: isSmallScreen ? 48 : 56,
             color: AppColors.successGreen,
           ),
           const SizedBox(height: 12),
           Text(
-            _searchController.text.isNotEmpty || _selectedProvince != null
-              ? 'No Matching Lands'
-              : 'No Land Locations',
-            style: TextStyle(
-              fontSize: isSmallScreen ? 16 : 18,
-              fontWeight: FontWeight.w700,
-              color: AppColors.darkText,
-            ),
+            _searchController.text.isNotEmpty || _selectedProvince != null ? 'No Matching Lands' : 'No Land Locations',
+            style: TextStyle(fontSize: isSmallScreen ? 16 : 18, fontWeight: FontWeight.w700, color: AppColors.darkText),
           ),
           const SizedBox(height: 8),
           Text(
             _searchController.text.isNotEmpty || _selectedProvince != null
               ? 'Try adjusting your search or filters'
-              : 'No land locations found in database',
+              : 'No land locations found',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppColors.secondaryText,
-              fontSize: isSmallScreen ? 12 : 13,
-            ),
+            style: TextStyle(fontSize: isSmallScreen ? 12 : 13, color: AppColors.secondaryText),
           ),
           if (_searchController.text.isNotEmpty || _selectedProvince != null)
-            const SizedBox(height: 12),
-          if (_searchController.text.isNotEmpty || _selectedProvince != null)
-            SizedBox(
-              width: double.infinity,
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
               child: ElevatedButton.icon(
                 onPressed: _clearFilters,
                 icon: const Icon(Icons.clear_all, size: 14),
                 label: const Text('Clear Filters'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.successGreen,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                ),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.successGreen, foregroundColor: Colors.white),
               ),
             ),
         ],
@@ -1742,7 +1378,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
 
   Widget _buildErrorState() {
     final isSmallScreen = _screenWidth < 360;
-    
     return Container(
       padding: const EdgeInsets.all(20),
       margin: const EdgeInsets.all(16),
@@ -1754,37 +1389,15 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.error_outline,
-            size: isSmallScreen ? 40 : 48,
-            color: AppColors.accentRed,
-          ),
+          Icon(Icons.error_outline, size: isSmallScreen ? 40 : 48, color: AppColors.accentRed),
           const SizedBox(height: 12),
-          Text(
-            _errorMessage!,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: isSmallScreen ? 13 : 14,
-              fontWeight: FontWeight.w600,
-              color: AppColors.darkText,
-            ),
-          ),
+          Text(_errorMessage!, textAlign: TextAlign.center, style: TextStyle(fontSize: isSmallScreen ? 13 : 14, fontWeight: FontWeight.w600, color: AppColors.darkText)),
           const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _fetchLandLocations,
-              icon: const Icon(Icons.refresh, size: 14),
-              label: const Text('Retry'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.successGreen,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
+          ElevatedButton.icon(
+            onPressed: _fetchLandLocations,
+            icon: const Icon(Icons.refresh, size: 14),
+            label: const Text('Retry'),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.successGreen, foregroundColor: Colors.white),
           ),
         ],
       ),
@@ -1798,13 +1411,7 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
         children: [
           CircularProgressIndicator(color: AppColors.successGreen),
           const SizedBox(height: 12),
-          const Text(
-            'Loading land locations...',
-            style: TextStyle(
-              fontSize: 14,
-              color: AppColors.darkText,
-            ),
-          ),
+          const Text('Loading land locations...', style: TextStyle(fontSize: 14, color: AppColors.darkText)),
         ],
       ),
     );
@@ -1819,8 +1426,7 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
             children: [
               _buildFilterSection(),
               _buildMapSection(),
-              if (_selectedLand != null)
-                _buildSelectedLandDetails(),
+              if (_selectedLand != null) _buildSelectedLandDetails(),
               if (_isLoading)
                 _buildLoadingState()
               else if (_errorMessage != null)
@@ -1834,18 +1440,13 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
                 child: Text(
                   'Developed by Malitha Tishamal',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: AppColors.darkText.withOpacity(0.7),
-                    fontSize: 11,
-                  ),
+                  style: TextStyle(color: AppColors.darkText.withOpacity(0.7), fontSize: 11),
                 ),
               ),
             ],
           ),
         ),
-        
-        if (_showPhotoViewer)
-          _buildPhotoViewer(),
+        if (_showPhotoViewer) _buildPhotoViewer(),
       ],
     );
   }
@@ -1855,10 +1456,7 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
       children: [
         Row(
           children: [
-            Expanded(
-              flex: 3,
-              child: _buildMapSection(),
-            ),
+            Expanded(flex: 3, child: _buildMapSection()),
             const SizedBox(width: 12),
             Expanded(
               flex: 2,
@@ -1870,8 +1468,7 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
                       child: Column(
                         children: [
                           _buildFilterSection(),
-                          if (_selectedLand != null)
-                            _buildSelectedLandDetails(),
+                          if (_selectedLand != null) _buildSelectedLandDetails(),
                           if (_isLoading)
                             _buildLoadingState()
                           else if (_errorMessage != null)
@@ -1889,10 +1486,7 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
                     child: Text(
                       'Developed by Malitha Tishamal',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: AppColors.darkText.withOpacity(0.7),
-                        fontSize: 10,
-                      ),
+                      style: TextStyle(color: AppColors.darkText.withOpacity(0.7), fontSize: 10),
                     ),
                   ),
                 ],
@@ -1900,9 +1494,7 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
             ),
           ],
         ),
-        
-        if (_showPhotoViewer)
-          _buildPhotoViewer(),
+        if (_showPhotoViewer) _buildPhotoViewer(),
       ],
     );
   }
@@ -1910,7 +1502,6 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
   @override
   Widget build(BuildContext context) {
     _updateScreenDimensions();
-    
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: AppColors.background,
@@ -1925,9 +1516,7 @@ class _LandLocationsPageState extends State<LandLocationsPage> {
         children: [
           _buildDashboardHeader(context),
           Expanded(
-            child: _isPortrait 
-                ? _buildMainContent()
-                : _buildLandscapeLayout(),
+            child: _isPortrait ? _buildMainContent() : _buildLandscapeLayout(),
           ),
         ],
       ),
