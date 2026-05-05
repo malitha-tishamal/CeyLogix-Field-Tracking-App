@@ -217,7 +217,7 @@ class _UserAgreementPageState extends State<UserAgreementPage> {
                 fontFamily: 'Inter',
               ),
             ),
-            const SizedBox(height: 100), // Extra space to ensure content is visible above footer
+            const SizedBox(height: 20), // Extra space to ensure content is visible above footer
           ],
         ),
       ),
