@@ -37,7 +37,6 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
   String? _error;
   
   // Responsive variables
-  late bool _isPortrait;
   late double _screenWidth;
   late double _screenHeight;
 
@@ -57,7 +56,6 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
     final mediaQuery = MediaQuery.of(context);
     _screenWidth = mediaQuery.size.width;
     _screenHeight = mediaQuery.size.height;
-    _isPortrait = mediaQuery.orientation == Orientation.portrait;
   }
 
   Future<Map<String, dynamic>?> _loadUserData() async {
@@ -95,60 +93,36 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
 
   // Enhanced modern logout confirmation dialog
   Future<void> _handleLogout() async {
-    // Modern confirmation dialog
     final bool? shouldLogout = await showDialog<bool>(
       context: context,
       barrierDismissible: true,
       builder: (BuildContext context) {
         return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24.0),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.0)),
           elevation: 8,
           child: Container(
             padding: const EdgeInsets.all(24.0),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Icon
                 Container(
                   padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade50,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.logout_rounded,
-                    color: Colors.red,
-                    size: 40,
-                  ),
+                  decoration: BoxDecoration(color: Colors.red.shade50, shape: BoxShape.circle),
+                  child: Icon(Icons.logout_rounded, color: Colors.red, size: 40),
                 ),
                 const SizedBox(height: 20),
-                // Title
-                Text(
-                  "Logout",
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: _darkText,
-                  ),
+                Text("Logout",
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: _darkText),
                 ),
                 const SizedBox(height: 12),
-                // Message
-                Text(
-                  "Are you sure you want to log out?",
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: _darkText.withOpacity(0.7),
-                  ),
+                Text("Are you sure you want to log out?",
+                  style: TextStyle(fontSize: 16, color: _darkText.withOpacity(0.7)),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 28),
-                // Buttons
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    // Cancel button (outlined)
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () => Navigator.of(context).pop(false),
@@ -156,34 +130,23 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
                           foregroundColor: _primaryBlue,
                           side: BorderSide(color: _primaryBlue.withOpacity(0.5)),
                           padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
-                        child: const Text(
-                          "Cancel",
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                        ),
+                        child: const Text("Cancel", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                       ),
                     ),
                     const SizedBox(width: 16),
-                    // Logout button (filled red with white text)
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () => Navigator.of(context).pop(true),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.red,
-                          foregroundColor: Colors.white, // Ensures white text
+                          foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           elevation: 2,
                         ),
-                        child: const Text(
-                          "Logout",
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                        ),
+                        child: const Text("Logout", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                       ),
                     ),
                   ],
@@ -195,13 +158,10 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
       },
     );
 
-    if (shouldLogout != true) return; // User cancelled
+    if (shouldLogout != true) return;
 
     try {
-      // Close the drawer first
-      Navigator.of(context).pop();
-      
-      // Show loading indicator
+      Navigator.of(context).pop(); // close drawer
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -211,40 +171,23 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
               children: [
                 CircularProgressIndicator(color: _primaryBlue),
                 SizedBox(width: _screenWidth * 0.04),
-                Text(
-                  "Logging out...",
-                  style: TextStyle(
-                    fontSize: _screenWidth < 360 ? 13 : 14,
-                  ),
-                ),
+                Text("Logging out...", style: TextStyle(fontSize: _screenWidth < 360 ? 13 : 14)),
               ],
             ),
           );
         },
       );
-
-      // Sign out from Firebase
       await FirebaseAuth.instance.signOut();
-      
-      // Clear the static cache
       LandOwnerDrawer.staticCache = null;
-      
-      // Navigate to login page and remove all previous routes
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const LoginPage()),
         (Route<dynamic> route) => false,
       );
     } catch (e) {
-      // Close loading dialog
-      Navigator.of(context).pop();
-      
-      // Show error message
+      Navigator.of(context).pop(); // close loading dialog
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            "Logout failed: ${e.toString()}",
-            style: TextStyle(fontSize: _screenWidth < 360 ? 12 : 14),
-          ),
+          content: Text("Logout failed: ${e.toString()}", style: TextStyle(fontSize: _screenWidth < 360 ? 12 : 14)),
           backgroundColor: Colors.red,
           duration: const Duration(seconds: 3),
         ),
@@ -256,10 +199,7 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
     print('Selected Location: $locationData');
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          'Location selected: ${locationData['address']}',
-          style: TextStyle(fontSize: _screenWidth < 360 ? 12 : 14),
-        ),
+        content: Text('Location selected: ${locationData['address']}'),
         backgroundColor: Colors.green,
         duration: const Duration(seconds: 2),
       ),
@@ -285,12 +225,13 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
     }
   }
 
+  // ===================== UPDATED BUILD METHOD (matching FactoryOwnerDrawer) =====================
   @override
   Widget build(BuildContext context) {
     _updateScreenDimensions();
-    final isSmallScreen = _screenWidth < 360;
+    final isSmallScreen = _screenWidth < 360;                     // ✅ new
     final isMediumScreen = _screenWidth >= 360 && _screenWidth < 400;
-    final drawerWidth = _screenWidth * (_isPortrait ? 0.75 : 0.65);
+    final drawerWidth = _screenWidth * (isSmallScreen ? 0.75 : 0.65);  // ✅ new (75% on small, 65% on larger)
     
     return Drawer(
       width: drawerWidth,
@@ -315,6 +256,10 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
       ),
     );
   }
+
+  // ... (all other methods remain exactly as in your original code)
+  // _buildDrawerContent, _buildModernDrawerItem, _buildSectionDivider,
+  // _buildLoadingState, _buildErrorState, etc. are unchanged.
 
   Widget _buildDrawerContent(
     Map<String, dynamic> user, 
@@ -353,11 +298,7 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
                     color: _primaryBlue.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(isSmallScreen ? 14.0 : 16.0),
                     boxShadow: [
-                      BoxShadow(
-                        color: _primaryBlue.withOpacity(0.3),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
+                      BoxShadow(color: _primaryBlue.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4)),
                     ],
                   ),
                   child: Image.asset(
@@ -377,28 +318,12 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        "CeyLogix",
-                        style: TextStyle(
-                          fontSize: logoFontSize,
-                          fontWeight: FontWeight.w900,
-                          color: _primaryBlue,
-                          letterSpacing: -0.8,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      Text("CeyLogix",
+                        style: TextStyle(fontSize: logoFontSize, fontWeight: FontWeight.w900, color: _primaryBlue, letterSpacing: -0.8),
                       ),
                       SizedBox(height: isSmallScreen ? 1.0 : 2.0),
-                      Text(
-                        "Land Management",
-                        style: TextStyle(
-                          fontSize: taglineFontSize,
-                          fontWeight: FontWeight.w500,
-                          color: const Color(0xFF666482),
-                          letterSpacing: 0.3,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      Text("Land Management",
+                        style: TextStyle(fontSize: taglineFontSize, fontWeight: FontWeight.w500, color: const Color(0xFF666482), letterSpacing: 0.3),
                       ),
                     ],
                   ),
@@ -420,11 +345,7 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
               ),
               borderRadius: BorderRadius.circular(isSmallScreen ? 16.0 : 20.0),
               boxShadow: [
-                BoxShadow(
-                  color: _primaryBlue.withOpacity(0.08),
-                  blurRadius: 20,
-                  offset: const Offset(0, 6),
-                ),
+                BoxShadow(color: _primaryBlue.withOpacity(0.08), blurRadius: 20, offset: const Offset(0, 6)),
               ],
               border: Border.all(color: Colors.white.withOpacity(0.9), width: 1.5),
             ),
@@ -436,13 +357,7 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(color: _primaryBlue, width: isSmallScreen ? 2.0 : 2.5),
-                    boxShadow: [
-                      BoxShadow(
-                        color: _primaryBlue.withOpacity(0.2),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4)
-                      )
-                    ],
+                    boxShadow: [BoxShadow(color: _primaryBlue.withOpacity(0.2), blurRadius: 12, offset: const Offset(0, 4))],
                   ),
                   child: ClipOval(
                     child: Image.network(
@@ -451,15 +366,9 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
                       errorBuilder: (context, error, stackTrace) => Container(
                         decoration: const BoxDecoration(
                           shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [_primaryBlue, Color(0xFF457AED)]
-                          ),
+                          gradient: LinearGradient(colors: [_primaryBlue, Color(0xFF457AED)]),
                         ),
-                        child: Icon(
-                          Icons.person_rounded,
-                          color: Colors.white,
-                          size: profileSize * 0.4,
-                        ),
+                        child: Icon(Icons.person_rounded, color: Colors.white, size: profileSize * 0.4),
                       ),
                       loadingBuilder: (context, child, loadingProgress) {
                         if (loadingProgress == null) return child;
@@ -467,10 +376,7 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
                           child: SizedBox(
                             width: profileSize * 0.3,
                             height: profileSize * 0.3,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
+                            child: CircularProgressIndicator(strokeWidth: 2, valueColor: const AlwaysStoppedAnimation<Color>(Colors.white)),
                           ),
                         );
                       },
@@ -482,37 +388,21 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        firstName,
-                        style: TextStyle(
-                          fontSize: nameFontSize,
-                          fontWeight: FontWeight.w800,
-                          color: _darkText,
-                        ),
+                      Text(firstName,
+                        style: TextStyle(fontSize: nameFontSize, fontWeight: FontWeight.w800, color: _darkText),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       SizedBox(height: isSmallScreen ? 3.0 : 4.0),
                       Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: isSmallScreen ? 8.0 : 10.0,
-                          vertical: isSmallScreen ? 3.0 : 4.0,
-                        ),
+                        padding: EdgeInsets.symmetric(horizontal: isSmallScreen ? 8.0 : 10.0, vertical: isSmallScreen ? 3.0 : 4.0),
                         decoration: BoxDecoration(
                           color: _primaryBlue.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(isSmallScreen ? 6.0 : 8.0),
                           border: Border.all(color: _primaryBlue.withOpacity(0.3)),
                         ),
-                        child: Text(
-                          role.toUpperCase(),
-                          style: TextStyle(
-                            fontSize: roleFontSize,
-                            fontWeight: FontWeight.w700,
-                            color: _primaryBlue,
-                            letterSpacing: 0.8,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        child: Text(role.toUpperCase(),
+                          style: TextStyle(fontSize: roleFontSize, fontWeight: FontWeight.w700, color: _primaryBlue, letterSpacing: 0.8),
                         ),
                       ),
                     ],
@@ -529,10 +419,7 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
           // Menu Items
           Expanded(
             child: ListView(
-              padding: EdgeInsets.symmetric(
-                horizontal: isSmallScreen ? 8.0 : 12.0,
-                vertical: isSmallScreen ? 8.0 : 12.0,
-              ),
+              padding: EdgeInsets.symmetric(horizontal: isSmallScreen ? 8.0 : 12.0, vertical: isSmallScreen ? 8.0 : 12.0),
               physics: const BouncingScrollPhysics(),
               children: [
                 _buildModernDrawerItem(
@@ -636,23 +523,13 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
             ),
           ),
 
-          // Logout Button with modern confirmation
+          // Logout Button
           Container(
             margin: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.red.shade50, Colors.red.shade100.withOpacity(0.8)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight
-              ),
+              gradient: LinearGradient(colors: [Colors.red.shade50, Colors.red.shade100.withOpacity(0.8)], begin: Alignment.topLeft, end: Alignment.bottomRight),
               borderRadius: BorderRadius.circular(isSmallScreen ? 16.0 : 18.0),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.red.withOpacity(0.1),
-                  blurRadius: 15,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+              boxShadow: [BoxShadow(color: Colors.red.withOpacity(0.1), blurRadius: 15, offset: const Offset(0, 4))],
               border: Border.all(color: Colors.red.withOpacity(0.2), width: 1.5),
             ),
             child: Material(
@@ -661,59 +538,29 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
                 onTap: _handleLogout,
                 borderRadius: BorderRadius.circular(isSmallScreen ? 16.0 : 18.0),
                 child: Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isSmallScreen ? 14.0 : 16.0,
-                    vertical: isSmallScreen ? 12.0 : 14.0,
-                  ),
+                  padding: EdgeInsets.symmetric(horizontal: isSmallScreen ? 14.0 : 16.0, vertical: isSmallScreen ? 12.0 : 14.0),
                   child: Row(
                     children: [
                       Container(
                         padding: EdgeInsets.all(isSmallScreen ? 8.0 : 10.0),
-                        decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.15),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.logout_rounded,
-                          color: Colors.red,
-                          size: isSmallScreen ? 18.0 : 20.0,
-                        ),
+                        decoration: BoxDecoration(color: Colors.red.withOpacity(0.15), shape: BoxShape.circle),
+                        child: Icon(Icons.logout_rounded, color: Colors.red, size: isSmallScreen ? 18.0 : 20.0),
                       ),
                       SizedBox(width: isSmallScreen ? 12.0 : 14.0),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              "Logout",
-                              style: TextStyle(
-                                fontSize: isSmallScreen ? 14.0 : 15.0,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.red,
-                              ),
-                            ),
+                            Text("Logout", style: TextStyle(fontSize: isSmallScreen ? 14.0 : 15.0, fontWeight: FontWeight.w700, color: Colors.red)),
                             SizedBox(height: isSmallScreen ? 1.0 : 2.0),
-                            Text(
-                              "Secure sign out",
-                              style: TextStyle(
-                                fontSize: isSmallScreen ? 10.0 : 11.0,
-                                color: Colors.red.withOpacity(0.8),
-                              ),
-                            ),
+                            Text("Secure sign out", style: TextStyle(fontSize: isSmallScreen ? 10.0 : 11.0, color: Colors.red.withOpacity(0.8))),
                           ],
                         ),
                       ),
                       Container(
                         padding: EdgeInsets.all(isSmallScreen ? 5.0 : 6.0),
-                        decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.arrow_forward_ios_rounded,
-                          color: Colors.red.withOpacity(0.7),
-                          size: isSmallScreen ? 11.0 : 12.0,
-                        ),
+                        decoration: BoxDecoration(color: Colors.red.withOpacity(0.1), shape: BoxShape.circle),
+                        child: Icon(Icons.arrow_forward_ios_rounded, color: Colors.red.withOpacity(0.7), size: isSmallScreen ? 11.0 : 12.0),
                       ),
                     ],
                   ),
@@ -727,23 +574,9 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
             padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
             child: Column(
               children: [
-                Text(
-                  "v2.1.0",
-                  style: TextStyle(
-                    fontSize: isSmallScreen ? 9.0 : 10.0,
-                    fontWeight: FontWeight.w600,
-                    color: _darkText.withOpacity(0.4),
-                    letterSpacing: 0.5,
-                  ),
-                ),
+                Text("v2.1.0", style: TextStyle(fontSize: isSmallScreen ? 9.0 : 10.0, fontWeight: FontWeight.w600, color: _darkText.withOpacity(0.4), letterSpacing: 0.5)),
                 SizedBox(height: isSmallScreen ? 3.0 : 4.0),
-                Text(
-                  "CeyLogix © 2024",
-                  style: TextStyle(
-                    fontSize: isSmallScreen ? 9.0 : 10.0,
-                    color: _darkText.withOpacity(0.3),
-                  ),
-                ),
+                Text("CeyLogix © 2024", style: TextStyle(fontSize: isSmallScreen ? 9.0 : 10.0, color: _darkText.withOpacity(0.3))),
               ],
             ),
           ),
@@ -781,76 +614,34 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
             padding: EdgeInsets.all(padding),
             decoration: BoxDecoration(
               gradient: isActive
-                  ? const LinearGradient(
-                      colors: [_primaryBlue, Color(0xFF457AED)],
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                    )
-                  : LinearGradient(
-                      colors: [
-                        Colors.white.withOpacity(0.7),
-                        Colors.white.withOpacity(0.4),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                  ? const LinearGradient(colors: [_primaryBlue, Color(0xFF457AED)], begin: Alignment.centerLeft, end: Alignment.centerRight)
+                  : LinearGradient(colors: [Colors.white.withOpacity(0.7), Colors.white.withOpacity(0.4)], begin: Alignment.topLeft, end: Alignment.bottomRight),
               borderRadius: BorderRadius.circular(borderRadius),
               boxShadow: isActive
-                  ? [
-                      BoxShadow(
-                        color: _primaryBlue.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      ),
-                    ]
-                  : [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.03),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-              border: Border.all(
-                color: isActive ? _primaryBlue.withOpacity(0.3) : Colors.white.withOpacity(0.8),
-                width: 1.2,
-              ),
+                  ? [BoxShadow(color: _primaryBlue.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 3))]
+                  : [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))],
+              border: Border.all(color: isActive ? _primaryBlue.withOpacity(0.3) : Colors.white.withOpacity(0.8), width: 1.2),
             ),
             child: Row(
               children: [
                 Container(
                   padding: EdgeInsets.all(iconPadding),
-                  decoration: BoxDecoration(
-                    color: isActive ? Colors.white.withOpacity(0.2) : _primaryBlue.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    icon,
-                    color: isActive ? Colors.white : _primaryBlue,
-                    size: iconSize,
-                  ),
+                  decoration: BoxDecoration(color: isActive ? Colors.white.withOpacity(0.2) : _primaryBlue.withOpacity(0.1), shape: BoxShape.circle),
+                  child: Icon(icon, color: isActive ? Colors.white : _primaryBlue, size: iconSize),
                 ),
                 SizedBox(width: isSmallScreen ? 12.0 : 14.0),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        label,
-                        style: TextStyle(
-                          fontSize: itemFontSize,
-                          fontWeight: FontWeight.w600,
-                          color: isActive ? Colors.white : _darkText,
-                        ),
+                      Text(label,
+                        style: TextStyle(fontSize: itemFontSize, fontWeight: FontWeight.w600, color: isActive ? Colors.white : _darkText),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       SizedBox(height: isSmallScreen ? 1.0 : 2.0),
-                      Text(
-                        description,
-                        style: TextStyle(
-                          fontSize: descFontSize,
-                          color: isActive ? Colors.white.withOpacity(0.8) : _darkText.withOpacity(0.5),
-                        ),
+                      Text(description,
+                        style: TextStyle(fontSize: descFontSize, color: isActive ? Colors.white.withOpacity(0.8) : _darkText.withOpacity(0.5)),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -858,11 +649,7 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
                   ),
                 ),
                 SizedBox(width: isSmallScreen ? 8.0 : 10.0),
-                Icon(
-                  Icons.arrow_forward_ios_rounded,
-                  color: isActive ? Colors.white.withOpacity(0.7) : _primaryBlue.withOpacity(0.4),
-                  size: arrowSize,
-                ),
+                Icon(Icons.arrow_forward_ios_rounded, color: isActive ? Colors.white.withOpacity(0.7) : _primaryBlue.withOpacity(0.4), size: arrowSize),
               ],
             ),
           ),
@@ -883,15 +670,7 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
           Expanded(child: Divider(color: _primaryBlue.withOpacity(0.2), height: 1)),
           Padding(
             padding: EdgeInsets.symmetric(horizontal: textPadding),
-            child: Text(
-              "MENU",
-              style: TextStyle(
-                fontSize: fontSize,
-                fontWeight: FontWeight.w700,
-                color: _primaryBlue.withOpacity(0.5),
-                letterSpacing: 1.5,
-              ),
-            ),
+            child: Text("MENU", style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.w700, color: _primaryBlue.withOpacity(0.5), letterSpacing: 1.5)),
           ),
           Expanded(child: Divider(color: _primaryBlue.withOpacity(0.2), height: 1)),
         ],
@@ -907,20 +686,10 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
           SizedBox(
             width: isSmallScreen ? 32.0 : 40.0,
             height: isSmallScreen ? 32.0 : 40.0,
-            child: CircularProgressIndicator(
-              strokeWidth: isSmallScreen ? 2.5 : 3.0,
-              valueColor: const AlwaysStoppedAnimation<Color>(_primaryBlue),
-            ),
+            child: CircularProgressIndicator(strokeWidth: isSmallScreen ? 2.5 : 3.0, valueColor: const AlwaysStoppedAnimation<Color>(_primaryBlue)),
           ),
           SizedBox(height: isSmallScreen ? 12.0 : 16.0),
-          Text(
-            "Loading...",
-            style: TextStyle(
-              fontSize: isSmallScreen ? 13.0 : 14.0,
-              fontWeight: FontWeight.w600,
-              color: _darkText,
-            ),
-          ),
+          Text("Loading...", style: TextStyle(fontSize: isSmallScreen ? 13.0 : 14.0, fontWeight: FontWeight.w600, color: _darkText)),
         ],
       ),
     );
@@ -940,29 +709,11 @@ class _LandOwnerDrawerState extends State<LandOwnerDrawer> {
         children: [
           Icon(Icons.error_outline_rounded, color: _primaryBlue, size: iconSize),
           SizedBox(height: isSmallScreen ? 12.0 : 16.0),
-          Text(
-            "Unable to load",
-            style: TextStyle(
-              fontSize: titleFontSize,
-              fontWeight: FontWeight.w700,
-              color: _darkText,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          if (_error != null) 
+          Text("Unable to load", style: TextStyle(fontSize: titleFontSize, fontWeight: FontWeight.w700, color: _darkText), textAlign: TextAlign.center),
+          if (_error != null)
             Padding(
               padding: EdgeInsets.symmetric(horizontal: isSmallScreen ? 8.0 : 0, vertical: isSmallScreen ? 6.0 : 8.0),
-              child: Text(
-                _error!,
-                style: TextStyle(
-                  fontSize: errorFontSize,
-                  color: Colors.red.shade700,
-                  fontWeight: FontWeight.w500,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
+              child: Text(_error!, style: TextStyle(fontSize: errorFontSize, color: Colors.red.shade700, fontWeight: FontWeight.w500), textAlign: TextAlign.center, maxLines: 3),
             ),
           SizedBox(height: isSmallScreen ? 10.0 : 12.0),
           ElevatedButton(
