@@ -1,3 +1,4 @@
+// land_location.dart – MODERN COMPACT HEADER (BLUE THEME)
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -11,6 +12,28 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:vibration/vibration.dart';
 import 'land_owner_drawer.dart';
+
+class AppColors {
+  static const Color background        = Color(0xFFF4F6FA);
+  static const Color darkText          = Color(0xFF1A1D26);
+  static const Color primaryBlue       = Color(0xFF2764E7);
+  static const Color accentRed         = Color(0xFFE53935);
+  static const Color accentTeal        = Color(0xFF00BFA5);
+  static const Color cardBackground    = Colors.white;
+  static const Color secondaryText     = Color(0xFF6A798A);
+  static const Color secondaryColor    = Color(0xFF6AD96A);
+  static const Color successGreen      = Color(0xFF2E9E5B);
+  static const Color warningOrange     = Color(0xFFE8840A);
+  static const Color purpleAccent      = Color(0xFF7C3AED);
+  static const Color amberAccent       = Color(0xFFF59E0B);
+  static const Color headerGradientStart = Color(0xFF869AEC);
+  static const Color headerGradientEnd   = Color(0xFFF7FAFF);
+  static const Color headerTextDark      = Color(0xFF333333);
+  static const Color info              = Color(0xFF0EA5E9);
+  static const Color textTertiary      = Color(0xFFB0BAC8);
+  static const Color hover             = Color(0xFFF8FAFC);
+  static const Color border            = Color(0xFFE8ECF2);
+}
 
 class LocationSelectionPage extends StatefulWidget {
   final Function(Map<String, dynamic>) onLocationSelected;
@@ -1210,56 +1233,115 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
     );
   }
 
-  // ==================== DASHBOARD HEADER ====================
+  // ==================== MODERN COMPACT HEADER (BLUE THEME) ====================
   Widget _buildDashboardHeader(BuildContext context) {
-    final isSmallScreen = _screenWidth < 360;
-    final topPadding = MediaQuery.of(context).padding.top + 10;
-    final horizontalPadding = isSmallScreen ? 16.0 : 20.0;
-    final profileSize = isSmallScreen ? 60.0 : 70.0;
-    final menuIconSize = isSmallScreen ? 24.0 : 28.0;
+    final w = MediaQuery.of(context).size.width;
+    final sm = w < 360;
+    final md = w >= 360 && w < 400;
 
     return Container(
-      padding: EdgeInsets.only(top: topPadding, left: horizontalPadding, right: horizontalPadding, bottom: isSmallScreen ? 16.0 : 20.0),
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + 2,
+        left: 16,
+        right: 16,
+        bottom: 12,
+      ),
       decoration: const BoxDecoration(
-        gradient: LinearGradient(colors: [_headerGradientStart, _headerGradientEnd], begin: Alignment.topCenter, end: Alignment.bottomCenter),
-        borderRadius: BorderRadius.only(bottomLeft: Radius.circular(20), bottomRight: Radius.circular(20)),
-        boxShadow: [BoxShadow(color: Color(0x10000000), blurRadius: 10, offset: Offset(0, 3))],
+        gradient: LinearGradient(
+          colors: [_headerGradientStart, _headerGradientEnd],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(30),
+          bottomRight: Radius.circular(30),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x10000000),
+            blurRadius: 15,
+            offset: Offset(0, 5),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [IconButton(icon: Icon(Icons.menu, color: _headerTextDark, size: menuIconSize), onPressed: () => _scaffoldKey.currentState?.openDrawer(), padding: EdgeInsets.zero, constraints: BoxConstraints(minWidth: menuIconSize + 16, minHeight: menuIconSize + 16))]),
-          const SizedBox(height: 10),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Container(
-                width: profileSize,
-                height: profileSize,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: _profileImageUrl == null ? const LinearGradient(colors: [_primaryBlue, Color(0xFF457AED)]) : null,
-                  border: Border.all(color: Colors.white, width: isSmallScreen ? 2.0 : 3.0),
-                  boxShadow: [BoxShadow(color: _primaryBlue.withOpacity(0.3), blurRadius: isSmallScreen ? 8.0 : 10.0, offset: const Offset(0, 3))],
-                  image: _profileImageUrl != null ? DecorationImage(image: NetworkImage(_profileImageUrl!), fit: BoxFit.cover) : null,
-                ),
-                child: _profileImageUrl == null ? Icon(Icons.person, size: isSmallScreen ? 32.0 : 40.0, color: Colors.white) : null,
-              ),
-              const SizedBox(width: 15),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(_loggedInUserName, style: TextStyle(fontSize: isSmallScreen ? 16.0 : 20.0, fontWeight: FontWeight.bold, color: _headerTextDark), maxLines: 1, overflow: TextOverflow.ellipsis),
-                    Text('Land Name: $_landName\n($_userRole)', style: TextStyle(fontSize: isSmallScreen ? 14.0 : 16.0, color: _headerTextDark.withOpacity(0.7)), maxLines: 2, overflow: TextOverflow.ellipsis),
-                  ],
+              GestureDetector(
+                onTap: () => _scaffoldKey.currentState?.openDrawer(),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.menu,
+                    color: _headerTextDark,
+                    size: 24,
+                  ),
                 ),
               ),
+              const Spacer(),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(_loggedInUserName,
+                    style: TextStyle(
+                      fontSize: sm ? 14 : md ? 16 : 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.headerTextDark,
+                    )),
+                  const SizedBox(height: 3),
+                  Text('Land Name: $_landName',
+                    style: TextStyle(
+                      fontSize: sm ? 9 : md ? 10 : 11,
+                      color: AppColors.headerTextDark.withOpacity(0.75),
+                    )),
+                  Text('($_userRole)',
+                    style: TextStyle(
+                      fontSize: sm ? 9 : md ? 10 : 11,
+                      color: AppColors.headerTextDark.withOpacity(0.75),
+                    )),
+                ],
+              ),
+              const Spacer(),
+              _buildAvatar(),
             ],
           ),
-          const SizedBox(height: 25),
-          Text('Select or Update Land Location', style: TextStyle(fontSize: isSmallScreen ? 14.0 : 16.0, fontWeight: FontWeight.w600, color: _headerTextDark)),
+          const SizedBox(height: 12),
+          const Text(
+            'Select Land Location',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: _headerTextDark,
+            ),
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _buildAvatar() {
+    if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) {
+      return CircleAvatar(
+        radius: 40,
+        backgroundImage: NetworkImage(_profileImageUrl!),
+        backgroundColor: Colors.grey.shade200,
+        onBackgroundImageError: (_, __) =>
+            setState(() => _profileImageUrl = null),
+      );
+    }
+    return CircleAvatar(
+      radius: 40,
+      backgroundColor: _primaryBlue.withOpacity(0.15),
+      child:
+          const Icon(Icons.person, color: _primaryBlue, size: 40),
     );
   }
 
@@ -1299,7 +1381,7 @@ class _LocationSelectionPageState extends State<LocationSelectionPage> {
                   _buildLocationTypeSelection(),
                   const SizedBox(height: 16),
                   if (_selectedLocationType == 'manual') ...[
-                    _buildManualPolygonInput(), // Enhanced manual polygon entry
+                    _buildManualPolygonInput(),
                     const SizedBox(height: 16),
                   ],
                   _buildTrackingControls(),
