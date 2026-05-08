@@ -1,3 +1,4 @@
+// developer_info.dart — MODERN BLUE THEME + PER‑SKILL COLOURS (original)
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -5,25 +6,49 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'land_owner_drawer.dart';
 
-// --- 1. COLOR PALETTE (Reusable for consistency) ---
+// ==================== BLUE THEME TOKENS (unified) ====================
 class AppColors {
-  static const Color background = Color(0xFFEEEBFF);
-  static const Color darkText = Color(0xFF2C2A3A);
-  static const Color primaryBlue = Color(0xFF2764E7);
-  static const Color cardBackground = Colors.white;
-  static const Color secondaryColor = Color(0xFF6AD96A);
-  static const Color headerTextDark = Color(0xFF333333);
-  static const Color accentPurple = Color.fromRGBO(134, 164, 236, 1);
-  static const Color errorRed = Color(0xFFD32F2F);
-  
-  // Header gradient colors matching Factory Owner Dashboard
+  static const Color background        = Color(0xFFF4F6FA);
+  static const Color darkText          = Color(0xFF1A1D26);
+  static const Color primaryBlue       = Color(0xFF2764E7);
+  static const Color lightBlue         = Color(0xFF5B8DF5);
+  static const Color mediumBlue        = Color(0xFF3D6DF2);
+  static const Color softBlue          = Color(0xFF8DAAFF);
+  static const Color accentRed         = Color(0xFFE53935);
+  static const Color cardBackground    = Colors.white;
+  static const Color secondaryText     = Color(0xFF6A798A);
   static const Color headerGradientStart = Color(0xFF869AEC);
-  static const Color headerGradientEnd = Color(0xFFF7FAFF);
+  static const Color headerGradientEnd   = Color(0xFFF7FAFF);
+  static const Color headerTextDark      = Color(0xFF333333);
+  static const Color textTertiary        = Color(0xFFB0BAC8);
+  static const Color hover               = Color(0xFFF8FAFC);
+  static const Color border              = Color(0xFFE8ECF2);
+  static const Color errorRed            = Color(0xFFD32F2F);
+  
+  // Keep original brand colours for social/contact icons
+  static const Color emailColor  = Color(0xFFEA4335);
+  static const Color phoneColor  = Color(0xFF34A853);
+  static const Color locationColor = Color(0xFF4285F4);
 }
 
-// -----------------------------------------------------------------------------
-// --- 2. MAIN SCREEN (DeveloperInfoPage - StatefulWidget for Key) ---
-// -----------------------------------------------------------------------------
+class _D {
+  static const double cardRadius = 10.0;
+  static const double cardPad    = 10.0;
+  static const double sectionGap = 14.0;
+  static const double iconBox    = 28.0;
+  static const double iconSize   = 14.0;
+}
+
+// Responsive helper
+extension ResponsiveExtensions on BuildContext {
+  double get paddingSmall => MediaQuery.of(this).size.width < 600 ? 12.0 : 16.0;
+  double get paddingMedium => MediaQuery.of(this).size.width < 600 ? 16.0 : 20.0;
+  double get paddingLarge => MediaQuery.of(this).size.width < 600 ? 20.0 : 24.0;
+  bool get isSmallScreen => MediaQuery.of(this).size.width < 600;
+  bool get isMediumScreen => MediaQuery.of(this).size.width >= 600 && MediaQuery.of(this).size.width < 900;
+}
+
+// ==================== MAIN PAGE ====================
 class DeveloperInfoPage extends StatefulWidget {
   const DeveloperInfoPage({super.key});
 
@@ -35,16 +60,10 @@ class _DeveloperInfoPageState extends State<DeveloperInfoPage> {
   final User? currentUser = FirebaseAuth.instance.currentUser;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   
-  // State variables to hold fetched data
-  String _loggedInUserName = 'Loading User...';
-  String _landName = 'Loading Land...';
-  String _userRole = 'Land Owner';
-  String _landID = 'L-ID';
+  String _loggedInUserName = 'Loading...';
+  String _factoryName = 'Loading...';
+  String _userRole = 'Factory Owner';
   String? _profileImageUrl;
-  
-  // Responsive variables
-  late double _screenWidth;
-  late double _screenHeight;
 
   @override
   void initState() {
@@ -52,70 +71,42 @@ class _DeveloperInfoPageState extends State<DeveloperInfoPage> {
     _fetchHeaderData();
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _updateScreenDimensions();
-  }
-
-  void _updateScreenDimensions() {
-    final mediaQuery = MediaQuery.of(context);
-    _screenWidth = mediaQuery.size.width;
-    _screenHeight = mediaQuery.size.height;
-  }
-
-  // --- DATA FETCHING FUNCTION ---
   void _fetchHeaderData() async {
     final user = currentUser;
-    if (user == null) {
-      return;
-    }
-    
+    if (user == null) return;
     final String uid = user.uid;
-    setState(() {
-      _landID = uid.length >= 8 ? uid.substring(0, 8) : uid.padRight(8, '0');
-    });
-
     try {
-      // 1. Fetch User Name and Role from 'users' collection
       final userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
       if (userDoc.exists) {
         final userData = userDoc.data();
         setState(() {
-          _loggedInUserName = userData?['name'] ?? 'Owner Name Missing';
+          _loggedInUserName = userData?['name'] ?? 'Owner';
           _profileImageUrl = userData?['profileImageUrl'];
-          _userRole = userData?['role'] ?? 'Land Owner';
+          _userRole = userData?['role'] ?? 'Factory Owner';
         });
       }
-      
-      // 2. Fetch Land Name from 'lands' collection
-      final landDoc = await FirebaseFirestore.instance.collection('lands').doc(uid).get();
-      if (landDoc.exists) {
+      final factoryDoc = await FirebaseFirestore.instance.collection('factories').doc(uid).get();
+      if (factoryDoc.exists) {
         setState(() {
-          _landName = landDoc.data()?['landName'] ?? 'Land Name Missing';
+          _factoryName = factoryDoc.data()?['factoryName'] ?? 'Factory';
         });
       }
-
     } catch (e) {
       debugPrint("Error fetching header data: $e");
       setState(() {
         _loggedInUserName = 'Data Error';
-        _landName = 'Data Error';
+        _factoryName = 'Error';
       });
     }
   }
 
-  void _handleDrawerNavigate(String routeName) {
-    Navigator.pop(context);
-  }
+  void _handleDrawerNavigate(String routeName) => Navigator.pop(context);
 
-  // --- Improved URL Launcher Functions with Better Error Handling ---
   Future<void> _launchURL(String url) async {
     if (url.isEmpty) {
       _showErrorSnackBar('Cannot open link: URL is empty');
       return;
     }
-
     final Uri uri;
     try {
       uri = Uri.parse(url);
@@ -123,17 +114,12 @@ class _DeveloperInfoPageState extends State<DeveloperInfoPage> {
       _showErrorSnackBar('Invalid URL format: $url');
       return;
     }
-
     if (!await canLaunchUrl(uri)) {
       _showErrorSnackBar('Cannot open link: No app found to handle this URL');
       return;
     }
-
     try {
-      await launchUrl(
-        uri,
-        mode: LaunchMode.externalApplication,
-      );
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (e) {
       _showErrorSnackBar('Failed to open link: ${e.toString()}');
     }
@@ -149,7 +135,6 @@ class _DeveloperInfoPageState extends State<DeveloperInfoPage> {
         'body': 'Hello Malitha, I would like to know more about your work...',
       }),
     );
-
     await _launchURL(emailLaunchUri.toString());
   }
 
@@ -158,13 +143,11 @@ class _DeveloperInfoPageState extends State<DeveloperInfoPage> {
       _showErrorSnackBar('Phone number is empty');
       return;
     }
-    
     final cleanedNumber = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
     if (cleanedNumber.isEmpty) {
       _showErrorSnackBar('Invalid phone number format');
       return;
     }
-    
     await _launchURL('tel:$cleanedNumber');
   }
 
@@ -187,459 +170,274 @@ class _DeveloperInfoPageState extends State<DeveloperInfoPage> {
         backgroundColor: AppColors.errorRed,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        duration: const Duration(seconds: 3),
       ),
     );
   }
 
+  // ===================== MODERN HEADER (blue theme) =====================
+  Widget _buildModernHeader(BuildContext ctx) {
+    final w = MediaQuery.of(ctx).size.width;
+    final sm = w < 360;
+    final md = w >= 360 && w < 400;
+
+    return Container(
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(ctx).padding.top + 2,
+        left: 16, right: 16, bottom: 12,
+      ),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
+          begin: Alignment.topCenter, end: Alignment.bottomCenter,
+        ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(30), bottomRight: Radius.circular(30)),
+        boxShadow: [BoxShadow(color: Color(0x10000000), blurRadius: 15, offset: Offset(0, 5))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              GestureDetector(
+                onTap: () => _scaffoldKey.currentState?.openDrawer(),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.menu, color: AppColors.headerTextDark, size: 24),
+                ),
+              ),
+              const Spacer(),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(_loggedInUserName,
+                    style: TextStyle(
+                      fontSize: sm ? 14 : md ? 16 : 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.headerTextDark,
+                    )),
+                  const SizedBox(height: 3),
+                  Text('Factory: $_factoryName',
+                    style: TextStyle(
+                      fontSize: sm ? 9 : md ? 10 : 11,
+                      color: AppColors.headerTextDark.withOpacity(0.75),
+                    )),
+                  Text('($_userRole)',
+                    style: TextStyle(
+                      fontSize: sm ? 9 : md ? 10 : 11,
+                      color: AppColors.headerTextDark.withOpacity(0.75),
+                    )),
+                ],
+              ),
+              const Spacer(),
+              _buildAvatar(),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Text('About Developer',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.headerTextDark)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAvatar() {
+    if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) {
+      return CircleAvatar(
+        radius: 40,
+        backgroundImage: NetworkImage(_profileImageUrl!),
+        backgroundColor: Colors.grey.shade200,
+        onBackgroundImageError: (_, __) => setState(() => _profileImageUrl = null),
+      );
+    }
+    return CircleAvatar(
+      radius: 40,
+      backgroundColor: AppColors.primaryBlue.withOpacity(0.15),
+      child: const Icon(Icons.person, color: AppColors.primaryBlue, size: 40),
+    );
+  }
+
+  Widget _buildFooter(double w) => Container(
+    padding: const EdgeInsets.symmetric(vertical: 8),
+    decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.border))),
+    child: Text('Developed By Malitha Tishamal',
+      textAlign: TextAlign.center,
+      style: TextStyle(fontSize: w * 0.028, color: AppColors.secondaryText)),
+  );
+
   @override
   Widget build(BuildContext context) {
-    _updateScreenDimensions();
-    final isSmallScreen = _screenWidth < 360;
-    final isMediumScreen = _screenWidth >= 360 && _screenWidth < 400;
-    
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: AppColors.background,
       drawer: LandOwnerDrawer(
         onLogout: () {
-          Navigator.of(context).pop();
+          FirebaseAuth.instance.signOut();
+          Navigator.pop(context);
         },
         onNavigate: _handleDrawerNavigate,
       ),
-      body: Column(
-        children: [
-          // 🌟 FIXED HEADER - Responsive
-          _buildDashboardHeader(context, isSmallScreen, isMediumScreen),
-          
-          // 🌟 SCROLLABLE CONTENT ONLY with Footer
-          Expanded(
-            child: Column(
-              children: [
-                // Scrollable content
-                Expanded(
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    child: Column(
-                      children: [
-                        // Pass the launcher functions to the content widget
-                        DeveloperInfoContent(
-                          screenWidth: _screenWidth,
-                          screenHeight: _screenHeight,
-                          launchURL: _launchURL,
-                          launchEmail: _launchEmail,
-                          launchPhone: _launchPhone,
-                        ),
-                        const SizedBox(height: 20),
-                      ],
-                    ),
-                  ),
-                ),
-                
-                // Footer (Fixed at bottom of content area)
-                Container(
-                  padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
-                  child: Text(
-                    'Developed by Malitha Tishamal',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: AppColors.darkText.withOpacity(0.7),
-                      fontSize: isSmallScreen ? 11 : 12,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 🌟 FIXED HEADER - Responsive version
-  Widget _buildDashboardHeader(BuildContext context, bool isSmallScreen, bool isMediumScreen) {
-    final topPadding = MediaQuery.of(context).padding.top + 10;
-    final horizontalPadding = isSmallScreen ? 16.0 : 20.0;
-    final profileSize = isSmallScreen ? 60.0 : 70.0;
-    final menuIconSize = isSmallScreen ? 24.0 : 28.0;
-    final nameFontSize = isSmallScreen ? 16.0 : 20.0;
-    final landFontSize = isSmallScreen ? 14.0 : 16.0;
-    final titleFontSize = isSmallScreen ? 14.0 : 16.0;
-
-    return Container(
-      padding: EdgeInsets.only(
-        top: topPadding,
-        left: horizontalPadding,
-        right: horizontalPadding,
-        bottom: isSmallScreen ? 16.0 : 20.0,
-      ),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF869AEC), AppColors.headerGradientEnd],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(20),
-          bottomRight: Radius.circular(20),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x10000000),
-            blurRadius: 10,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              IconButton(
-                icon: Icon(Icons.menu, color: AppColors.headerTextDark, size: menuIconSize),
-                onPressed: () {
-                  _scaffoldKey.currentState?.openDrawer();
-                },
-                padding: EdgeInsets.zero,
-                constraints: BoxConstraints(
-                  minWidth: menuIconSize + 16,
-                  minHeight: menuIconSize + 16,
-                ),
-              ),
-            ],
-          ),
-          
-          SizedBox(height: isSmallScreen ? 8.0 : 10.0),
-          
-          Row(
-            children: [
-              // Profile Picture with Firebase image
-              Container(
-                width: profileSize,
-                height: profileSize,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: _profileImageUrl == null 
-                    ? const LinearGradient(
-                        colors: [AppColors.primaryBlue, Color(0xFF457AED)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                    : null,
-                  border: Border.all(
-                    color: Colors.white, 
-                    width: isSmallScreen ? 2.0 : 3.0
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primaryBlue.withOpacity(0.3),
-                      blurRadius: isSmallScreen ? 8.0 : 10.0,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                  image: _profileImageUrl != null 
-                    ? DecorationImage(
-                        image: NetworkImage(_profileImageUrl!),
-                        fit: BoxFit.cover,
-                      )
-                    : null,
-                ),
-                child: _profileImageUrl == null
-                    ? Icon(
-                        Icons.person, 
-                        size: isSmallScreen ? 32.0 : 40.0, 
-                        color: Colors.white
-                      )
-                    : null,
-              ),
-              
-              SizedBox(width: isSmallScreen ? 12.0 : 15.0),
-              
-              // User Info Display from Firebase
-              Expanded(
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildModernHeader(context),
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 1. Land Owner Name
-                    Text(
-                      _loggedInUserName,
-                      style: TextStyle(
-                        fontSize: nameFontSize,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.headerTextDark,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    DeveloperInfoContent(
+                      launchURL: _launchURL,
+                      launchEmail: _launchEmail,
+                      launchPhone: _launchPhone,
+                      screenWidth: screenWidth,
+                      screenHeight: screenHeight,
                     ),
-                    //Land Name Name and Role
-                    Text(
-                      'Land Name: $_landName \n($_userRole)', 
-                      style: TextStyle(
-                        fontSize: landFontSize,
-                        color: AppColors.headerTextDark.withOpacity(0.7),
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    const SizedBox(height: 16),
                   ],
                 ),
               ),
-            ],
-          ),
-          
-          SizedBox(height: isSmallScreen ? 20.0 : 25.0), 
-          
-          // Page Title with Land ID
-          Text(
-            'Developer About Me',
-            style: TextStyle(
-              fontSize: titleFontSize,
-              fontWeight: FontWeight.w600,
-              color: AppColors.headerTextDark,
             ),
-          ),
-        ],
+            _buildFooter(screenWidth),
+          ],
+        ),
       ),
     );
   }
 }
 
-// -----------------------------------------------------------------------------
-// --- DEVELOPER INFO CONTENT WIDGET ---
-// -----------------------------------------------------------------------------
+// ===================== DEVELOPER INFO CONTENT (BLUE THEME, PER-SKILL COLOURS) =====================
 class DeveloperInfoContent extends StatelessWidget {
-  final double screenWidth;
-  final double screenHeight;
   final Function(String url) launchURL;
   final VoidCallback launchEmail;
   final Function(String phoneNumber) launchPhone;
+  final double screenWidth;
+  final double screenHeight;
 
   const DeveloperInfoContent({
     super.key,
-    required this.screenWidth,
-    required this.screenHeight,
     required this.launchURL,
     required this.launchEmail,
     required this.launchPhone,
+    required this.screenWidth,
+    required this.screenHeight,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isSmallScreen = screenWidth < 360;
-    final isMediumScreen = screenWidth >= 360 && screenWidth < 400;
+    final isSmall = screenWidth < 360;
     const String profileImageUrl = 'assets/developer/developer_photo.png';
 
-    // Calculate responsive sizes
-    final imageSize = isSmallScreen ? 150.0 : 
-                     isMediumScreen ? 180.0 : 
-                     (screenWidth > 600 ? 250.0 : 220.0);
-    
-    final horizontalPadding = isSmallScreen ? 16.0 : 
-                            isMediumScreen ? 18.0 : 
-                            (screenWidth > 600 ? 24.0 : 20.0);
-    
-    final verticalPadding = isSmallScreen ? 20.0 : 
-                          isMediumScreen ? 25.0 : 
-                          30.0;
-
     return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: horizontalPadding, 
-        vertical: verticalPadding
-      ),
+      padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04, vertical: screenHeight * 0.02),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Developer Image with responsive sizing
+          // Developer Image (blue gradient)
           Container(
-            width: imageSize,
-            height: imageSize,
+            width: screenWidth * 0.35,
+            height: screenWidth * 0.35,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: const LinearGradient(
-                colors: [AppColors.primaryBlue, AppColors.accentPurple],
+              gradient: LinearGradient(
+                colors: [AppColors.primaryBlue, AppColors.mediumBlue],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              border: Border.all(
-                color: Colors.white, 
-                width: isSmallScreen ? 3.0 : 4.0
-              ),
+              border: Border.all(color: Colors.white, width: isSmall ? 2.5 : 3),
               boxShadow: [
                 BoxShadow(
                   color: AppColors.primaryBlue.withOpacity(0.3),
-                  blurRadius: isSmallScreen ? 12.0 : 20.0,
-                  spreadRadius: isSmallScreen ? 1.0 : 2.0,
-                  offset: const Offset(0, 6),
+                  blurRadius: 15,
+                  offset: const Offset(0, 5),
                 ),
               ],
             ),
-            child: Stack(
-              children: [
-                ClipOval(
-                  child: Image.asset(
-                    profileImageUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: [AppColors.primaryBlue, AppColors.accentPurple],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                      ),
-                      child: Icon(
-                        Icons.person, 
-                        size: imageSize * 0.3, 
-                        color: Colors.white
-                      ),
-                    ),
-                  ),
-                ),
-                Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.3), 
-                      width: 1.5
-                    ),
-                  ),
-                ),
-              ],
+            child: ClipOval(
+              child: Image.asset(
+                profileImageUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const Icon(Icons.person, size: 50, color: Colors.white),
+              ),
             ),
           ),
-
-          SizedBox(height: isSmallScreen ? 20.0 : 30.0),
-
-          // Developer Name and Title with responsive typography
+          const SizedBox(height: 12),
           Text(
             'Malitha Tishamal',
-            textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: isSmallScreen ? 22.0 : 
-                      isMediumScreen ? 24.0 : 
-                      (screenWidth > 600 ? 32.0 : 28.0),
-              fontWeight: FontWeight.w900,
+              fontSize: isSmall ? 20 : 24,
+              fontWeight: FontWeight.bold,
               color: AppColors.darkText,
-              letterSpacing: -0.5,
             ),
           ),
-          
-          SizedBox(height: isSmallScreen ? 6.0 : 8.0),
-          
+          const SizedBox(height: 4),
           Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: isSmallScreen ? 12.0 : 16.0, 
-              vertical: isSmallScreen ? 4.0 : 6.0
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
               color: AppColors.primaryBlue.withOpacity(0.1),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.primaryBlue.withOpacity(0.2)),
             ),
             child: Text(
               'Full Stack Developer',
               style: TextStyle(
-                fontSize: isSmallScreen ? 14.0 : 
-                        isMediumScreen ? 15.0 : 
-                        16.0,
+                fontSize: isSmall ? 12 : 14,
                 fontWeight: FontWeight.w600,
                 color: AppColors.primaryBlue,
               ),
             ),
           ),
+          const SizedBox(height: 24),
 
-          SizedBox(height: isSmallScreen ? 20.0 : 30.0),
+          // Connect with me section (blue theme)
+          _buildSectionHeader('Connect with me', Icons.share_rounded, isSmall),
+          const SizedBox(height: 12),
+          _buildSocialMediaButtons(isSmall),
+          const SizedBox(height: 24),
 
-          // --- 🌟 Responsive Social Media Section ---
-          _buildSectionHeader(
-            title: "Connect with me", 
-            icon: Icons.share_rounded,
-            isSmallScreen: isSmallScreen,
-            isMediumScreen: isMediumScreen,
-          ),
-          SizedBox(height: isSmallScreen ? 15.0 : 20.0),
-          _buildSocialMediaButtons(isSmallScreen, isMediumScreen),
+          // Contact Details (brand colours preserved for icons)
+          _buildSectionHeader('Contact Details', Icons.contact_mail_rounded, isSmall),
+          const SizedBox(height: 12),
+          _buildContactDetailsCard(isSmall),
+          const SizedBox(height: 24),
 
-          SizedBox(height: isSmallScreen ? 25.0 : 40.0),
-
-          // --- 💡 Responsive Contact Details Section ---
-          _buildSectionHeader(
-            title: "Contact Details", 
-            icon: Icons.contact_mail_rounded,
-            isSmallScreen: isSmallScreen,
-            isMediumScreen: isMediumScreen,
-          ),
-          SizedBox(height: isSmallScreen ? 15.0 : 20.0),
-          _buildContactDetailsCard(isSmallScreen, isMediumScreen),
-
-          SizedBox(height: isSmallScreen ? 25.0 : 40.0),
-
-          // --- 💡 Responsive Skills Section ---
-          _buildSectionHeader(
-            title: "Technical Skills", 
-            icon: Icons.code_rounded,
-            isSmallScreen: isSmallScreen,
-            isMediumScreen: isMediumScreen,
-          ),
-          SizedBox(height: isSmallScreen ? 15.0 : 20.0),
-          _buildSkillsChips(isSmallScreen, isMediumScreen),
-
-          SizedBox(height: isSmallScreen ? 25.0 : 40.0),
+          // Technical Skills (ORIGINAL PER-SKILL COLOURS)
+          _buildSectionHeader('Technical Skills', Icons.code_rounded, isSmall),
+          const SizedBox(height: 12),
+          _buildSkillsChips(isSmall),
+          const SizedBox(height: 8),
         ],
       ),
     );
   }
 
-  Widget _buildSectionHeader({
-    required String title, 
-    required IconData icon,
-    required bool isSmallScreen,
-    required bool isMediumScreen,
-  }) {
-    final iconSize = isSmallScreen ? 16.0 : 18.0;
-    final titleFontSize = isSmallScreen ? 16.0 : 
-                        isMediumScreen ? 17.0 : 
-                        18.0;
-    
+  Widget _buildSectionHeader(String title, IconData icon, bool isSmall) {
     return Container(
-      width: double.infinity,
-      padding: EdgeInsets.symmetric(
-        horizontal: isSmallScreen ? 6.0 : 8.0, 
-        vertical: isSmallScreen ? 6.0 : 8.0
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
         color: AppColors.primaryBlue.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(isSmallScreen ? 10.0 : 12.0),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: AppColors.primaryBlue.withOpacity(0.1)),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
         children: [
           Container(
-            padding: EdgeInsets.all(isSmallScreen ? 5.0 : 6.0),
-            decoration: BoxDecoration(
-              color: AppColors.primaryBlue,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              icon, 
-              color: Colors.white, 
-              size: iconSize
-            ),
+            padding: const EdgeInsets.all(5),
+            decoration: const BoxDecoration(color: AppColors.primaryBlue, shape: BoxShape.circle),
+            child: Icon(icon, color: Colors.white, size: isSmall ? 14 : 16),
           ),
-          SizedBox(width: isSmallScreen ? 8.0 : 12.0),
-          Flexible(
+          const SizedBox(width: 8),
+          Expanded(
             child: Text(
               title,
-              style: TextStyle(
-                fontSize: titleFontSize,
-                fontWeight: FontWeight.bold,
-                color: AppColors.darkText,
-              ),
+              style: TextStyle(fontSize: isSmall ? 14 : 16, fontWeight: FontWeight.bold, color: AppColors.darkText),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -649,387 +447,204 @@ class DeveloperInfoContent extends StatelessWidget {
     );
   }
 
-  // --- 🌟 RESPONSIVE SOCIAL MEDIA BUTTONS - NO OVERLAP ---
-  Widget _buildSocialMediaButtons(bool isSmallScreen, bool isMediumScreen) {
-    final List<SocialMediaItem> socialItems = [
-      SocialMediaItem(
-        icon: FontAwesomeIcons.facebookF,
-        label: 'Facebook', 
-        url: 'https://facebook.com/malitha.tishamal',
-        color: const Color(0xFF1877F2),
-      ),
-      SocialMediaItem(
-        icon: FontAwesomeIcons.instagram,
-        label: 'Instagram',
-        url: 'https://instagram.com/malithatishamal',
-        color: const Color(0xFFE4405F),
-      ),
-      SocialMediaItem(
-        icon: FontAwesomeIcons.github,
-        label: 'GitHub',
-        url: 'https://github.com/malithatishamal',
-        color: const Color(0xFF181717),
-      ),
-      SocialMediaItem(
-        icon: FontAwesomeIcons.linkedinIn,
-        label: 'LinkedIn',
-        url: 'https://linkedin.com/in/malithatishamal',
-        color: const Color(0xFF0A66C2),
-      ),
-      SocialMediaItem(
-        icon: FontAwesomeIcons.twitter,
-        label: 'Twitter',
-        url: 'https://twitter.com/malithatishamal',
-        color: const Color(0xFF1DA1F2),
-      ),
-      SocialMediaItem(
-        icon: FontAwesomeIcons.globe,
-        label: 'Portfolio',
-        url: 'https://malithatishamal.42web.io',
-        color: const Color(0xFF6E5494),
-      ),
+  Widget _buildSocialMediaButtons(bool isSmall) {
+    final List<SocialMediaItem> items = [
+      SocialMediaItem(icon: FontAwesomeIcons.facebookF, label: 'Facebook', url: 'https://facebook.com/malitha.tishamal', color: const Color(0xFF1877F2)),
+      SocialMediaItem(icon: FontAwesomeIcons.instagram, label: 'Instagram', url: 'https://instagram.com/malithatishamal', color: const Color(0xFFE4405F)),
+      SocialMediaItem(icon: FontAwesomeIcons.github, label: 'GitHub', url: 'https://github.com/malithatishamal', color: const Color(0xFF181717)),
+      SocialMediaItem(icon: FontAwesomeIcons.linkedinIn, label: 'LinkedIn', url: 'https://linkedin.com/in/malithatishamal', color: const Color(0xFF0A66C2)),
+      SocialMediaItem(icon: FontAwesomeIcons.twitter, label: 'Twitter', url: 'https://twitter.com/malithatishamal', color: const Color(0xFF1DA1F2)),
+      SocialMediaItem(icon: FontAwesomeIcons.globe, label: 'Portfolio', url: 'https://malithatishamal.42web.io', color: const Color(0xFF6E5494)),
     ];
 
-    // Calculate the number of columns based on screen width
-    final int columns;
-    if (screenWidth < 300) {
-      columns = 2;
-    } else if (screenWidth < 400) {
-      columns = 3;
-    } else if (screenWidth < 500) {
-      columns = 4;
-    } else {
-      columns = 5;
-    }
-
-    // Calculate spacing and button size dynamically
-    final horizontalPadding = isSmallScreen ? 12.0 : 
-                             isMediumScreen ? 16.0 : 
-                             20.0;
-    
-    final totalSpacing = (columns - 1) * (isSmallScreen ? 8.0 : 12.0);
-    final availableWidth = screenWidth - (horizontalPadding * 2) - totalSpacing;
-    final buttonWidth = availableWidth / columns;
-    
-    // Ensure buttons don't get too small or too large
-    final buttonSize = buttonWidth.clamp(isSmallScreen ? 50.0 : 55.0, 70.0);
-    final iconSize = buttonSize * 0.45;
-    final labelFontSize = isSmallScreen ? 9.0 : 
-                         isMediumScreen ? 10.0 : 
-                         11.0;
-
     return Container(
-      padding: EdgeInsets.all(isSmallScreen ? 12.0 : 
-                             isMediumScreen ? 16.0 : 
-                             20.0),
+      padding: EdgeInsets.all(isSmall ? 12 : 16),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(isSmallScreen ? 16.0 : 20.0),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primaryBlue.withOpacity(0.1),
-            blurRadius: isSmallScreen ? 10.0 : 15.0,
-            offset: const Offset(0, 5),
-          ),
-        ],
-        border: Border.all(color: AppColors.accentPurple.withOpacity(0.1)),
+        borderRadius: BorderRadius.circular(_D.cardRadius),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 4, offset: const Offset(0, 2))],
       ),
+      child: Wrap(
+        spacing: isSmall ? 12 : 16,
+        runSpacing: isSmall ? 16 : 20,
+        alignment: WrapAlignment.center,
+        children: items.map((item) => _buildSocialButton(item, isSmall)).toList(),
+      ),
+    );
+  }
+
+  Widget _buildSocialButton(SocialMediaItem item, bool isSmall) {
+    final double size = isSmall ? 50 : 60;
+    final double iconSize = isSmall ? 22 : 28;
+    return SizedBox(
+      width: size + 10,
       child: Column(
         children: [
-          Text(
-            'Follow me on social media',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: isSmallScreen ? 12.0 : 
-                      isMediumScreen ? 13.0 : 
-                      14.0,
-              color: AppColors.darkText,
-              fontWeight: FontWeight.w500,
+          GestureDetector(
+            onTap: () => launchURL(item.url),
+            child: Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: [item.color.withOpacity(0.9), item.color], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                shape: BoxShape.circle,
+                boxShadow: [BoxShadow(color: item.color.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 3))],
+              ),
+              child: Center(child: FaIcon(item.icon, color: Colors.white, size: iconSize)),
             ),
           ),
-          
-          SizedBox(height: isSmallScreen ? 12.0 : 16.0),
-          
-          // Use Wrap with calculated spacing
-          Wrap(
-            spacing: isSmallScreen ? 8.0 : 12.0,
-            runSpacing: isSmallScreen ? 16.0 : 20.0,
-            alignment: WrapAlignment.center,
-            children: socialItems.map((item) {
-              return SizedBox(
-                width: buttonSize,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Tooltip(
-                      message: 'Open ${item.label}',
-                      child: GestureDetector(
-                        onTap: () => launchURL(item.url),
-                        child: Container(
-                          width: buttonSize,
-                          height: buttonSize,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [item.color.withOpacity(0.9), item.color],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: item.color.withOpacity(0.3),
-                                blurRadius: isSmallScreen ? 8.0 : 12.0,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Center(
-                            child: FaIcon(
-                              item.icon,
-                              color: Colors.white,
-                              size: iconSize,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    
-                    SizedBox(height: isSmallScreen ? 4.0 : 6.0),
-                    
-                    Text(
-                      item.label,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: labelFontSize,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.darkText.withOpacity(0.7),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
+          const SizedBox(height: 6),
+          Text(
+            item.label,
+            style: TextStyle(fontSize: isSmall ? 10 : 11, color: AppColors.secondaryText),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
     );
   }
 
-  // --- Responsive Contact Details Widgets ---
-  Widget _buildContactDetailsCard(bool isSmallScreen, bool isMediumScreen) {
+  Widget _buildContactDetailsCard(bool isSmall) {
     return Container(
-      padding: EdgeInsets.all(isSmallScreen ? 12.0 : 
-                             isMediumScreen ? 16.0 : 
-                             20.0),
+      padding: EdgeInsets.all(isSmall ? 12 : 16),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(isSmallScreen ? 16.0 : 20.0),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primaryBlue.withOpacity(0.1),
-            blurRadius: isSmallScreen ? 10.0 : 15.0,
-            offset: const Offset(0, 5),
-          ),
-        ],
-        border: Border.all(color: AppColors.accentPurple.withOpacity(0.1)),
+        borderRadius: BorderRadius.circular(_D.cardRadius),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 4, offset: const Offset(0, 2))],
       ),
       child: Column(
         children: [
-          _buildContactItem(
+          _buildContactTile(
             icon: Icons.email_rounded,
-            label: 'Email Address',
+            label: 'Email',
             value: 'malithatishamal@gmail.com',
-            color: const Color(0xFFEA4335),
+            color: AppColors.emailColor,
             onTap: launchEmail,
-            isSmallScreen: isSmallScreen,
-            isMediumScreen: isMediumScreen,
+            isSmall: isSmall,
           ),
-          SizedBox(height: isSmallScreen ? 8.0 : 12.0),
-          _buildContactItem(
+          const SizedBox(height: 10),
+          _buildContactTile(
             icon: Icons.call_rounded,
-            label: 'Mobile Number',
+            label: 'Mobile',
             value: '+94 78 553 0992',
-            color: AppColors.secondaryColor,
+            color: AppColors.phoneColor,
             onTap: () => launchPhone('+94785530992'),
-            isSmallScreen: isSmallScreen,
-            isMediumScreen: isMediumScreen,
+            isSmall: isSmall,
           ),
-          SizedBox(height: isSmallScreen ? 8.0 : 12.0),
-          _buildContactItem(
+          const SizedBox(height: 10),
+          _buildContactTile(
             icon: Icons.location_on_rounded,
             label: 'Location',
             value: 'Matara, Sri Lanka',
-            color: AppColors.primaryBlue,
-            isLast: true,
+            color: AppColors.locationColor,
             onTap: () => launchURL('https://maps.app.goo.gl/Matara'),
-            isSmallScreen: isSmallScreen,
-            isMediumScreen: isMediumScreen,
+            isSmall: isSmall,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildContactItem({
+  Widget _buildContactTile({
     required IconData icon,
     required String label,
     required String value,
     required Color color,
     required VoidCallback onTap,
-    required bool isSmallScreen,
-    required bool isMediumScreen,
-    bool isLast = false,
+    required bool isSmall,
   }) {
-    final iconSize = isSmallScreen ? 18.0 : 22.0;
-    final labelFontSize = isSmallScreen ? 11.0 : 
-                         isMediumScreen ? 12.0 : 
-                         13.0;
-    final valueFontSize = isSmallScreen ? 14.0 : 
-                         isMediumScreen ? 15.0 : 
-                         16.0;
-    
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(isSmallScreen ? 10.0 : 12.0),
+      borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: isSmall ? 10 : 12),
         decoration: BoxDecoration(
           color: color.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(isSmallScreen ? 10.0 : 12.0),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(color: color.withOpacity(0.1)),
         ),
         child: Row(
           children: [
             Container(
-              padding: EdgeInsets.all(isSmallScreen ? 8.0 : 10.0),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.15),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                icon, 
-                color: color, 
-                size: iconSize
-              ),
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(color: color.withOpacity(0.15), shape: BoxShape.circle),
+              child: Icon(icon, color: color, size: isSmall ? 18 : 20),
             ),
-            SizedBox(width: isSmallScreen ? 12.0 : 16.0),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: labelFontSize,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.darkText.withOpacity(0.6),
-                    ),
-                  ),
-                  SizedBox(height: isSmallScreen ? 3.0 : 4.0),
-                  Text(
-                    value,
-                    style: TextStyle(
-                      fontSize: valueFontSize,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.darkText,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  Text(label, style: TextStyle(fontSize: isSmall ? 10 : 11, color: AppColors.secondaryText)),
+                  const SizedBox(height: 2),
+                  Text(value, style: TextStyle(fontSize: isSmall ? 13 : 14, fontWeight: FontWeight.w600, color: AppColors.darkText)),
                 ],
               ),
             ),
-            Container(
-              padding: EdgeInsets.all(isSmallScreen ? 4.0 : 6.0),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.arrow_forward_ios_rounded,
-                color: color,
-                size: isSmallScreen ? 12.0 : 14.0,
-              ),
-            ),
+            Icon(Icons.arrow_forward_ios_rounded, color: color, size: isSmall ? 12 : 14),
           ],
         ),
       ),
     );
   }
 
-  // --- Responsive Skills Widgets ---
-  Widget _buildSkillsChips(bool isSmallScreen, bool isMediumScreen) {
+  // ===================== SKILLS WITH ORIGINAL PER-SKILL COLOURS =====================
+  Widget _buildSkillsChips(bool isSmall) {
     final List<String> skills = [
       'Flutter', 'Dart', 'Firebase', 'Firestore', 'Authentication',
-      'REST APIs', 'Provider/Riverpod', 'State Management', 'UI/UX Design',
+      'REST APIs', 'Provider', 'State Management', 'UI/UX Design',
       'Git & GitHub', 'CI/CD', 'Java', 'SQL',
     ];
+    
+    final Map<String, Color> skillColors = {
+      'Flutter': const Color(0xFF027DFD),
+      'Dart': const Color(0xFF00B4AB),
+      'Firebase': const Color(0xFFFFA611),
+      'Firestore': const Color(0xFFFFA611),
+      'Authentication': const Color(0xFF4285F4),
+      'REST APIs': const Color(0xFF9C27B0),
+      'Provider': const Color(0xFF2196F3),
+      'State Management': const Color(0xFF3F51B5),
+      'UI/UX Design': const Color(0xFF009688),
+      'Git & GitHub': const Color(0xFFF05032),
+      'CI/CD': const Color(0xFF2088FF),
+      'Java': const Color(0xFFB07219),
+      'SQL': const Color(0xFF4479A1),
+    };
 
     return Container(
-      padding: EdgeInsets.all(isSmallScreen ? 12.0 : 
-                             isMediumScreen ? 16.0 : 
-                             20.0),
+      padding: EdgeInsets.all(isSmall ? 12 : 16),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(isSmallScreen ? 16.0 : 20.0),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primaryBlue.withOpacity(0.1),
-            blurRadius: isSmallScreen ? 10.0 : 15.0,
-            offset: const Offset(0, 5),
-          ),
-        ],
-        border: Border.all(color: AppColors.accentPurple.withOpacity(0.1)),
+        borderRadius: BorderRadius.circular(_D.cardRadius),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 4, offset: const Offset(0, 2))],
       ),
       child: Wrap(
-        spacing: isSmallScreen ? 8.0 : 12.0,
-        runSpacing: isSmallScreen ? 8.0 : 12.0,
+        spacing: isSmall ? 8 : 10,
+        runSpacing: isSmall ? 10 : 12,
         alignment: WrapAlignment.center,
-        children: skills.map((skill) => _buildSkillChip(
-          skill, 
-          isSmallScreen, 
-          isMediumScreen
-        )).toList(),
+        children: skills.map((skill) => _buildSkillChip(skill, skillColors[skill] ?? AppColors.primaryBlue, isSmall)).toList(),
       ),
     );
   }
 
-  Widget _buildSkillChip(String skill, bool isSmallScreen, bool isMediumScreen) {
-    final chipFontSize = isSmallScreen ? 12.0 : 
-                        isMediumScreen ? 13.0 : 
-                        14.0;
-    final iconSize = isSmallScreen ? 14.0 : 16.0;
-    final horizontalPadding = isSmallScreen ? 12.0 : 
-                             isMediumScreen ? 14.0 : 
-                             16.0;
-    final verticalPadding = isSmallScreen ? 6.0 : 
-                           isMediumScreen ? 8.0 : 
-                           10.0;
-
+  Widget _buildSkillChip(String skill, Color color, bool isSmall) {
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: horizontalPadding, 
-        vertical: verticalPadding
-      ),
+      padding: EdgeInsets.symmetric(horizontal: isSmall ? 10 : 14, vertical: isSmall ? 6 : 8),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            AppColors.primaryBlue.withOpacity(0.1), 
-            AppColors.accentPurple.withOpacity(0.1)
-          ],
+          colors: [color.withOpacity(0.9), color],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(25),
-        border: Border.all(
-          color: AppColors.primaryBlue.withOpacity(0.2), 
-          width: 1
-        ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primaryBlue.withOpacity(0.05),
+            color: color.withOpacity(0.3),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -1038,18 +653,14 @@ class DeveloperInfoContent extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.check_circle_rounded,
-            color: AppColors.primaryBlue,
-            size: iconSize,
-          ),
-          SizedBox(width: isSmallScreen ? 4.0 : 6.0),
+          Icon(Icons.check_circle_rounded, color: Colors.white, size: isSmall ? 12 : 14),
+          const SizedBox(width: 6),
           Text(
             skill,
             style: TextStyle(
-              color: AppColors.primaryBlue,
-              fontSize: chipFontSize,
+              fontSize: isSmall ? 12 : 13,
               fontWeight: FontWeight.w600,
+              color: Colors.white,
             ),
           ),
         ],
@@ -1058,17 +669,10 @@ class DeveloperInfoContent extends StatelessWidget {
   }
 }
 
-// Social Media Item Model
 class SocialMediaItem {
   final IconData icon;
   final String label;
   final String url;
   final Color color;
-
-  SocialMediaItem({
-    required this.icon,
-    required this.label,
-    required this.url,
-    required this.color,
-  });
+  SocialMediaItem({required this.icon, required this.label, required this.url, required this.color});
 }
